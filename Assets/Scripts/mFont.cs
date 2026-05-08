@@ -803,6 +803,13 @@ public class mFont
 			break;
 		}
 		gUIStyle.normal.textColor = color1;
+		gUIStyle.hover.textColor = color1;
+		gUIStyle.active.textColor = color1;
+		gUIStyle.focused.textColor = color1;
+		gUIStyle.onNormal.textColor = color1;
+		gUIStyle.onHover.textColor = color1;
+		gUIStyle.onActive.textColor = color1;
+		gUIStyle.onFocused.textColor = color1;
 		g.drawString(st, (int)num, (int)num2, gUIStyle);
 	}
 

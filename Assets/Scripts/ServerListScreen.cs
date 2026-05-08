@@ -32,9 +32,8 @@ public class ServerListScreen : mScreen, IActionListener
 	private int lY;
 
 
-    public static string smartPhoneVN = "Vũ trụ 1:dragon1.teamobi.com:14445:0:0:0,Vũ trụ 2:dragon2.teamobi.com:14445:0:0:0,Vũ trụ 3:dragon3.teamobi.com:14445:0:0:0,Vũ trụ 4:dragon4.teamobi.com:14445:0:0:0,Vũ trụ 5:dragon5.teamobi.com:14445:0:0:0,Vũ trụ 6:dragon6.teamobi.com:14445:0:0:0,Vũ trụ 7:dragon7.teamobi.com:14445:0:0:0,Vũ trụ 8:dragon10.teamobi.com:14446:0:0:0,Vũ trụ 9:dragon10.teamobi.com:14447:0:0:0,Vũ trụ 10:dragon10.teamobi.com:14445:0:0:0,Vũ trụ 11:dragon11.teamobi.com:14445:0:0:0,Võ đài liên vũ trụ:dragonwar.teamobi.com:20000:0:0:0,Universe 1:dragon.indonaga.com:14445:1:0:0,Naga:dragon.indonaga.com:14446:2:0:0,0,0";
-
-    public static string javaVN = "Vũ trụ 1:112.213.94.23:14445:0:0:0,Vũ trụ 2:210.211.109.199:14445:0:0:0,Vũ trụ 3:112.213.85.88:14445:0:0:0,Vũ trụ 4:27.0.12.164:14445:0:0:0,Vũ trụ 5:27.0.12.16:14445:0:0:0,Vũ trụ 6:27.0.12.173:14445:0:0:0,Vũ trụ 7:112.213.94.223:14445:0:0:0,Vũ trụ 8:27.0.14.66:14446:0:0:0,Vũ trụ 9:27.0.14.66:14447:0:0:0,Vũ trụ 10:27.0.14.66:14445:0:0:0,Vũ trụ 11:112.213.85.35:14445:0:0:0,Võ đài liên vũ trụ:27.0.12.173:20000:0:0:0,Universe 1:52.74.230.22:14445:1:0:0,Naga:52.74.230.22:14446:2:0:0,0,0";
+    public static string smartPhoneVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
+    public static string javaVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
 
     public static string smartPhoneIn = "Naga:dragon.indonaga.com:14446:2:0:0,2,0";
 
@@ -44,7 +43,7 @@ public class ServerListScreen : mScreen, IActionListener
 
     public static string javaE = "Universe 1:52.74.230.22:14445:1:0:0,1,0";
 
-    public static string linkGetHost = "http://112.213.94.23/mod/server_extra.php";
+    public static string linkGetHost = "";
 
     public static string linkDefault = javaVN;
 
@@ -659,41 +658,10 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public static void loadIP()
 	{
-		sbyte[] array = Rms.loadRMS("NRlink2");
-		if (array == null)
-		{
-			getServerList(linkDefault);
-			return;
-		}
-		DataInputStream dataInputStream = new DataInputStream(array);
-		if (dataInputStream == null)
-		{
-			return;
-		}
-		try
-		{
-			lengthServer = new int[3];
-			mResources.loadLanguague(dataInputStream.readByte());
-			sbyte b = dataInputStream.readByte();
-			nameServer = new string[b];
-			address = new string[b];
-			port = new short[b];
-			language = new sbyte[b];
-			for (int i = 0; i < b; i++)
-			{
-				nameServer[i] = dataInputStream.readUTF();
-				address[i] = dataInputStream.readUTF();
-				port[i] = dataInputStream.readShort();
-				language[i] = dataInputStream.readByte();
-				lengthServer[language[i]]++;
-			}
-			serverPriority = dataInputStream.readByte();
-			dataInputStream.close();
-			SplashScr.loadIP();
-		}
-		catch (Exception)
-		{
-		}
+		Rms.deleteRecord("NRlink2");
+		Rms.deleteRecord("NRIPlink");
+		Rms.deleteRecord("svselect");
+		getServerList(linkDefault);
 	}
 
 	public static string[] loadIP_2()

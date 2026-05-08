@@ -20,3 +20,18 @@
 # OS-specific
 .DS_Store
 Thumbs.db
+
+# .bmad-core/
+.bmad-*/
+.agent/
+.gemini/
+.github/
+.claude/
+# BMad directories
+_bmad/
+_bmad-output/
+.bmad-*/
+._bmad/
+.cursor/
+.assets/
+.assets*/
