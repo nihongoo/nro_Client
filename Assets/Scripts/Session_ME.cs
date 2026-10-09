@@ -9,6 +9,8 @@ using UnityEngine;
 
 public class Session_ME : ISession
 {
+	private static readonly object networkLock = new object();
+	private static volatile int networkGeneration;
 	public class Sender
 	{
 		public List<Message> sendingMessage;
@@ -20,22 +22,36 @@ public class Session_ME : ISession
 
 		public void AddMessage(Message message)
 		{
-			sendingMessage.Add(message);
+			lock (sendingMessage) sendingMessage.Add(message);
 		}
 
 		public void run()
 		{
-			while (connected)
+			run(networkGeneration);
+		}
+
+		public void run(int generation)
+		{
+			while (connected && generation == networkGeneration)
 			{
 				try
 				{
 					if (getKeyComplete)
 					{
-						while (sendingMessage.Count > 0)
+						while (connected)
 						{
-							Message m = sendingMessage[0];
-							doSendMessage(m);
-							sendingMessage.RemoveAt(0);
+							lock (networkLock)
+							{
+								if (generation != networkGeneration || !connected) return;
+								Message m;
+								lock (sendingMessage)
+								{
+									if (sendingMessage.Count == 0) break;
+									m = sendingMessage[0];
+									sendingMessage.RemoveAt(0);
+								}
+								doSendMessage(m);
+							}
 						}
 					}
 					try
@@ -57,11 +73,23 @@ public class Session_ME : ISession
 
 	private class MessageCollector
 	{
+		private readonly int generation = networkGeneration;
+		private readonly BinaryReader dis = Session_ME.dis;
+		// A cancelled collector must never advance the next connection's cipher cursor.
+		private sbyte[] receiveKey;
+		private int receiveKeyIndex;
+
+		private sbyte readKey(sbyte value)
+		{
+			sbyte decoded = (sbyte)((receiveKey[receiveKeyIndex] & 0xFF) ^ (value & 0xFF));
+			receiveKeyIndex = (receiveKeyIndex + 1) % receiveKey.Length;
+			return decoded;
+		}
 		public void run()
 		{
 			try
 			{
-				while (connected)
+				while (connected && generation == networkGeneration)
 				{
 					Message message = readMessage();
 					if (message == null)
@@ -70,13 +98,17 @@ public class Session_ME : ISession
 					}
 					try
 					{
-						if (message.command == -27)
+						lock (networkLock)
 						{
-							getKey(message);
-						}
-						else
-						{
-							onRecieveMsg(message);
+							if (generation != networkGeneration) return;
+							if (message.command == -27)
+							{
+								getKey(message);
+							}
+							else
+							{
+								onRecieveMsg(message);
+							}
 						}
 					}
 					catch (Exception)
@@ -98,24 +130,27 @@ public class Session_ME : ISession
 				Debug.Log("error read message!");
 				Debug.Log(ex3.Message.ToString());
 			}
-			if (!connected)
+			lock (networkLock)
 			{
-				return;
-			}
-			if (messageHandler != null)
-			{
-				if (currentTimeMillis() - timeConnected > 500)
+				if (!connected || generation != networkGeneration)
 				{
-					messageHandler.onDisconnected(isMainSession);
+					return;
 				}
-				else
+				if (messageHandler != null)
 				{
-					messageHandler.onConnectionFail(isMainSession);
+					if (currentTimeMillis() - timeConnected > 500)
+					{
+						messageHandler.onDisconnected(isMainSession);
+					}
+					else
+					{
+						messageHandler.onConnectionFail(isMainSession);
+					}
 				}
-			}
-			if (sc != null)
-			{
-				cleanNetwork();
+				if (sc != null)
+				{
+					cleanNetwork();
+				}
 			}
 		}
 
@@ -134,6 +169,7 @@ public class Session_ME : ISession
 					ref sbyte reference = ref key[j + 1];
 					reference = (sbyte)(reference ^ key[j]);
 				}
+				receiveKey = key;
 				getKeyComplete = true;
 				GameMidlet.IP2 = message.reader().readUTF();
 				GameMidlet.PORT2 = message.reader().readInt();
@@ -161,7 +197,7 @@ public class Session_ME : ISession
 			recvByteCount += 5 + num4;
 			int num6 = recvByteCount + sendByteCount;
 			strRecvByteCount = num6 / 1024 + "." + num6 % 1024 / 102 + "Kb";
-			if (getKeyComplete)
+			if (receiveKey != null)
 			{
 				for (int i = 0; i < array.Length; i++)
 				{
@@ -176,7 +212,7 @@ public class Session_ME : ISession
 			try
 			{
 				sbyte b = dis.ReadSByte();
-				if (getKeyComplete)
+				if (receiveKey != null)
 				{
 					b = readKey(b);
 				}
@@ -185,7 +221,7 @@ public class Session_ME : ISession
 					return readMessage2(b);
 				}
 				int num;
-				if (getKeyComplete)
+				if (receiveKey != null)
 				{
 					sbyte b2 = dis.ReadSByte();
 					sbyte b3 = dis.ReadSByte();
@@ -206,7 +242,7 @@ public class Session_ME : ISession
                 recvByteCount += 5 + num;
 				int num4 = recvByteCount + sendByteCount;
 				strRecvByteCount = num4 / 1024 + "." + num4 % 1024 / 102 + "Kb";
-				if (getKeyComplete)
+				if (receiveKey != null)
 				{
 					for (int i = 0; i < array.Length; i++)
 					{
@@ -237,9 +273,9 @@ public class Session_ME : ISession
 
 	private static TcpClient sc;
 
-	public static bool connected;
+	public static volatile bool connected;
 
-	public static bool connecting;
+	public static volatile bool connecting;
 
 	private static Sender sender = new Sender();
 
@@ -253,7 +289,7 @@ public class Session_ME : ISession
 
 	public static int recvByteCount;
 
-	private static bool getKeyComplete;
+	private static volatile bool getKeyComplete;
 
 	public static sbyte[] key = null;
 
@@ -286,7 +322,17 @@ public class Session_ME : ISession
 
 	public void clearSendingMessage()
 	{
-		sender.sendingMessage.Clear();
+		lock (sender.sendingMessage) sender.sendingMessage.Clear();
+	}
+
+	public static bool readyForLogin()
+	{
+		return connected && !connecting && getKeyComplete;
+	}
+
+	public static void clearReceivedMessages()
+	{
+		lock (recieveMsg) recieveMsg.removeAllElements();
 	}
 
 	public static Session_ME gI()
@@ -310,63 +356,85 @@ public class Session_ME : ISession
 
 	public void connect(string host, int port)
 	{
-		if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)
+		lock (networkLock)
 		{
-			timeWaitConnect = mSystem.currentTimeMillis() + 50;
-			if (isMainSession)
+			if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)
 			{
-				ServerListScreen.testConnect = -1;
+				timeWaitConnect = mSystem.currentTimeMillis() + 50;
+				if (isMainSession)
+				{
+					ServerListScreen.testConnect = -1;
+				}
+				this.host = host;
+				this.port = port;
+				getKeyComplete = false;
+				close();
+				connecting = true;
+				Debug.Log("connecting...!");
+				Debug.Log("host: " + host);
+				Debug.Log("port: " + port);
+				int generation = networkGeneration;
+				initThread = new Thread(() => NetworkInit(generation));
+				initThread.Start();
 			}
-			this.host = host;
-			this.port = port;
-			getKeyComplete = false;
-			close();
-			Debug.Log("connecting...!");
-			Debug.Log("host: " + host);
-			Debug.Log("port: " + port);
-			initThread = new Thread(NetworkInit);
-			initThread.Start();
 		}
 	}
 
-	private void NetworkInit()
+	private void NetworkInit(int generation)
 	{
 		isCancel = false;
-		connecting = true;
 		Thread.CurrentThread.Priority = System.Threading.ThreadPriority.Highest;
-		connected = true;
 		try
 		{
-			doConnect(host, port);
-			messageHandler.onConnectOK(isMainSession);
+			doConnect(host, port, generation);
 		}
 		catch (Exception)
 		{
-			if (messageHandler != null)
+			lock (networkLock)
 			{
-				close();
-				messageHandler.onConnectionFail(isMainSession);
+				if (generation == networkGeneration && messageHandler != null)
+				{
+					close();
+					messageHandler.onConnectionFail(isMainSession);
+				}
 			}
 		}
 	}
 
 	public void doConnect(string host, int port)
 	{
-		sc = connectSocket(host, port, isMainSession);
-		Debug.Log("Connected to " + sc.Client.RemoteEndPoint);
-		dataStream = sc.GetStream();
-		dis = new BinaryReader(dataStream, new UTF8Encoding());
-		dos = new BinaryWriter(dataStream, new UTF8Encoding());
-		sendThread = new Thread(sender.run);
-		sendThread.Start();
-		MessageCollector @object = new MessageCollector();
-		Cout.LogError("new -----");
-		collectorThread = new Thread(@object.run);
-		collectorThread.Start();
-		timeConnected = currentTimeMillis();
-		connecting = false;
-		doSendMessage(new Message(-27));
-		key = null;
+		doConnect(host, port, networkGeneration);
+	}
+
+	private void doConnect(string host, int port, int generation)
+	{
+		TcpClient socket = connectSocket(host, port, isMainSession);
+		lock (networkLock)
+		{
+			if (generation != networkGeneration)
+			{
+				socket.Close();
+				return;
+			}
+			sc = socket;
+			sc.SendTimeout = 5000;
+			Debug.Log("Connected to " + sc.Client.RemoteEndPoint);
+			dataStream = sc.GetStream();
+			dis = new BinaryReader(dataStream, new UTF8Encoding());
+			dos = new BinaryWriter(dataStream, new UTF8Encoding());
+			connected = true;
+			sendThread = new Thread(() => sender.run(generation));
+			sendThread.Start();
+			MessageCollector @object = new MessageCollector();
+			Cout.LogError("new -----");
+			collectorThread = new Thread(@object.run);
+			collectorThread.Start();
+			timeConnected = currentTimeMillis();
+			connecting = false;
+			doSendMessage(new Message(-27));
+			// Publish the connect event before the collector can publish handshake readiness.
+			messageHandler.onConnectOK(isMainSession);
+		}
 	}
 
 	private static TcpClient connectSocket(string host, int port, bool allowFallback)
@@ -508,26 +576,23 @@ public class Session_ME : ISession
 		}
 		else
 		{
-			recieveMsg.addElement(msg);
+			lock (recieveMsg) recieveMsg.addElement(msg);
 		}
 	}
 
 	public static void update()
 	{
-		while (recieveMsg.size() > 0)
+		while (true)
 		{
-			Message message = (Message)recieveMsg.elementAt(0);
-			if (Controller.isStopReadMessage)
+			Message message;
+			lock (recieveMsg)
 			{
-				break;
-			}
-			if (message == null)
-			{
+				if (Controller.isStopReadMessage || recieveMsg.size() == 0) break;
+				message = (Message)recieveMsg.elementAt(0);
 				recieveMsg.removeElementAt(0);
-				break;
 			}
+			if (message == null) break;
 			messageHandler.onMessage(message);
-			recieveMsg.removeElementAt(0);
 		}
 	}
 
@@ -538,65 +603,62 @@ public class Session_ME : ISession
 
 	private static void cleanNetwork()
 	{
-		key = null;
-		curR = 0;
-		curW = 0;
-		try
+		lock (networkLock)
 		{
-			connected = false;
-			connecting = false;
-			if (sc != null)
+			networkGeneration++;
+			getKeyComplete = false;
+			key = null;
+			curR = 0;
+			curW = 0;
+			try
 			{
-				sc.Close();
-				sc = null;
-			}
-			if (dataStream != null)
-			{
-				dataStream.Close();
-				dataStream = null;
-			}
-			if (dos != null)
-			{
-				dos.Close();
-				dos = null;
-			}
-			if (dis != null)
-			{
-				dis.Close();
-				dis = null;
-			}
-			if (Thread.CurrentThread.Name == Main.mainThreadName)
-			{
-				if (sendThread != null)
+				connected = false;
+				connecting = false;
+				if (sc != null)
 				{
-					sendThread.Abort();
+					sc.Close();
+					sc = null;
 				}
-				sendThread = null;
-				if (initThread != null)
+				if (dataStream != null)
 				{
-					initThread.Abort();
+					dataStream.Close();
+					dataStream = null;
 				}
-				initThread = null;
-				if (collectorThread != null)
+				if (dos != null)
 				{
-					collectorThread.Abort();
+					dos.Close();
+					dos = null;
 				}
-				collectorThread = null;
+				if (dis != null)
+				{
+					dis.Close();
+					dis = null;
+				}
+				if (Thread.CurrentThread.Name == Main.mainThreadName)
+				{
+					abortNetworkThread(sendThread);
+					sendThread = null;
+					abortNetworkThread(initThread);
+					initThread = null;
+					abortNetworkThread(collectorThread);
+					collectorThread = null;
+				}
+				if (isMainSession)
+				{
+					ServerListScreen.testConnect = 0;
+				}
 			}
-			else
+			catch (Exception)
 			{
-				sendThread = null;
-				initThread = null;
-				collectorThread = null;
-			}
-			if (isMainSession)
-			{
-				ServerListScreen.testConnect = 0;
 			}
 		}
-		catch (Exception)
-		{
-		}
+	}
+
+	private static void abortNetworkThread(Thread thread)
+	{
+		if (thread == null || !thread.IsAlive) return;
+		try { thread.Abort(); }
+		catch (ThreadStateException) { }
 	}
 
 	public static int currentTimeMillis()

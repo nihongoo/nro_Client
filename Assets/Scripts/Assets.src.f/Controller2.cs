@@ -554,6 +554,7 @@ namespace Assets.src.f
 				case 122:
 				{
 					short num34 = msg.reader().readShort();
+					LoginScr.finishLoginAttempt();
 					Res.outz("second login = " + num34);
 					LoginScr.timeLogin = num34;
 					LoginScr.currTimeLogin = (LoginScr.lastTimeLogin = mSystem.currentTimeMillis());
@@ -937,19 +938,17 @@ namespace Assets.src.f
 					if (b11 != 0 && b11 == 1)
 					{
 						GameCanvas.loginScr.isLogin2 = false;
-						Service.gI().login(Rms.loadRMSString("acc"), Rms.loadRMSString("pass"), GameMidlet.VERSION, 0);
-						LoginScr.isLoggingIn = true;
+						LoginScr.finishLoginAttempt();
+						GameCanvas.loginScr.doLogin();
 					}
 					break;
 				}
 				case -101:
 				{
 					GameCanvas.loginScr.isLogin2 = true;
-					GameCanvas.connect();
 					string text = msg.reader().readUTF();
 					Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, text);
-					Service.gI().setClientType();
-					Service.gI().login(text, string.Empty, GameMidlet.VERSION, 1);
+					GameCanvas.loginScr.doGuestLogin(text, true);
 					break;
 				}
 				case -100:
