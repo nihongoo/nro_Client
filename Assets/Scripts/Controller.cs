@@ -2609,17 +2609,21 @@ public class Controller : IMessageHandler
 				break;
 			}
 			case -26:
+			{
+				string loginMessage = msg.reader().readUTF();
 				ServerListScreen.testConnect = 2;
 				GameCanvas.debug("SA2", 2);
-				GameCanvas.startOKDlg(msg.reader().readUTF());
+				GameCanvas.startOKDlg(loginMessage);
 				InfoDlg.hide();
 				LoginScr.isContinueToLogin = false;
 				Char.isLoadingMap = false;
-				if (GameCanvas.currentScreen == GameCanvas.loginScr)
+				if (GameCanvas.currentScreen == GameCanvas.loginScr
+					&& !GameCanvas.loginScr.keepFormOnLoginError(loginMessage))
 				{
 					GameCanvas.serverScreen.switchToMe();
 				}
 				break;
+			}
 			case -25:
 				GameCanvas.debug("SA3", 2);
 				GameScr.info1.addInfo(msg.reader().readUTF(), 0);

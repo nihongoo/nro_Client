@@ -443,10 +443,43 @@ public class LoginScr : mScreen, IActionListener
 		return Rms.loadRMSInt("indServer");
 	}
 
+	public void focusLoginField(bool username)
+	{
+		focus = username ? 0 : 1;
+		tfUser.isFocus = username;
+		tfPass.isFocus = !username;
+		if (!GameCanvas.isTouch)
+		{
+			right = username ? tfUser.cmdClear : tfPass.cmdClear;
+		}
+	}
+
+	public bool keepFormOnLoginError(string message)
+	{
+		bool usernameMissing = message.IndexOf("tài khoản không tồn tại", StringComparison.OrdinalIgnoreCase) >= 0;
+		bool invalidCredentials = message.Equals("Thông tin tài khoản hoặc mật khẩu không chính xác", StringComparison.Ordinal);
+		if (!usernameMissing && !invalidCredentials)
+		{
+			return false;
+		}
+		isLoggingIn = false;
+		isContinueToLogin = false;
+		Char.isLoadingMap = false;
+		timeLogin = 0;
+		Main.isMiniApp = true;
+		focusLoginField(usernameMissing);
+		return true;
+	}
+
 	public void doLogin()
 	{
 		string text = Rms.loadRMSString("acc");
 		string text2 = Rms.loadRMSString("pass");
+		if (GameCanvas.currentScreen == this && !isLogin2)
+		{
+			text = tfUser.getText().Trim();
+			text2 = tfPass.getText().Trim();
+		}
 		if (text != null && !text.Equals(string.Empty))
 		{
 			isLogin2 = false;
@@ -464,19 +497,24 @@ public class LoginScr : mScreen, IActionListener
 			text = Rms.loadRMSString("userAo" + ServerListScreen.ipSelect);
 			text2 = "a";
 		}
-		if (text == null || text2 == null || GameMidlet.VERSION == null || text.Equals(string.Empty))
+		if (string.IsNullOrEmpty(text))
+		{
+			isContinueToLogin = false;
+			Char.isLoadingMap = false;
+			focusLoginField(true);
+			GameCanvas.startOKDlg(mResources.userBlank);
+			return;
+		}
+		if (text2 == null || GameMidlet.VERSION == null)
 		{
 			return;
 		}
 		if (text2.Equals(string.Empty))
 		{
-			focus = 1;
-			tfUser.isFocus = false;
-			tfPass.isFocus = true;
-			if (!GameCanvas.isTouch)
-			{
-				right = tfPass.cmdClear;
-			}
+			isContinueToLogin = false;
+			Char.isLoadingMap = false;
+			focusLoginField(false);
+			GameCanvas.startOKDlg(mResources.passwordBlank);
 			return;
 		}
 		if (!Session_ME.gI().isConnected())
