@@ -832,7 +832,7 @@ public class GameCanvas : IActionListener
 					Rms.saveRMSInt("svselect", ServerListScreen.ipSelect);
 					connect();
 				}
-				else if (!ServerListScreen.hasConnected[2])
+				else if (ServerListScreen.hasConnected.Length > 2 && ServerListScreen.address.Length > 2 && !ServerListScreen.hasConnected[2])
 				{
 					ServerListScreen.hasConnected[2] = true;
 					ServerListScreen.ipSelect = 2;

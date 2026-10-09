@@ -36,14 +36,6 @@ public class ServerListScreen : mScreen, IActionListener
     public static string smartPhoneVN = "NRO:" + GameMidlet.DefaultServerHost + ":" + GameMidlet.DefaultServerPort + ":0:0:0,0,0";
     public static string javaVN = smartPhoneVN;
 
-    public static string smartPhoneIn = "Naga:dragon.indonaga.com:14446:2:0:0,2,0";
-
-    public static string javaIn = "Naga:52.74.230.22:14446:2:0:0,2,0";
-
-    public static string smartPhoneE = "Universe 1:dragon.indonaga.com:14445:1:0:0,1,0";
-
-    public static string javaE = "Universe 1:52.74.230.22:14445:1:0:0,1,0";
-
     public static string linkGetHost = "";
 
     public static string linkDefault = javaVN;
@@ -102,8 +94,8 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public ServerListScreen()
 	{
-		cmdCustomServer = new Command("Nhập IP server", this, 12000, null, 5, 5);
-		if (!GameCanvas.isTouch) left = cmdCustomServer;
+		cmdCustomServer = new Command("Nhập IP server", this, 12000, null);
+		left = cmdCustomServer;
 		int num = 4;
 		int num2 = num * 32 + 23 + 33;
 		if (num2 >= GameCanvas.w)
@@ -299,6 +291,11 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public static void getServerList(string str)
 	{
+		// This private client uses one NRO server; ignore legacy/advertised public lists.
+		linkDefault = javaVN;
+		str = javaVN;
+		ipSelect = 0;
+		Rms.saveRMSInt("svselect", 0);
 		lengthServer = new int[3];
 		string[] array = Res.split(str.Trim(), ",", 0);
 		Res.outz("tem leng= " + array.Length);
@@ -425,7 +422,6 @@ public class ServerListScreen : mScreen, IActionListener
 		}
 		base.paint(g);
 		CustomServerAddress.PaintLabel(g, 38);
-		if (GameCanvas.isTouch && GameCanvas.currentDialog == null) cmdCustomServer.paint(g);
 	}
 
 	public void selectServer()
@@ -560,11 +556,6 @@ public class ServerListScreen : mScreen, IActionListener
 	public override void updateKey()
 	{
 		if (GameCanvas.currentDialog != null) return;
-		if (GameCanvas.isTouch && cmdCustomServer.isPointerPressInside())
-		{
-			cmdCustomServer.performAction();
-			return;
-		}
 		if (GameCanvas.isTouch)
 		{
 			updateDeleteData();
@@ -1060,41 +1051,6 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void setLinkDefault(sbyte language)
 	{
-		if (language == 2)
-		{
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaIn;
-			}
-			else
-			{
-				linkDefault = smartPhoneIn;
-			}
-		}
-		else if (language == 1)
-		{
-			linkDefault = javaE;
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaE;
-			}
-			else
-			{
-				linkDefault = smartPhoneE;
-			}
-		}
-		else
-		{
-			linkDefault = javaVN;
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaVN;
-			}
-			else
-			{
-				linkDefault = smartPhoneVN;
-			}
-		}
-		mSystem.AddIpTest();
+		linkDefault = javaVN;
 	}
 }
