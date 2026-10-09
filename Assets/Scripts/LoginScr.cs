@@ -127,6 +127,8 @@ public class LoginScr : mScreen, IActionListener
 
 	private Command cmdCallHotline;
 
+	private Command cmdTogglePassword;
+
 	public static bool isLoggingIn;
 
 	public LoginScr()
@@ -162,12 +164,18 @@ public class LoginScr : mScreen, IActionListener
 		tfUser.height = mScreen.ITEM_HEIGHT + 2;
 		tfUser.isFocus = true;
 		tfUser.setIputType(TField.INPUT_TYPE_ANY);
+		tfUser.loginInput = true;
+		tfUser.cmdDoneAction = new Command("Next", this, 2101, null);
 		tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
 		tfPass = new TField();
 		tfPass.y = GameCanvas.hh - 4;
 		tfPass.setIputType(TField.INPUT_TYPE_PASSWORD);
-		tfPass.width = wC;
+		tfPass.loginInput = true;
+		tfPass.setMaxTextLenght(100);
+		tfPass.cmdDoneAction = new Command("Done", this, 2102, null);
+		tfPass.width = wC - 76;
 		tfPass.height = mScreen.ITEM_HEIGHT + 2;
+		cmdTogglePassword = new Command("Hiện", this, 2103, null);
 		yt += 35;
 		isCheck = true;
 		switch (Rms.loadRMSInt("check"))
@@ -786,6 +794,10 @@ public class LoginScr : mScreen, IActionListener
 			tfPass.y = yLog + 55;
 			tfUser.paint(g);
 			tfPass.paint(g);
+			g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+			cmdTogglePassword.x = tfPass.x + tfPass.width + 2;
+			cmdTogglePassword.y = tfPass.y;
+			cmdTogglePassword.paint(g);
 			int num4 = 0;
 			if (GameCanvas.w >= 176)
 			{
@@ -818,6 +830,11 @@ public class LoginScr : mScreen, IActionListener
 		}
 		if (isContinueToLogin)
 		{
+			return;
+		}
+		if ((!isLogin2 || isRes) && cmdTogglePassword.isPointerPressInside())
+		{
+			cmdTogglePassword.performAction();
 			return;
 		}
 		if (!GameCanvas.isTouch)
@@ -1019,13 +1036,33 @@ public class LoginScr : mScreen, IActionListener
 		case 2008:
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
 			Rms.saveRMSString("pass", tfPass.getText().Trim());
-			if (ServerListScreen.loadScreen)
+			isLogin2 = false;
+			doLogin();
+			break;
+		case 2101:
+			focusLoginField(false);
+			tfPass.setFocusWithKb(true);
+			break;
+		case 2102:
+			if (isRes)
 			{
-				GameCanvas.serverScreen.switchToMe();
+				doRegister();
 			}
 			else
 			{
-				GameCanvas.serverScreen.show2();
+				perform(2008, null);
+			}
+			break;
+		case 2103:
+			bool reopenKeyboard = TField.kb != null && TField.currentTField == tfPass;
+			tfPass.revealPassword = !tfPass.revealPassword;
+			cmdTogglePassword.caption = tfPass.revealPassword ? "Ẩn" : "Hiện";
+			tfPass.setText(tfPass.getText());
+			if (reopenKeyboard)
+			{
+				TField.kb.active = false;
+				TField.kb = null;
+				tfPass.setFocusWithKb(true);
 			}
 			break;
 		case 4000:
