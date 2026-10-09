@@ -521,6 +521,7 @@ public class GameCanvas : IActionListener
 	public void update()
 	{
 		LoginScr.updateLoginAttempt();
+		CustomServerAddress.UpdateConnection();
 		if (mSystem.currentTimeMillis() > timefps)
 		{
 			timefps += 1000L;
@@ -779,6 +780,7 @@ public class GameCanvas : IActionListener
 	public void onDisconnected()
 	{
 		if (LoginScr.failLoginAttempt("Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
+		if (CustomServerAddress.HandleConnectionFailure("Mất kết nối tới máy chủ.")) return;
 		if (Controller.isConnectionFail)
 		{
 			Controller.isConnectionFail = false;
@@ -816,6 +818,7 @@ public class GameCanvas : IActionListener
 	public void onConnectionFail()
 	{
 		if (LoginScr.failLoginAttempt("Không thể kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
+		if (CustomServerAddress.HandleConnectionFailure("Không thể kết nối tới máy chủ.")) return;
 		if (currentScreen.Equals(SplashScr.instance))
 		{
 			if (ServerListScreen.hasConnected != null)
@@ -900,6 +903,7 @@ public class GameCanvas : IActionListener
 		if (!Session_ME.gI().isConnected())
 		{
 			Session_ME.gI().connect(GameMidlet.IP, GameMidlet.PORT);
+			CustomServerAddress.ConnectionStarted();
 		}
 	}
 

@@ -215,7 +215,8 @@ public class LoginScr : mScreen, IActionListener
 		ServerListScreen.isAutoConect = false;
 		if (GameCanvas.currentScreen == GameCanvas.serverScreen) GameCanvas.loginScr.switchToMe();
 		GameCanvas.loginScr.focusLoginField(false);
-		GameCanvas.startOKDlg(message);
+		if (CustomServerAddress.Enabled) CustomServerAddress.ShowConnectionError(message);
+		else GameCanvas.startOKDlg(message);
 		return true;
 	}
 

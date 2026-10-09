@@ -105,5 +105,6 @@ public sealed class CustomServerDialog : Dialog, IActionListener
         }
         else if (action == 3) CustomServerAddress.Reset();
         Close();
+        if (action == 1 || action == 3) CustomServerAddress.Reconnect();
     }
 }

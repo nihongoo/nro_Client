@@ -14,6 +14,20 @@ public static class CustomServerAddress
     // One immutable snapshot keeps host and port paired across UI/network threads.
     private static volatile Endpoint custom;
     public static bool Enabled { get { return custom != null; } }
+    // Only the UI thread owns the connection deadline and dialog state.
+    private static bool connectionPending;
+    private static int connectionStarted;
+    private static string attemptedEndpoint;
+    private static readonly ConnectionActions connectionActions = new ConnectionActions();
+
+    private sealed class ConnectionActions : IActionListener
+    {
+        public void perform(int action, object unused)
+        {
+            if (action == 2) Reset();
+            Reconnect();
+        }
+    }
 
     public static void Load()
     {
@@ -64,6 +78,7 @@ public static class CustomServerAddress
     public static void PaintLabel(mGraphics g, int y)
     {
         string text = "Server: " + Label;
+        if (Session_ME.ConnectedViaFallback) text += " (đang dùng " + Session_ME.ConnectedEndpoint + ")";
         int width = GameCanvas.w - 12;
         // Scroll long hostnames so the full destination remains readable on a narrow screen.
         int overflow = mFont.tahoma_7_white.getWidth(text) - width;
@@ -72,6 +87,92 @@ public static class CustomServerAddress
         g.setClip(6, y, width, 15);
         mFont.tahoma_7_white.drawString(g, text, 6 - offset, y, 0, mFont.tahoma_7_grey);
         g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+    }
+
+    public static void ConnectionStarted()
+    {
+        if (!Enabled && !connectionPending) return;
+        // Repeated connect requests must not extend an already running deadline.
+        if (connectionPending && attemptedEndpoint == Label) return;
+        attemptedEndpoint = Label;
+        connectionStarted = Environment.TickCount;
+        connectionPending = true;
+    }
+
+    public static void UpdateConnection()
+    {
+        if (!connectionPending || LoginScr.isLoggingIn || GameCanvas.currentDialog is CustomServerDialog) return;
+        if (Session_ME.readyForLogin() && !Controller.isConnectOK
+            && !Controller.isConnectionFail && !Controller.isDisconnected)
+        {
+            connectionPending = false;
+            Char.isLoadingMap = false;
+            if (GameCanvas.currentDialog == GameCanvas.msgdlg && GameCanvas.msgdlg.isWait) GameCanvas.endDlg();
+            return;
+        }
+        if (unchecked(Environment.TickCount - connectionStarted) >= 15000)
+        {
+            CloseConnection();
+            ShowConnectionError("Kết nối tới máy chủ quá lâu.");
+        }
+    }
+
+    private static void CloseConnection()
+    {
+        connectionPending = false;
+        // close() advances the existing network generation before any new endpoint is started.
+        Session_ME.gI().close();
+        Session_ME.gI().clearSendingMessage();
+        Session_ME.clearReceivedMessages();
+        Session_ME2.gI().close();
+        Session_ME2.gI().clearSendingMessage();
+        Controller.isConnectOK = Controller.isConnectionFail = Controller.isDisconnected = false;
+        LoginScr.finishLoginAttempt();
+        LoginScr.timeLogin = 0;
+        Char.isLoadingMap = false;
+        ServerListScreen.isAutoConect = false;
+        ServerListScreen.flagServer = 0;
+        ServerListScreen.waitToLogin = ServerListScreen.isWait = false;
+        ServerListScreen.countDieConnect = 0;
+        ServerListScreen.testConnect = 0;
+    }
+
+    public static void Reconnect()
+    {
+        CloseConnection();
+        GameCanvas.endDlg();
+        connectionPending = true; // Also bound a reconnect after returning to the selected default server.
+        connectionStarted = Environment.TickCount;
+        attemptedEndpoint = Label;
+        GameCanvas.connect();
+        GameCanvas.startWaitDlg();
+    }
+
+    public static bool HandleConnectionFailure(string message)
+    {
+        if ((!Enabled && !connectionPending) || !Controller.isMain
+            || GameCanvas.currentScreen is GameScr || GameCanvas.currentScreen is CreateCharScr) return false;
+        bool editing = GameCanvas.currentDialog is CustomServerDialog;
+        CloseConnection();
+        // Let the player finish editing rather than replace the form with an old connection error.
+        if (!editing) ShowConnectionError(message);
+        return true;
+    }
+
+    public static void ShowConnectionError(string message)
+    {
+        connectionPending = false;
+        Char.isLoadingMap = false;
+        ServerListScreen.isAutoConect = false;
+        ServerListScreen.flagServer = 0;
+        if (GameCanvas.currentScreen is SplashScr) GameCanvas.serverScreen.switchToMe();
+        GameCanvas.closeKeyBoard();
+        string fallback = Session_ME.FallbackAttempted ? " Đã thử thêm 127.0.0.1:" + Port + "." : string.Empty;
+        GameCanvas.msgdlg.setInfo(message + " Server: " + (attemptedEndpoint ?? Label) + "." + fallback
+            + " Kiểm tra địa chỉ/cổng, cùng Wi-Fi với máy chủ và firewall.",
+            new Command("Thử lại", connectionActions, 1, null), null,
+            new Command("Về mặc định", connectionActions, 2, null));
+        GameCanvas.msgdlg.show();
     }
 
     public static bool Validate(string inputHost, string inputPort, out string host, out int port, out string error)
