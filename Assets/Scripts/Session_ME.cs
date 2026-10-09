@@ -356,6 +356,7 @@ public class Session_ME : ISession
 
 	public void connect(string host, int port)
 	{
+		if (isMainSession) CustomServerAddress.Resolve(ref host, ref port);
 		lock (networkLock)
 		{
 			if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)

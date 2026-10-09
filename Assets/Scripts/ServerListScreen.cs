@@ -32,8 +32,8 @@ public class ServerListScreen : mScreen, IActionListener
 	private int lY;
 
 
-    public static string smartPhoneVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
-    public static string javaVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
+    public static string smartPhoneVN = "NRO:" + GameMidlet.DefaultServerHost + ":" + GameMidlet.DefaultServerPort + ":0:0:0,0,0";
+    public static string javaVN = smartPhoneVN;
 
     public static string smartPhoneIn = "Naga:dragon.indonaga.com:14446:2:0:0,2,0";
 
@@ -694,6 +694,10 @@ public class ServerListScreen : mScreen, IActionListener
 				address[i] = dataInputStream.readUTF();
 				port[i] = dataInputStream.readShort();
 				language[i] = dataInputStream.readByte();
+				// Migrate only the old built-in LAN entry, preserving other saved servers.
+				if (nameServer[i] == "NRO" && language[i] == 0 && port[i] == GameMidlet.DefaultServerPort
+					&& (address[i] == "127.0.0.1" || address[i] == "192.168.31.221"))
+					address[i] = GameMidlet.DefaultServerHost;
 				lengthServer[language[i]]++;
 				array[i] = nameServer[i] + ":" + address[i] + ":" + port[i] + ":" + language[i];
 			}
