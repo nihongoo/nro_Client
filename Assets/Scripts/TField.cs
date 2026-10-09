@@ -712,6 +712,10 @@ public class TField : IActionListener
 		}
 		if (kb != null && currentTField == this)
 		{
+			if (isFocus && kb.text.Length > maxTextLenght)
+			{
+				kb.text = kb.text.Substring(0, maxTextLenght);
+			}
 			if (kb.text.Length < 40 && isFocus)
 			{
 				setText(kb.text);
