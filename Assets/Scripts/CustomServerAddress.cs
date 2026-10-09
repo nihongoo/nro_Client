@@ -61,6 +61,19 @@ public static class CustomServerAddress
 
     public static string Label { get { return Host + ":" + Port.ToString(CultureInfo.InvariantCulture); } }
 
+    public static void PaintLabel(mGraphics g, int y)
+    {
+        string text = "Server: " + Label;
+        int width = GameCanvas.w - 12;
+        // Scroll long hostnames so the full destination remains readable on a narrow screen.
+        int overflow = mFont.tahoma_7_white.getWidth(text) - width;
+        int offset = overflow > 0 ? (GameCanvas.gameTick / 3) % (overflow + 50) : 0;
+        offset = System.Math.Min(offset, System.Math.Max(0, overflow));
+        g.setClip(6, y, width, 15);
+        mFont.tahoma_7_white.drawString(g, text, 6 - offset, y, 0, mFont.tahoma_7_grey);
+        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+    }
+
     public static bool Validate(string inputHost, string inputPort, out string host, out int port, out string error)
     {
         host = (inputHost ?? string.Empty).Trim().ToLowerInvariant();

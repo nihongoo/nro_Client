@@ -864,6 +864,7 @@ public class LoginScr : mScreen, IActionListener
 			num += 5;
 		}
 		mFont.tahoma_7_white.drawString(g, "v" + GameMidlet.VERSION, GameCanvas.w - 2, 17, 1, mFont.tahoma_7_grey);
+		CustomServerAddress.PaintLabel(g, 38);
 		if (mSystem.clientType == 1 && !GameCanvas.isTouch)
 		{
 			mFont.tahoma_7_white.drawString(g, ServerListScreen.linkweb, GameCanvas.w - 2, GameCanvas.h - 15, 1, mFont.tahoma_7_grey);

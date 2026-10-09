@@ -3,6 +3,7 @@ using System;
 
 public class ServerListScreen : mScreen, IActionListener
 {
+	private Command cmdCustomServer;
 	public static string[] nameServer;
 
 	public static string[] address;
@@ -101,6 +102,8 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public ServerListScreen()
 	{
+		cmdCustomServer = new Command("Nhập IP server", this, 12000, null, 5, 5);
+		if (!GameCanvas.isTouch) left = cmdCustomServer;
 		int num = 4;
 		int num2 = num * 32 + 23 + 33;
 		if (num2 >= GameCanvas.w)
@@ -421,6 +424,8 @@ public class ServerListScreen : mScreen, IActionListener
 			}
 		}
 		base.paint(g);
+		CustomServerAddress.PaintLabel(g, 38);
+		if (GameCanvas.isTouch && GameCanvas.currentDialog == null) cmdCustomServer.paint(g);
 	}
 
 	public void selectServer()
@@ -446,6 +451,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void update()
 	{
+		if (GameCanvas.currentDialog is CustomServerDialog) return;
 		if (waitToLogin)
 		{
 			tWaitToLogin++;
@@ -553,6 +559,12 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void updateKey()
 	{
+		if (GameCanvas.currentDialog != null) return;
+		if (GameCanvas.isTouch && cmdCustomServer.isPointerPressInside())
+		{
+			cmdCustomServer.performAction();
+			return;
+		}
 		if (GameCanvas.isTouch)
 		{
 			updateDeleteData();
@@ -786,6 +798,11 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void perform(int idAction, object p)
 	{
+		if (idAction == 12000)
+		{
+			if (!LoginScr.isLoggingIn) new CustomServerDialog().show();
+			return;
+		}
 		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
