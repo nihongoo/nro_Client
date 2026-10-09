@@ -2611,6 +2611,16 @@ public class Controller : IMessageHandler
 			case -26:
 			{
 				string loginMessage = msg.reader().readUTF();
+				if (loginMessage == LoginScr.ReplacedMessage)
+				{
+					GameCanvas.onSessionReplaced();
+					break;
+				}
+				if (loginMessage == LoginScr.PreviousSessionWaitMessage && LoginScr.isLoggingIn)
+				{
+					InfoDlg.showWait(loginMessage);
+					break;
+				}
 				LoginScr.finishLoginAttempt();
 				ServerListScreen.testConnect = 2;
 				GameCanvas.debug("SA2", 2);

@@ -777,8 +777,28 @@ public class GameCanvas : IActionListener
 		}
 	}
 
+	public static void onSessionReplaced()
+	{
+		LoginScr.sessionReplaced = true;
+		LoginScr.finishLoginAttempt();
+		LoginScr.timeLogin = 0;
+		instance.resetToLoginScr = false;
+		instance.doResetToLoginScr(serverScreen);
+		Session_ME.gI().clearSendingMessage();
+		Session_ME.clearReceivedMessages();
+		Session_ME2.gI().clearSendingMessage();
+		ServerListScreen.isAutoConect = false;
+		ServerListScreen.waitToLogin = false;
+		ServerListScreen.isWait = false;
+		Char.isLoadingMap = false;
+		Controller.isConnectionFail = Controller.isDisconnected = Controller.isConnectOK = false;
+		endDlg();
+		startOKDlg(LoginScr.ReplacedMessage);
+	}
+
 	public void onDisconnected()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (LoginScr.failLoginAttempt("Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (CustomServerAddress.HandleConnectionFailure("Mất kết nối tới máy chủ.")) return;
 		if (Controller.isConnectionFail)
@@ -817,6 +837,7 @@ public class GameCanvas : IActionListener
 
 	public void onConnectionFail()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (LoginScr.failLoginAttempt("Không thể kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (CustomServerAddress.HandleConnectionFailure("Không thể kết nối tới máy chủ.")) return;
 		if (currentScreen.Equals(SplashScr.instance))
@@ -900,6 +921,7 @@ public class GameCanvas : IActionListener
 
 	public static void connect()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (!Session_ME.gI().isConnected())
 		{
 			Session_ME.gI().connect(GameMidlet.IP, GameMidlet.PORT);

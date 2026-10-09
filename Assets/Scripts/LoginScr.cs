@@ -130,6 +130,9 @@ public class LoginScr : mScreen, IActionListener
 	private Command cmdTogglePassword;
 
 	public static bool isLoggingIn;
+	public static bool sessionReplaced;
+	public const string ReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
+	public const string PreviousSessionWaitMessage = "Đang lưu phiên đăng nhập cũ, vui lòng chờ...";
 	private static Action queuedLogin;
 	private int loginStage;
 	private int stageStarted;
@@ -139,6 +142,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void doGuestLogin(string username, bool accountCreated = false)
 	{
+		if (sessionReplaced) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(username, accountCreated), null);
@@ -222,6 +226,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public static void authenticationAccepted()
 	{
+		timeLogin = 0;
 		if (!isLoggingIn) return;
 		// Bound resource/map loading separately after authentication succeeds.
 		GameCanvas.loginScr.loginStage = 3;
@@ -578,6 +583,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void doLogin()
 	{
+		if (sessionReplaced) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doLogin(), null);
@@ -1134,6 +1140,7 @@ public class LoginScr : mScreen, IActionListener
 			actRegister();
 			break;
 		case 2008:
+			sessionReplaced = false;
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
 			Rms.saveRMSString("pass", tfPass.getText().Trim());
 			isLogin2 = false;
