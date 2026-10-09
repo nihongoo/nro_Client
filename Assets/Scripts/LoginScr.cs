@@ -384,7 +384,7 @@ public class LoginScr : mScreen, IActionListener
 		}
 		else
 		{
-			GameCanvas.msgdlg.setInfo(mResources.plsCheckAcc + ((num != 1) ? (mResources.email + ": ") : (mResources.phone + ": ")) + tfUser.getText() + "\n" + mResources.password + ": " + tfPass.getText(), new Command(mResources.ACCEPT, this, 4000, null), null, new Command(mResources.NO, GameCanvas.instance, 8882, null));
+			GameCanvas.msgdlg.setInfo(mResources.plsCheckAcc + ((num != 1) ? (mResources.email + ": ") : (mResources.phone + ": ")) + tfUser.getText(), new Command(mResources.ACCEPT, this, 4000, null), null, new Command(mResources.NO, GameCanvas.instance, 8882, null));
 		}
 		GameCanvas.currentDialog = GameCanvas.msgdlg;
 	}
@@ -483,7 +483,7 @@ public class LoginScr : mScreen, IActionListener
 		{
 			GameCanvas.connect();
 		}
-		Res.outz("ccccccc " + text + " " + text2 + " " + GameMidlet.VERSION + " " + (sbyte)(isLogin2 ? 1 : 0));
+		Res.outz("Login request, version=" + GameMidlet.VERSION + ", type=" + (sbyte)(isLogin2 ? 1 : 0));
 		Service.gI().login(text, text2, GameMidlet.VERSION, (sbyte)(isLogin2 ? 1 : 0));
 		if (Session_ME.connected)
 		{

@@ -92,6 +92,7 @@ public class CreateCharScr : mScreen, IActionListener
 			tAddName.isFocus = true;
 		}
 		tAddName.setIputType(TField.INPUT_TYPE_ANY);
+		tAddName.setMaxTextLenght(10);
 		tAddName.showSubTextField = false;
 		tAddName.strInfo = mResources.char_name;
 		if (tAddName.getText().Equals("@"))
@@ -577,12 +578,12 @@ public class CreateCharScr : mScreen, IActionListener
 			}
 			if (tAddName.getText().Length < 5)
 			{
-				GameCanvas.startOKDlg(mResources.char_name_short);
+				GameCanvas.startOKDlg("Tên nhân vật phải có từ 5 đến 10 ký tự (a-z, 0-9).");
 				break;
 			}
-			if (tAddName.getText().Length > 15)
+			if (tAddName.getText().Length > 10)
 			{
-				GameCanvas.startOKDlg(mResources.char_name_long);
+				GameCanvas.startOKDlg("Tên nhân vật phải có từ 5 đến 10 ký tự (a-z, 0-9).");
 				break;
 			}
 			InfoDlg.showWait();

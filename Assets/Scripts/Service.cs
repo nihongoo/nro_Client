@@ -2855,7 +2855,7 @@ public class Service
 		Message message = null;
 		try
 		{
-			Res.outz("------------setLockInventory:     " + pass);
+			Res.outz("setLockInventory request");
 			message = new Message((sbyte)(-104));
 			message.writer().writeInt(pass);
 			session.sendMessage(message);
