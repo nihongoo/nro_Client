@@ -18,10 +18,6 @@
 
 	private int numh;
 
-	private Command cmdGlobal;
-
-	private Command cmdVietNam;
-
 	public ServerScr()
 	{
 		TileMap.bgID = (byte)(mSystem.currentTimeMillis() % 9);
@@ -38,15 +34,13 @@
 	{
 		SoundMn.gI().stopAll();
 		base.switchToMe();
-		cmdGlobal = new Command("VIỆT NAM", this, 98, null);
-		cmdGlobal.x = 0;
-		cmdGlobal.y = 0;
-		cmdVietNam = new Command("GLOBAL", this, 97, null);
-		cmdVietNam.x = 50;
-		cmdVietNam.y = 0;
 		vecServer = new MyVector();
-		vecServer.addElement(cmdGlobal);
-		vecServer.addElement(cmdVietNam);
+		Command server = new Command("NRO", this, 100, null);
+		server.setType();
+		vecServer.addElement(server);
+		Command custom = new Command("Nhập IP server", this, 96, null);
+		custom.setType();
+		vecServer.addElement(custom);
 		sort();
 	}
 
@@ -54,17 +48,9 @@
 	{
 		mainSelect = ServerListScreen.ipSelect;
 		w2c = 5;
-		wc = 76;
+		wc = 160;
 		hc = mScreen.cmdH;
-		numw = 2;
-		if (GameCanvas.w > 3 * (wc + w2c))
-		{
-			numw = 3;
-		}
-		if (vecServer.size() < 3)
-		{
-			numw = 2;
-		}
+		numw = 1;
         numh = vecServer.size() / numw + ((vecServer.size() % numw != 0) ? 1 : 0);
 		for (int i = 0; i < vecServer.size(); i++)
 		{
@@ -83,6 +69,7 @@
 
 	public override void update()
 	{
+		if (GameCanvas.currentDialog != null) return;
 		GameScr.cmx++;
 		if (GameScr.cmx > GameCanvas.w * 3 + 100)
 		{
@@ -129,10 +116,12 @@
 			}
 		}
 		base.paint(g);
+		CustomServerAddress.PaintLabel(g, 38);
 	}
 
 	public override void updateKey()
 	{
+		if (GameCanvas.currentDialog != null) return;
 		base.updateKey();
 		int num = mainSelect % numw;
 		int num2 = mainSelect / numw;
@@ -178,7 +167,7 @@
 		}
 		if (GameCanvas.keyPressed[5])
 		{
-			((Command)vecServer.elementAt(num)).performAction();
+			((Command)vecServer.elementAt(mainSelect)).performAction();
 			GameCanvas.keyPressed[5] = false;
 		}
 		GameCanvas.clearKeyPressed();
@@ -188,32 +177,9 @@
 	{
 		switch (idAction)
 		{
-		case 97:
-		{
-			vecServer.removeAllElements();
-			for (int j = 0; j < ServerListScreen.nameServer.Length; j++)
-			{
-				if (ServerListScreen.language[j] != 0)
-				{
-					vecServer.addElement(new Command(ServerListScreen.nameServer[j], this, 100 + j, null));
-				}
-			}
-			sort();
+		case 96:
+			if (!LoginScr.isLoggingIn) new CustomServerDialog().show();
 			break;
-		}
-		case 98:
-		{
-			vecServer.removeAllElements();
-			for (int i = 0; i < ServerListScreen.nameServer.Length; i++)
-			{
-				if (ServerListScreen.language[i] == 0)
-				{
-					vecServer.addElement(new Command(ServerListScreen.nameServer[i], this, 100 + i, null));
-				}
-			}
-			sort();
-			break;
-		}
 		case 99:
 			Session_ME.gI().clearSendingMessage();
 			ServerListScreen.ipSelect = mainSelect;

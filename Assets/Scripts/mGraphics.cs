@@ -1205,6 +1205,7 @@ public class mGraphics
 	{
 		lineMaterial.SetPass(0);
 		GL.PushMatrix();
+		if (Application.platform == RuntimePlatform.Android) GL.MultMatrix(GUI.matrix);
 		GL.Begin(1);
 		for (int i = 0; i < totalLine.size(); i++)
 		{

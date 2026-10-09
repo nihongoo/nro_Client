@@ -3,6 +3,7 @@ using System;
 
 public class ServerListScreen : mScreen, IActionListener
 {
+	private Command cmdCustomServer;
 	public static string[] nameServer;
 
 	public static string[] address;
@@ -32,16 +33,8 @@ public class ServerListScreen : mScreen, IActionListener
 	private int lY;
 
 
-    public static string smartPhoneVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
-    public static string javaVN = "NRO:127.0.0.1:14445:0:0:0,0,0";
-
-    public static string smartPhoneIn = "Naga:dragon.indonaga.com:14446:2:0:0,2,0";
-
-    public static string javaIn = "Naga:52.74.230.22:14446:2:0:0,2,0";
-
-    public static string smartPhoneE = "Universe 1:dragon.indonaga.com:14445:1:0:0,1,0";
-
-    public static string javaE = "Universe 1:52.74.230.22:14445:1:0:0,1,0";
+    public static string smartPhoneVN = "NRO:" + GameMidlet.DefaultServerHost + ":" + GameMidlet.DefaultServerPort + ":0:0:0,0,0";
+    public static string javaVN = smartPhoneVN;
 
     public static string linkGetHost = "";
 
@@ -101,6 +94,8 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public ServerListScreen()
 	{
+		cmdCustomServer = new Command("Nhập IP server", this, 12000, null);
+		left = cmdCustomServer;
 		int num = 4;
 		int num2 = num * 32 + 23 + 33;
 		if (num2 >= GameCanvas.w)
@@ -296,6 +291,11 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public static void getServerList(string str)
 	{
+		// This private client uses one NRO server; ignore legacy/advertised public lists.
+		linkDefault = javaVN;
+		str = javaVN;
+		ipSelect = 0;
+		Rms.saveRMSInt("svselect", 0);
 		lengthServer = new int[3];
 		string[] array = Res.split(str.Trim(), ",", 0);
 		Res.outz("tem leng= " + array.Length);
@@ -421,6 +421,7 @@ public class ServerListScreen : mScreen, IActionListener
 			}
 		}
 		base.paint(g);
+		CustomServerAddress.PaintLabel(g, 38);
 	}
 
 	public void selectServer()
@@ -446,6 +447,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void update()
 	{
+		if (GameCanvas.currentDialog is CustomServerDialog) return;
 		if (waitToLogin)
 		{
 			tWaitToLogin++;
@@ -553,6 +555,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void updateKey()
 	{
+		if (GameCanvas.currentDialog != null) return;
 		if (GameCanvas.isTouch)
 		{
 			updateDeleteData();
@@ -694,6 +697,10 @@ public class ServerListScreen : mScreen, IActionListener
 				address[i] = dataInputStream.readUTF();
 				port[i] = dataInputStream.readShort();
 				language[i] = dataInputStream.readByte();
+				// Migrate only the old built-in LAN entry, preserving other saved servers.
+				if (nameServer[i] == "NRO" && language[i] == 0 && port[i] == GameMidlet.DefaultServerPort
+					&& (address[i] == "127.0.0.1" || address[i] == "192.168.31.221"))
+					address[i] = GameMidlet.DefaultServerHost;
 				lengthServer[language[i]]++;
 				array[i] = nameServer[i] + ":" + address[i] + ":" + port[i] + ":" + language[i];
 			}
@@ -782,7 +789,13 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void perform(int idAction, object p)
 	{
+		if (idAction == 12000)
+		{
+			if (!LoginScr.isLoggingIn) new CustomServerDialog().show();
+			return;
+		}
 		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
+		if (idAction == 3 || idAction == 11 || idAction == 10100) LoginScr.sessionReplaced = false;
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
 		{
@@ -1039,41 +1052,6 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void setLinkDefault(sbyte language)
 	{
-		if (language == 2)
-		{
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaIn;
-			}
-			else
-			{
-				linkDefault = smartPhoneIn;
-			}
-		}
-		else if (language == 1)
-		{
-			linkDefault = javaE;
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaE;
-			}
-			else
-			{
-				linkDefault = smartPhoneE;
-			}
-		}
-		else
-		{
-			linkDefault = javaVN;
-			if (mSystem.clientType == 1)
-			{
-				linkDefault = javaVN;
-			}
-			else
-			{
-				linkDefault = smartPhoneVN;
-			}
-		}
-		mSystem.AddIpTest();
+		linkDefault = javaVN;
 	}
 }

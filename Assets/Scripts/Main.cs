@@ -77,6 +77,7 @@ public class Main : MonoBehaviour
 	public static bool isQuitApp;
 
 	private Vector2 lastMousePos = default(Vector2);
+	private bool pointerInViewport;
 
 	public static int a = 1;
 
@@ -158,9 +159,17 @@ public class Main : MonoBehaviour
 			Session_ME2.update();
 			if (Event.current.type.Equals(EventType.Repaint) && paintCount <= updateCount)
 			{
-				GameMidlet.gameCanvas.paint(g);
-				paintCount++;
-				g.reset();
+				ScaleGUI.BeginGUI();
+				try
+				{
+					GameMidlet.gameCanvas.paint(g);
+					paintCount++;
+				}
+				finally
+				{
+					g.reset();
+					ScaleGUI.EndGUI();
+				}
 			}
 		}
 	}
@@ -313,26 +322,26 @@ public class Main : MonoBehaviour
 
 	private void checkInput()
 	{
+		Vector2 rawPoint = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
+		Vector2 guiPoint = ScaleGUI.ToGuiPoint(rawPoint);
+		int pointerX = (int)(guiPoint.x / mGraphics.zoomLevel);
+		int pointerY = (int)(guiPoint.y / mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard;
 		if (Input.GetMouseButtonDown(0))
 		{
-			Vector3 mousePosition = Input.mousePosition;
-			GameMidlet.gameCanvas.pointerPressed((int)(mousePosition.x / (float)mGraphics.zoomLevel), (int)(((float)Screen.height - mousePosition.y) / (float)mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard);
-			lastMousePos.x = mousePosition.x / (float)mGraphics.zoomLevel;
-			lastMousePos.y = mousePosition.y / (float)mGraphics.zoomLevel + (float)mGraphics.addYWhenOpenKeyBoard;
+			pointerInViewport = ScaleGUI.Viewport.Contains(rawPoint);
+			if (pointerInViewport) GameMidlet.gameCanvas.pointerPressed(pointerX, pointerY);
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButton(0))
+		if (Input.GetMouseButton(0) && pointerInViewport)
 		{
-			Vector3 mousePosition2 = Input.mousePosition;
-			GameMidlet.gameCanvas.pointerDragged((int)(mousePosition2.x / (float)mGraphics.zoomLevel), (int)(((float)Screen.height - mousePosition2.y) / (float)mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard);
-			lastMousePos.x = mousePosition2.x / (float)mGraphics.zoomLevel;
-			lastMousePos.y = mousePosition2.y / (float)mGraphics.zoomLevel + (float)mGraphics.addYWhenOpenKeyBoard;
+			GameMidlet.gameCanvas.pointerDragged(pointerX, pointerY);
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButtonUp(0))
+		if (Input.GetMouseButtonUp(0) && pointerInViewport)
 		{
-			Vector3 mousePosition3 = Input.mousePosition;
-			lastMousePos.x = mousePosition3.x / (float)mGraphics.zoomLevel;
-			lastMousePos.y = mousePosition3.y / (float)mGraphics.zoomLevel + (float)mGraphics.addYWhenOpenKeyBoard;
-			GameMidlet.gameCanvas.pointerReleased((int)(mousePosition3.x / (float)mGraphics.zoomLevel), (int)(((float)Screen.height - mousePosition3.y) / (float)mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard);
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
+			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
+			pointerInViewport = false;
 		}
 		if (Input.anyKeyDown && Event.current.type == EventType.KeyDown)
 		{
@@ -365,10 +374,8 @@ public class Main : MonoBehaviour
 		if (isPC)
 		{
 			GameMidlet.gameCanvas.scrollMouse((int)(Input.GetAxis("Mouse ScrollWheel") * 10f));
-			float x = Input.mousePosition.x;
-			float y = Input.mousePosition.y;
-			int x2 = (int)x / mGraphics.zoomLevel;
-			int y2 = (Screen.height - (int)y) / mGraphics.zoomLevel;
+			int x2 = (int)guiPoint.x / mGraphics.zoomLevel;
+			int y2 = (int)guiPoint.y / mGraphics.zoomLevel;
 			GameMidlet.gameCanvas.pointerMouse(x2, y2);
 		}
 	}

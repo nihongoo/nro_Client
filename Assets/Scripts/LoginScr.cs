@@ -130,6 +130,9 @@ public class LoginScr : mScreen, IActionListener
 	private Command cmdTogglePassword;
 
 	public static bool isLoggingIn;
+	public static bool sessionReplaced;
+	public const string ReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
+	public const string PreviousSessionWaitMessage = "Đang lưu phiên đăng nhập cũ, vui lòng chờ...";
 	private static Action queuedLogin;
 	private int loginStage;
 	private int stageStarted;
@@ -139,6 +142,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void doGuestLogin(string username, bool accountCreated = false)
 	{
+		if (sessionReplaced) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(username, accountCreated), null);
@@ -177,7 +181,8 @@ public class LoginScr : mScreen, IActionListener
 		if (request != null) request();
 		LoginScr screen = GameCanvas.loginScr;
 		if (!isLoggingIn) return;
-		if (GameCanvas.currentScreen is GameScr || GameCanvas.currentScreen is CreateCharScr)
+		if ((GameCanvas.currentScreen is GameScr && !Char.isLoadingMap && !GameCanvas.isLoading)
+			|| GameCanvas.currentScreen is CreateCharScr)
 		{
 			finishLoginAttempt();
 			return;
@@ -203,6 +208,7 @@ public class LoginScr : mScreen, IActionListener
 	public static bool failLoginAttempt(string message)
 	{
 		if (!isLoggingIn) return false;
+		LoginScr screen = GameCanvas.loginScr;
 		Session_ME.gI().close();
 		Session_ME.gI().clearSendingMessage();
 		Session_ME.clearReceivedMessages();
@@ -210,17 +216,32 @@ public class LoginScr : mScreen, IActionListener
 		finishLoginAttempt();
 		timeLogin = 0;
 		Char.isLoadingMap = false;
+		GameCanvas.isLoading = false;
+		Controller.isLoadingData = false;
 		Main.isMiniApp = true;
+		if (GameCanvas.currentScreen is GameScr)
+		{
+			GameCanvas.instance.doResetToLoginScr(GameCanvas.serverScreen);
+			GameCanvas.loginScr = screen;
+		}
 		GameCanvas.endDlg();
 		ServerListScreen.isAutoConect = false;
 		if (GameCanvas.currentScreen == GameCanvas.serverScreen) GameCanvas.loginScr.switchToMe();
 		GameCanvas.loginScr.focusLoginField(false);
-		GameCanvas.startOKDlg(message);
+		if (CustomServerAddress.Enabled) CustomServerAddress.ShowConnectionError(message);
+		else GameCanvas.startOKDlg(message);
 		return true;
+	}
+
+	public static void failInitialMapLoad()
+	{
+		GameCanvas.isLoading = false;
+		failLoginAttempt("Không thể tải dữ liệu bản đồ. Vui lòng đăng nhập lại.");
 	}
 
 	public static void authenticationAccepted()
 	{
+		timeLogin = 0;
 		if (!isLoggingIn) return;
 		// Bound resource/map loading separately after authentication succeeds.
 		GameCanvas.loginScr.loginStage = 3;
@@ -577,6 +598,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void doLogin()
 	{
+		if (sessionReplaced) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doLogin(), null);
@@ -864,6 +886,7 @@ public class LoginScr : mScreen, IActionListener
 			num += 5;
 		}
 		mFont.tahoma_7_white.drawString(g, "v" + GameMidlet.VERSION, GameCanvas.w - 2, 17, 1, mFont.tahoma_7_grey);
+		CustomServerAddress.PaintLabel(g, 38);
 		if (mSystem.clientType == 1 && !GameCanvas.isTouch)
 		{
 			mFont.tahoma_7_white.drawString(g, ServerListScreen.linkweb, GameCanvas.w - 2, GameCanvas.h - 15, 1, mFont.tahoma_7_grey);
@@ -1132,6 +1155,7 @@ public class LoginScr : mScreen, IActionListener
 			actRegister();
 			break;
 		case 2008:
+			sessionReplaced = false;
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
 			Rms.saveRMSString("pass", tfPass.getText().Trim());
 			isLogin2 = false;

@@ -11,6 +11,9 @@ public class Session_ME : ISession
 {
 	private static readonly object networkLock = new object();
 	private static volatile int networkGeneration;
+	public static volatile string ConnectedEndpoint;
+	public static volatile bool ConnectedViaFallback;
+	public static volatile bool FallbackAttempted;
 	public class Sender
 	{
 		public List<Message> sendingMessage;
@@ -356,6 +359,7 @@ public class Session_ME : ISession
 
 	public void connect(string host, int port)
 	{
+		if (isMainSession) CustomServerAddress.Resolve(ref host, ref port);
 		lock (networkLock)
 		{
 			if (!connected && !connecting && mSystem.currentTimeMillis() >= timeWaitConnect)
@@ -369,6 +373,7 @@ public class Session_ME : ISession
 				this.port = port;
 				getKeyComplete = false;
 				close();
+				FallbackAttempted = false;
 				connecting = true;
 				Debug.Log("connecting...!");
 				Debug.Log("host: " + host);
@@ -408,7 +413,7 @@ public class Session_ME : ISession
 
 	private void doConnect(string host, int port, int generation)
 	{
-		TcpClient socket = connectSocket(host, port, isMainSession);
+		TcpClient socket = connectSocket(host, port, isMainSession, generation);
 		lock (networkLock)
 		{
 			if (generation != networkGeneration)
@@ -417,6 +422,8 @@ public class Session_ME : ISession
 				return;
 			}
 			sc = socket;
+			ConnectedEndpoint = sc.Client.RemoteEndPoint.ToString();
+			ConnectedViaFallback = FallbackAttempted;
 			sc.SendTimeout = 5000;
 			Debug.Log("Connected to " + sc.Client.RemoteEndPoint);
 			dataStream = sc.GetStream();
@@ -437,7 +444,7 @@ public class Session_ME : ISession
 		}
 	}
 
-	private static TcpClient connectSocket(string host, int port, bool allowFallback)
+	private static TcpClient connectSocket(string host, int port, bool allowFallback, int generation)
 	{
 		TcpClient client = new TcpClient();
 		try
@@ -461,7 +468,12 @@ public class Session_ME : ISession
 				|| (IPAddress.TryParse(host, out address) && IPAddress.IsLoopback(address));
 			if (allowFallback && !isLocalhost)
 			{
-				return connectSocket("127.0.0.1", port, false);
+				lock (networkLock)
+				{
+					if (generation != networkGeneration) throw new OperationCanceledException();
+					FallbackAttempted = true;
+				}
+				return connectSocket("127.0.0.1", port, false, generation);
 			}
 			throw;
 		}
@@ -606,6 +618,8 @@ public class Session_ME : ISession
 		lock (networkLock)
 		{
 			networkGeneration++;
+			ConnectedEndpoint = null;
+			ConnectedViaFallback = false;
 			getKeyComplete = false;
 			key = null;
 			curR = 0;

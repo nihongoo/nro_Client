@@ -2,9 +2,12 @@ using UnityEngine;
 
 public class GameMidlet
 {
-	public static string IP = "127.0.0.1";
+	// Default LAN test endpoint. Change these two constants together when needed.
+	public const string DefaultServerHost = "192.168.1.7";
+	public const int DefaultServerPort = 14445;
+	public static string IP = DefaultServerHost;
 
-	public static int PORT = 14445;
+	public static int PORT = DefaultServerPort;
 
 	public static string IP2;
 
@@ -31,6 +34,7 @@ public class GameMidlet
 
 	public void initGame()
 	{
+		CustomServerAddress.Load();
 		instance = this;
 		MotherCanvas.instance = new MotherCanvas();
 		Session_ME.gI().setHandler(Controller.gI());

@@ -521,6 +521,7 @@ public class GameCanvas : IActionListener
 	public void update()
 	{
 		LoginScr.updateLoginAttempt();
+		CustomServerAddress.UpdateConnection();
 		if (mSystem.currentTimeMillis() > timefps)
 		{
 			timefps += 1000L;
@@ -776,9 +777,30 @@ public class GameCanvas : IActionListener
 		}
 	}
 
+	public static void onSessionReplaced()
+	{
+		LoginScr.sessionReplaced = true;
+		LoginScr.finishLoginAttempt();
+		LoginScr.timeLogin = 0;
+		instance.resetToLoginScr = false;
+		instance.doResetToLoginScr(serverScreen);
+		Session_ME.gI().clearSendingMessage();
+		Session_ME.clearReceivedMessages();
+		Session_ME2.gI().clearSendingMessage();
+		ServerListScreen.isAutoConect = false;
+		ServerListScreen.waitToLogin = false;
+		ServerListScreen.isWait = false;
+		Char.isLoadingMap = false;
+		Controller.isConnectionFail = Controller.isDisconnected = Controller.isConnectOK = false;
+		endDlg();
+		startOKDlg(LoginScr.ReplacedMessage);
+	}
+
 	public void onDisconnected()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (LoginScr.failLoginAttempt("Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
+		if (CustomServerAddress.HandleConnectionFailure("Mất kết nối tới máy chủ.")) return;
 		if (Controller.isConnectionFail)
 		{
 			Controller.isConnectionFail = false;
@@ -815,7 +837,9 @@ public class GameCanvas : IActionListener
 
 	public void onConnectionFail()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (LoginScr.failLoginAttempt("Không thể kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
+		if (CustomServerAddress.HandleConnectionFailure("Không thể kết nối tới máy chủ.")) return;
 		if (currentScreen.Equals(SplashScr.instance))
 		{
 			if (ServerListScreen.hasConnected != null)
@@ -829,7 +853,7 @@ public class GameCanvas : IActionListener
 					Rms.saveRMSInt("svselect", ServerListScreen.ipSelect);
 					connect();
 				}
-				else if (!ServerListScreen.hasConnected[2])
+				else if (ServerListScreen.hasConnected.Length > 2 && ServerListScreen.address.Length > 2 && !ServerListScreen.hasConnected[2])
 				{
 					ServerListScreen.hasConnected[2] = true;
 					ServerListScreen.ipSelect = 2;
@@ -897,9 +921,11 @@ public class GameCanvas : IActionListener
 
 	public static void connect()
 	{
+		if (LoginScr.sessionReplaced) return;
 		if (!Session_ME.gI().isConnected())
 		{
 			Session_ME.gI().connect(GameMidlet.IP, GameMidlet.PORT);
+			CustomServerAddress.ConnectionStarted();
 		}
 	}
 
