@@ -5009,6 +5009,7 @@ public class Controller : IMessageHandler
 		catch (Exception ex)
 		{
 			Res.err("[error] [TAI LOADMAP INFO]" + ex.StackTrace + ex.Message);
+			LoginScr.failInitialMapLoad();
 		}
 	}
 

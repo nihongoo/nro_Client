@@ -181,7 +181,8 @@ public class LoginScr : mScreen, IActionListener
 		if (request != null) request();
 		LoginScr screen = GameCanvas.loginScr;
 		if (!isLoggingIn) return;
-		if (GameCanvas.currentScreen is GameScr || GameCanvas.currentScreen is CreateCharScr)
+		if ((GameCanvas.currentScreen is GameScr && !Char.isLoadingMap && !GameCanvas.isLoading)
+			|| GameCanvas.currentScreen is CreateCharScr)
 		{
 			finishLoginAttempt();
 			return;
@@ -207,6 +208,7 @@ public class LoginScr : mScreen, IActionListener
 	public static bool failLoginAttempt(string message)
 	{
 		if (!isLoggingIn) return false;
+		LoginScr screen = GameCanvas.loginScr;
 		Session_ME.gI().close();
 		Session_ME.gI().clearSendingMessage();
 		Session_ME.clearReceivedMessages();
@@ -214,7 +216,14 @@ public class LoginScr : mScreen, IActionListener
 		finishLoginAttempt();
 		timeLogin = 0;
 		Char.isLoadingMap = false;
+		GameCanvas.isLoading = false;
+		Controller.isLoadingData = false;
 		Main.isMiniApp = true;
+		if (GameCanvas.currentScreen is GameScr)
+		{
+			GameCanvas.instance.doResetToLoginScr(GameCanvas.serverScreen);
+			GameCanvas.loginScr = screen;
+		}
 		GameCanvas.endDlg();
 		ServerListScreen.isAutoConect = false;
 		if (GameCanvas.currentScreen == GameCanvas.serverScreen) GameCanvas.loginScr.switchToMe();
@@ -222,6 +231,12 @@ public class LoginScr : mScreen, IActionListener
 		if (CustomServerAddress.Enabled) CustomServerAddress.ShowConnectionError(message);
 		else GameCanvas.startOKDlg(message);
 		return true;
+	}
+
+	public static void failInitialMapLoad()
+	{
+		GameCanvas.isLoading = false;
+		failLoginAttempt("Không thể tải dữ liệu bản đồ. Vui lòng đăng nhập lại.");
 	}
 
 	public static void authenticationAccepted()
