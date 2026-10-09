@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -351,8 +352,8 @@ public class Session_ME : ISession
 
 	public void doConnect(string host, int port)
 	{
-		sc = new TcpClient();
-		sc.Connect(host, port);
+		sc = connectSocket(host, port, isMainSession);
+		Debug.Log("Connected to " + sc.Client.RemoteEndPoint);
 		dataStream = sc.GetStream();
 		dis = new BinaryReader(dataStream, new UTF8Encoding());
 		dos = new BinaryWriter(dataStream, new UTF8Encoding());
@@ -366,6 +367,41 @@ public class Session_ME : ISession
 		connecting = false;
 		doSendMessage(new Message(-27));
 		key = null;
+	}
+
+	private static TcpClient connectSocket(string host, int port, bool allowFallback)
+	{
+		TcpClient client = new TcpClient();
+		try
+		{
+			IAsyncResult pending = client.BeginConnect(host, port, null, null);
+			using (WaitHandle waitHandle = pending.AsyncWaitHandle)
+			{
+				if (!waitHandle.WaitOne(3000))
+				{
+					throw new TimeoutException("TCP connection timed out.");
+				}
+				client.EndConnect(pending);
+			}
+			return client;
+		}
+		catch (Exception ex) when (ex is SocketException || ex is TimeoutException)
+		{
+			client.Close();
+			IPAddress address;
+			bool isLocalhost = string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase)
+				|| (IPAddress.TryParse(host, out address) && IPAddress.IsLoopback(address));
+			if (allowFallback && !isLocalhost)
+			{
+				return connectSocket("127.0.0.1", port, false);
+			}
+			throw;
+		}
+		catch
+		{
+			client.Close();
+			throw;
+		}
 	}
 
 	public void sendMessage(Message message)
