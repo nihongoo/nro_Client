@@ -127,7 +127,105 @@ public class LoginScr : mScreen, IActionListener
 
 	private Command cmdCallHotline;
 
+	private Command cmdTogglePassword;
+
 	public static bool isLoggingIn;
+	private static Action queuedLogin;
+	private int loginStage;
+	private int stageStarted;
+	private string pendingUser, pendingPassword;
+	private sbyte pendingLoginType;
+	private bool pendingGuestCreation;
+
+	public void doGuestLogin(string username, bool accountCreated = false)
+	{
+		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
+		{
+			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(username, accountCreated), null);
+			return;
+		}
+		if (isLoggingIn && !(accountCreated && pendingGuestCreation)) return;
+		isLoggingIn = true;
+		isLogin2 = true;
+		pendingGuestCreation = string.IsNullOrEmpty(username);
+		pendingUser = username ?? string.Empty;
+		pendingPassword = string.Empty;
+		pendingLoginType = 1;
+		loginStage = 1;
+		stageStarted = Environment.TickCount;
+		if (!Session_ME.gI().isConnected() && !Session_ME.connecting) GameCanvas.connect();
+		GameCanvas.startWaitDlg();
+	}
+
+	// Attempt state belongs to the UI thread. Background callers only enqueue a request.
+	public static void finishLoginAttempt()
+	{
+		isLoggingIn = false;
+		isContinueToLogin = false;
+		if (GameCanvas.loginScr != null)
+		{
+			GameCanvas.loginScr.loginStage = 0;
+			GameCanvas.loginScr.pendingPassword = null;
+		}
+		System.Threading.Interlocked.Exchange(ref queuedLogin, null);
+	}
+
+	public static void updateLoginAttempt()
+	{
+		if (GameCanvas.loginScr == null) return;
+		Action request = System.Threading.Interlocked.Exchange(ref queuedLogin, null);
+		if (request != null) request();
+		LoginScr screen = GameCanvas.loginScr;
+		if (!isLoggingIn) return;
+		if (GameCanvas.currentScreen is GameScr || GameCanvas.currentScreen is CreateCharScr)
+		{
+			finishLoginAttempt();
+			return;
+		}
+		if (screen.loginStage == 1 && Session_ME.readyForLogin()
+			&& !Controller.isConnectOK && !Controller.isConnectionFail && !Controller.isDisconnected)
+		{
+			screen.loginStage = 2;
+			screen.stageStarted = Environment.TickCount;
+			if (screen.pendingGuestCreation) Service.gI().login2(string.Empty);
+			else Service.gI().login(screen.pendingUser, screen.pendingPassword, GameMidlet.VERSION, screen.pendingLoginType);
+			screen.pendingPassword = null;
+		}
+		int deadline = screen.loginStage == 1 ? 15000 : 20000;
+		if (unchecked(Environment.TickCount - screen.stageStarted) >= deadline)
+		{
+			failLoginAttempt(screen.loginStage == 1
+				? "Kết nối tới máy chủ quá lâu. Kiểm tra mạng rồi thử lại."
+				: "Máy chủ phản hồi quá lâu. Vui lòng thử đăng nhập lại.");
+		}
+	}
+
+	public static bool failLoginAttempt(string message)
+	{
+		if (!isLoggingIn) return false;
+		Session_ME.gI().close();
+		Session_ME.gI().clearSendingMessage();
+		Session_ME.clearReceivedMessages();
+		Controller.isConnectionFail = Controller.isDisconnected = Controller.isConnectOK = false;
+		finishLoginAttempt();
+		timeLogin = 0;
+		Char.isLoadingMap = false;
+		Main.isMiniApp = true;
+		GameCanvas.endDlg();
+		ServerListScreen.isAutoConect = false;
+		if (GameCanvas.currentScreen == GameCanvas.serverScreen) GameCanvas.loginScr.switchToMe();
+		GameCanvas.loginScr.focusLoginField(false);
+		GameCanvas.startOKDlg(message);
+		return true;
+	}
+
+	public static void authenticationAccepted()
+	{
+		if (!isLoggingIn) return;
+		// Bound resource/map loading separately after authentication succeeds.
+		GameCanvas.loginScr.loginStage = 3;
+		GameCanvas.loginScr.stageStarted = Environment.TickCount;
+	}
 
 	public LoginScr()
 	{
@@ -162,12 +260,18 @@ public class LoginScr : mScreen, IActionListener
 		tfUser.height = mScreen.ITEM_HEIGHT + 2;
 		tfUser.isFocus = true;
 		tfUser.setIputType(TField.INPUT_TYPE_ANY);
+		tfUser.loginInput = true;
+		tfUser.cmdDoneAction = new Command("Next", this, 2101, null);
 		tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
 		tfPass = new TField();
 		tfPass.y = GameCanvas.hh - 4;
 		tfPass.setIputType(TField.INPUT_TYPE_PASSWORD);
-		tfPass.width = wC;
+		tfPass.loginInput = true;
+		tfPass.setMaxTextLenght(100);
+		tfPass.cmdDoneAction = new Command("Done", this, 2102, null);
+		tfPass.width = wC - 76;
 		tfPass.height = mScreen.ITEM_HEIGHT + 2;
+		cmdTogglePassword = new Command("Hiện", this, 2103, null);
 		yt += 35;
 		isCheck = true;
 		switch (Rms.loadRMSInt("check"))
@@ -443,10 +547,50 @@ public class LoginScr : mScreen, IActionListener
 		return Rms.loadRMSInt("indServer");
 	}
 
+	public void focusLoginField(bool username)
+	{
+		focus = username ? 0 : 1;
+		tfUser.isFocus = username;
+		tfPass.isFocus = !username;
+		if (!GameCanvas.isTouch)
+		{
+			right = username ? tfUser.cmdClear : tfPass.cmdClear;
+		}
+	}
+
+	public bool keepFormOnLoginError(string message)
+	{
+		bool usernameMissing = message.IndexOf("tài khoản không tồn tại", StringComparison.OrdinalIgnoreCase) >= 0;
+		bool invalidCredentials = message.Equals("Thông tin tài khoản hoặc mật khẩu không chính xác", StringComparison.Ordinal);
+		if (!usernameMissing && !invalidCredentials)
+		{
+			return false;
+		}
+		isLoggingIn = false;
+		isContinueToLogin = false;
+		Char.isLoadingMap = false;
+		timeLogin = 0;
+		Main.isMiniApp = true;
+		focusLoginField(usernameMissing);
+		return true;
+	}
+
 	public void doLogin()
 	{
+		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
+		{
+			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doLogin(), null);
+			return;
+		}
+		if (isLoggingIn || timeLogin > 0) return;
+		isLoggingIn = true;
 		string text = Rms.loadRMSString("acc");
 		string text2 = Rms.loadRMSString("pass");
+		if (GameCanvas.currentScreen == this && !isLogin2)
+		{
+			text = tfUser.getText().Trim();
+			text2 = tfPass.getText().Trim();
+		}
 		if (text != null && !text.Equals(string.Empty))
 		{
 			isLogin2 = false;
@@ -464,35 +608,43 @@ public class LoginScr : mScreen, IActionListener
 			text = Rms.loadRMSString("userAo" + ServerListScreen.ipSelect);
 			text2 = "a";
 		}
-		if (text == null || text2 == null || GameMidlet.VERSION == null || text.Equals(string.Empty))
+		if (string.IsNullOrEmpty(text))
 		{
+			finishLoginAttempt();
+			isContinueToLogin = false;
+			Char.isLoadingMap = false;
+			focusLoginField(true);
+			GameCanvas.startOKDlg(mResources.userBlank);
+			return;
+		}
+		if (text2 == null || GameMidlet.VERSION == null)
+		{
+			finishLoginAttempt();
+			Char.isLoadingMap = false;
 			return;
 		}
 		if (text2.Equals(string.Empty))
 		{
-			focus = 1;
-			tfUser.isFocus = false;
-			tfPass.isFocus = true;
-			if (!GameCanvas.isTouch)
-			{
-				right = tfPass.cmdClear;
-			}
+			finishLoginAttempt();
+			isContinueToLogin = false;
+			Char.isLoadingMap = false;
+			focusLoginField(false);
+			GameCanvas.startOKDlg(mResources.passwordBlank);
 			return;
 		}
-		if (!Session_ME.gI().isConnected())
+		pendingUser = text;
+		pendingGuestCreation = false;
+		pendingPassword = text2;
+		pendingLoginType = (sbyte)(isLogin2 ? 1 : 0);
+		loginStage = 1;
+		stageStarted = Environment.TickCount;
+		Main.isMiniApp = true;
+		if (!Session_ME.gI().isConnected() && !Session_ME.connecting)
 		{
 			GameCanvas.connect();
 		}
 		Res.outz("Login request, version=" + GameMidlet.VERSION + ", type=" + (sbyte)(isLogin2 ? 1 : 0));
-		Service.gI().login(text, text2, GameMidlet.VERSION, (sbyte)(isLogin2 ? 1 : 0));
-		if (Session_ME.connected)
-		{
-			GameCanvas.startWaitDlg();
-		}
-		else
-		{
-			GameCanvas.startOKDlg(mResources.maychutathoacmatsong);
-		}
+		GameCanvas.startWaitDlg();
 		focus = 0;
 		if (!isLogin2)
 		{
@@ -748,6 +900,10 @@ public class LoginScr : mScreen, IActionListener
 			tfPass.y = yLog + 55;
 			tfUser.paint(g);
 			tfPass.paint(g);
+			g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+			cmdTogglePassword.x = tfPass.x + tfPass.width + 2;
+			cmdTogglePassword.y = tfPass.y;
+			cmdTogglePassword.paint(g);
 			int num4 = 0;
 			if (GameCanvas.w >= 176)
 			{
@@ -778,8 +934,13 @@ public class LoginScr : mScreen, IActionListener
 			GameCanvas.keyPressed[13] = false;
 			cmdCallHotline.performAction();
 		}
-		if (isContinueToLogin)
+		if (isContinueToLogin || isLoggingIn || GameCanvas.currentDialog != null)
 		{
+			return;
+		}
+		if ((!isLogin2 || isRes) && cmdTogglePassword.isPointerPressInside())
+		{
+			cmdTogglePassword.performAction();
 			return;
 		}
 		if (!GameCanvas.isTouch)
@@ -880,6 +1041,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void perform(int idAction, object p)
 	{
+		if (isLoggingIn && (idAction == 2008 || idAction == 2102)) return;
 		switch (idAction)
 		{
 		case 13:
@@ -918,17 +1080,8 @@ public class LoginScr : mScreen, IActionListener
 			break;
 		case 1002:
 		{
-			GameCanvas.startWaitDlg();
 			string text = Rms.loadRMSString("userAo" + ServerListScreen.ipSelect);
-			if (text == null || text.Equals(string.Empty))
-			{
-				Service.gI().login2(string.Empty);
-				break;
-			}
-			GameCanvas.loginScr.isLogin2 = true;
-			GameCanvas.connect();
-			Service.gI().setClientType();
-			Service.gI().login(text, string.Empty, GameMidlet.VERSION, 1);
+			doGuestLogin(text);
 			break;
 		}
 		case 1004:
@@ -981,13 +1134,33 @@ public class LoginScr : mScreen, IActionListener
 		case 2008:
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
 			Rms.saveRMSString("pass", tfPass.getText().Trim());
-			if (ServerListScreen.loadScreen)
+			isLogin2 = false;
+			doLogin();
+			break;
+		case 2101:
+			focusLoginField(false);
+			tfPass.setFocusWithKb(true);
+			break;
+		case 2102:
+			if (isRes)
 			{
-				GameCanvas.serverScreen.switchToMe();
+				doRegister();
 			}
 			else
 			{
-				GameCanvas.serverScreen.show2();
+				perform(2008, null);
+			}
+			break;
+		case 2103:
+			bool reopenKeyboard = TField.kb != null && TField.currentTField == tfPass;
+			tfPass.revealPassword = !tfPass.revealPassword;
+			cmdTogglePassword.caption = tfPass.revealPassword ? "Ẩn" : "Hiện";
+			tfPass.setText(tfPass.getText());
+			if (reopenKeyboard)
+			{
+				TField.kb.active = false;
+				TField.kb = null;
+				tfPass.setFocusWithKb(true);
 			}
 			break;
 		case 4000:

@@ -14,13 +14,13 @@ public class Controller : IMessageHandler
 
 	public static bool isLoadingData = false;
 
-	public static bool isConnectOK;
+	public static volatile bool isConnectOK;
 
-	public static bool isConnectionFail;
+	public static volatile bool isConnectionFail;
 
-	public static bool isDisconnected;
+	public static volatile bool isDisconnected;
 
-	public static bool isMain;
+	public static volatile bool isMain;
 
 	private float demCount;
 
@@ -1690,7 +1690,7 @@ public class Controller : IMessageHandler
 			}
 			case 2:
 				Char.isLoadingMap = false;
-				LoginScr.isLoggingIn = false;
+				LoginScr.finishLoginAttempt();
 				if (!GameScr.isLoadAllData)
 				{
 					GameScr.gI().initSelectChar();
@@ -2609,17 +2609,22 @@ public class Controller : IMessageHandler
 				break;
 			}
 			case -26:
+			{
+				string loginMessage = msg.reader().readUTF();
+				LoginScr.finishLoginAttempt();
 				ServerListScreen.testConnect = 2;
 				GameCanvas.debug("SA2", 2);
-				GameCanvas.startOKDlg(msg.reader().readUTF());
+				GameCanvas.startOKDlg(loginMessage);
 				InfoDlg.hide();
 				LoginScr.isContinueToLogin = false;
 				Char.isLoadingMap = false;
-				if (GameCanvas.currentScreen == GameCanvas.loginScr)
+				if (GameCanvas.currentScreen == GameCanvas.loginScr
+					&& !GameCanvas.loginScr.keepFormOnLoginError(loginMessage))
 				{
 					GameCanvas.serverScreen.switchToMe();
 				}
 				break;
+			}
 			case -25:
 				GameCanvas.debug("SA3", 2);
 				GameScr.info1.addInfo(msg.reader().readUTF(), 0);
@@ -5080,6 +5085,7 @@ public class Controller : IMessageHandler
 			case 4:
 			{
 				GameCanvas.debug("SA8", 2);
+				LoginScr.authenticationAccepted();
 				GameCanvas.loginScr.savePass();
 				GameScr.isAutoPlay = false;
 				GameScr.canAutoPlay = false;

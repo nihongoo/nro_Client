@@ -520,6 +520,7 @@ public class GameCanvas : IActionListener
 
 	public void update()
 	{
+		LoginScr.updateLoginAttempt();
 		if (mSystem.currentTimeMillis() > timefps)
 		{
 			timefps += 1000L;
@@ -777,6 +778,7 @@ public class GameCanvas : IActionListener
 
 	public void onDisconnected()
 	{
+		if (LoginScr.failLoginAttempt("Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (Controller.isConnectionFail)
 		{
 			Controller.isConnectionFail = false;
@@ -813,6 +815,7 @@ public class GameCanvas : IActionListener
 
 	public void onConnectionFail()
 	{
+		if (LoginScr.failLoginAttempt("Không thể kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (currentScreen.Equals(SplashScr.instance))
 		{
 			if (ServerListScreen.hasConnected != null)
@@ -969,6 +972,7 @@ public class GameCanvas : IActionListener
 
 	public void doResetToLoginScr(mScreen screen)
 	{
+		LoginScr.finishLoginAttempt();
 		try
 		{
 			SoundMn.gI().stopAll();
@@ -2241,7 +2245,7 @@ public class GameCanvas : IActionListener
 						TIMEOUT = mSystem.currentTimeMillis();
 					}
 				}
-				if (mSystem.currentTimeMillis() > timeBreakLoading)
+				if (!LoginScr.isLoggingIn && mSystem.currentTimeMillis() > timeBreakLoading)
 				{
 					timeBreakLoading = mSystem.currentTimeMillis() + 30000;
 					if (currentScreen != null)

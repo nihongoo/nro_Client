@@ -782,6 +782,7 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public void perform(int idAction, object p)
 	{
+		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
 		{
@@ -834,27 +835,8 @@ public class ServerListScreen : mScreen, IActionListener
 			bool flag2 = Rms.loadRMSString("userAo" + ipSelect) != null && ((!Rms.loadRMSString("userAo" + ipSelect).Equals(string.Empty)) ? true : false);
 			if (!flag && !flag2)
 			{
-				GameCanvas.connect();
 				string text = Rms.loadRMSString("userAo" + ipSelect);
-				if (text == null || text.Equals(string.Empty))
-				{
-					Service.gI().login2(string.Empty);
-				}
-				else
-				{
-					GameCanvas.loginScr.isLogin2 = true;
-					GameCanvas.connect();
-					Service.gI().setClientType();
-					Service.gI().login(text, string.Empty, GameMidlet.VERSION, 1);
-				}
-				if (Session_ME.connected)
-				{
-					GameCanvas.startWaitDlg();
-				}
-				else
-				{
-					GameCanvas.startOKDlg(mResources.maychutathoacmatsong);
-				}
+				GameCanvas.loginScr.doGuestLogin(text);
 			}
 			else
 			{
@@ -869,8 +851,7 @@ public class ServerListScreen : mScreen, IActionListener
 				GameCanvas.loginScr = new LoginScr();
 			}
 			GameCanvas.loginScr.switchToMe();
-			GameCanvas.connect();
-			Service.gI().login2(string.Empty);
+			GameCanvas.loginScr.doGuestLogin(string.Empty);
 			Res.outz("tao user ao");
 			GameCanvas.startWaitDlg();
 			LoginScr.serverName = nameServer[ipSelect];
@@ -940,17 +921,7 @@ public class ServerListScreen : mScreen, IActionListener
 			}
 			GameCanvas.loginScr.switchToMe();
 			string text2 = Rms.loadRMSString("userAo" + ipSelect);
-			if (text2 == null || text2.Equals(string.Empty))
-			{
-				Service.gI().login2(string.Empty);
-			}
-			else
-			{
-				GameCanvas.loginScr.isLogin2 = true;
-				GameCanvas.connect();
-				Service.gI().setClientType();
-				Service.gI().login(text2, string.Empty, GameMidlet.VERSION, 1);
-			}
+			GameCanvas.loginScr.doGuestLogin(text2);
 			GameCanvas.startWaitDlg(mResources.PLEASEWAIT);
 			Res.outz("tao user ao");
 		}

@@ -1,5 +1,6 @@
 using System;
 using System.Threading;
+using System.Text;
 
 public class TField : IActionListener
 {
@@ -132,6 +133,11 @@ public class TField : IActionListener
 	public Command cmdClear;
 
 	public Command cmdDoneAction;
+
+	// Opt-in behavior for LoginScr; other fields retain their existing input rules.
+	public bool loginInput;
+
+	public bool revealPassword;
 
 	private mScreen parentScr;
 
@@ -327,7 +333,7 @@ public class TField : IActionListener
 	{
 		if (paintedText != null && mFont.tahoma_8b != null)
 		{
-			if (inputType == INPUT_TYPE_PASSWORD)
+			if (inputType == INPUT_TYPE_PASSWORD && !revealPassword)
 			{
 				paintedText = passwordText;
 			}
@@ -395,7 +401,11 @@ public class TField : IActionListener
 
 	private void keyPressedAscii(int keyCode)
 	{
-		if ((inputType == INPUT_TYPE_PASSWORD || inputType == INPUT_ALPHA_NUMBER_ONLY) && (keyCode < 48 || keyCode > 57) && (keyCode < 65 || keyCode > 90) && (keyCode < 97 || keyCode > 122))
+		if (loginInput && inputType == INPUT_TYPE_PASSWORD && (keyCode < 32 || keyCode > 126))
+		{
+			return;
+		}
+		if (((inputType == INPUT_TYPE_PASSWORD && !loginInput) || inputType == INPUT_ALPHA_NUMBER_ONLY) && (keyCode < 48 || keyCode > 57) && (keyCode < 65 || keyCode > 90) && (keyCode < 97 || keyCode > 122))
 		{
 			return;
 		}
@@ -545,7 +555,7 @@ public class TField : IActionListener
 
 	public void setOffset(int index)
 	{
-		if (inputType == INPUT_TYPE_PASSWORD)
+		if (inputType == INPUT_TYPE_PASSWORD && !revealPassword)
 		{
 			paintedText = passwordText;
 		}
@@ -631,7 +641,7 @@ public class TField : IActionListener
 	{
 		g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
 		bool flag = isFocused();
-		if (inputType == INPUT_TYPE_PASSWORD)
+		if (inputType == INPUT_TYPE_PASSWORD && !revealPassword)
 		{
 			paintedText = passwordText;
 		}
@@ -712,16 +722,37 @@ public class TField : IActionListener
 		}
 		if (kb != null && currentTField == this)
 		{
+			if (loginInput && inputType == INPUT_TYPE_PASSWORD)
+			{
+				StringBuilder filtered = new StringBuilder();
+				foreach (char character in kb.text)
+				{
+					if (character >= 32 && character <= 126)
+					{
+						filtered.Append(character);
+					}
+				}
+				if (filtered.ToString() != kb.text)
+				{
+					kb.text = filtered.ToString();
+				}
+			}
 			if (isFocus && kb.text.Length > maxTextLenght)
 			{
 				kb.text = kb.text.Substring(0, maxTextLenght);
 			}
-			if (kb.text.Length < 40 && isFocus)
+			if ((loginInput || kb.text.Length < 40) && isFocus)
 			{
 				setText(kb.text);
 			}
 			if (kb.done && cmdDoneAction != null)
 			{
+				if (loginInput)
+				{
+					kb.active = false;
+					kb = null;
+					currentTField = null;
+				}
 				cmdDoneAction.performAction();
 			}
 		}
@@ -817,7 +848,7 @@ public class TField : IActionListener
 				t = TouchScreenKeyboardType.NumberPad;
 			}
 			bool type = false;
-			if (inputType == INPUT_TYPE_PASSWORD)
+			if (inputType == INPUT_TYPE_PASSWORD && !revealPassword)
 			{
 				type = true;
 			}
@@ -826,7 +857,7 @@ public class TField : IActionListener
 			{
 				kb.text = currentTField.text;
 			}
-			Cout.LogWarning("SHOW KEYBOARD FOR " + currentTField.text);
+			Cout.LogWarning("SHOW KEYBOARD");
 		}
 	}
 
