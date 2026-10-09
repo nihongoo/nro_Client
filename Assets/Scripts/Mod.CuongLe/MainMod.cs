@@ -1638,7 +1638,11 @@ namespace Mod.CuongLe
     			account = array[1];
     			server = int.Parse(array[2]);
     			password = DecryptString(array[3], "ud");
-                RunAccountManagerAction(() => new Thread(Login).Start());
+                RunAccountManagerAction(() =>
+                {
+                    accountManagerActive = true;
+                    new Thread(Login).Start();
+                });
     		}
     		catch
     		{
@@ -1647,6 +1651,63 @@ namespace Mod.CuongLe
                     "Account Manager: thông tin khởi chạy không hợp lệ. Vui lòng kiểm tra launcher hoặc đăng nhập thủ công.");
     		}
     	}
+
+        private static volatile bool accountManagerActive;
+        private static string accountManagerFailure;
+
+        private static bool WaitForAccountManager(Func<bool> ready, int timeoutMs, string message)
+        {
+            int started = Environment.TickCount;
+            while (!accountManagerLoginStopped)
+            {
+                if (ready()) return true;
+                if (unchecked(Environment.TickCount - started) >= timeoutMs)
+                {
+                    StopAccountManagerLogin();
+                    Interlocked.Exchange(ref accountManagerFailure, message);
+                    return false;
+                }
+                Thread.Sleep(10);
+            }
+            return false;
+        }
+
+        public static void OnAccountManagerLoginMessage(string message)
+        {
+            if (!accountManagerActive) return;
+            if (message.IndexOf("không chính xác", StringComparison.OrdinalIgnoreCase) >= 0
+                || message.IndexOf("không tồn tại", StringComparison.OrdinalIgnoreCase) >= 0
+                || message.IndexOf("bị khóa", StringComparison.OrdinalIgnoreCase) >= 0
+                || message.IndexOf("sai quá nhiều lần", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                StopAccountManagerLogin();
+                accountManagerActive = false;
+                loginAgain = false;
+                LasterLogin = 0;
+                ServerListScreen.isAutoConect = false;
+            }
+        }
+
+        public static void UpdateAccountManager()
+        {
+            // Worker publishes only the timeout reason; session/UI cleanup stays on the UI thread.
+            string failure = Interlocked.Exchange(ref accountManagerFailure, null);
+            if (failure == null) return;
+            accountManagerActive = false;
+            if (LoginScr.manualLoginRequired || LoginScr.sessionReplaced) return;
+            loginAgain = false;
+            LasterLogin = 0;
+            ServerListScreen.isAutoConect = false;
+            LoginScr.finishLoginAttempt();
+            LoginScr.timeLogin = 0;
+            Session_ME.gI().close();
+            Session_ME.gI().clearSendingMessage();
+            Session_ME.clearReceivedMessages();
+            Controller.isConnectionFail = Controller.isDisconnected = Controller.isConnectOK = false;
+            Char.isLoadingMap = false;
+            GameCanvas.endDlg();
+            GameCanvas.startOKDlg(failure);
+        }
 
         public static void ShowAccountManagerNotice()
         {
@@ -1670,17 +1731,14 @@ namespace Mod.CuongLe
     				{
     					Thread.Sleep(100);
                         if (accountManagerLoginStopped) return;
-                        while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
-    					{
-    						Thread.Sleep(10);
-                            if (accountManagerLoginStopped) return;
-    					}
+                        if (!WaitForAccountManager(() => ServerListScreen.loadScreen, 60000,
+                            "Chờ tài nguyên quá lâu. Vui lòng thử đăng nhập lại.")) return;
     					Thread.Sleep(500);
                         if (accountManagerLoginStopped) return;
                         if (!RunAccountManagerAction(() =>
                         {
-    					Rms.saveRMSString("acc", "Cuong Le");
-    					Rms.saveRMSString("pass", "fuckyou");
+                            Rms.saveRMSString("acc", account);
+                            Rms.saveRMSString("pass", password);
                         })) return;
     					Thread.Sleep(500);
                         if (accountManagerLoginStopped) return;
@@ -1692,27 +1750,27 @@ namespace Mod.CuongLe
     					if (server <= 20)
     					{
                             if (!RunAccountManagerAction(() => GameCanvas.serverScreen.selectServer())) return;
-                            while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
-    						{
-    							Thread.Sleep(10);
-                                if (accountManagerLoginStopped) return;
-    						}
-                            while (!Session_ME.gI().isConnected() && !accountManagerLoginStopped)
-    						{
-    							Thread.Sleep(100);
-                                if (accountManagerLoginStopped) return;
-    						}
+                            if (!WaitForAccountManager(() => ServerListScreen.loadScreen, 60000,
+                                "Chờ tài nguyên quá lâu. Vui lòng thử đăng nhập lại.")) return;
+                            if (!WaitForAccountManager(() => Session_ME.gI().isConnected(), 15000,
+                                "Kết nối máy chủ quá lâu. Kiểm tra mạng rồi thử lại.")) return;
     						Thread.Sleep(100);
                             if (accountManagerLoginStopped) return;
-                            while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
-    						{
-    							Thread.Sleep(10);
-                                if (accountManagerLoginStopped) return;
-    						}
+                            if (!WaitForAccountManager(() => ServerListScreen.loadScreen, 60000,
+                                "Chờ tài nguyên quá lâu. Vui lòng thử đăng nhập lại.")) return;
     					}
     					Thread.Sleep(1000);
                         if (accountManagerLoginStopped) return;
-                        if (!RunAccountManagerAction(() => GameCanvas.serverScreen.perform(3, null))) return;
+                        if (!RunAccountManagerAction(() =>
+                        {
+                            if (GameCanvas.loginScr != null)
+                            {
+                                GameCanvas.loginScr.tfUser.setText(account);
+                                GameCanvas.loginScr.tfPass.setText(password);
+                                GameCanvas.loginScr.isLogin2 = false;
+                            }
+                            GameCanvas.serverScreen.perform(3, null);
+                        })) return;
     					Thread.Sleep(1000);
                         if (accountManagerLoginStopped) return;
     					GameCanvas.gameTick = 0;
