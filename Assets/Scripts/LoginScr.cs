@@ -1210,8 +1210,6 @@ public class LoginScr : mScreen, IActionListener
 
 	public void backToRegister()
 	{
-		GameCanvas.startYesNoDlg("Bạn muốn đổi tài khoản?",
-			new Command(mResources.OK, GameCanvas.panel, 10019, null),
-			new Command(mResources.CANCEL, GameCanvas.panel, 10020, null));
+		GameCanvas.instance.switchAccount();
 	}
 }
