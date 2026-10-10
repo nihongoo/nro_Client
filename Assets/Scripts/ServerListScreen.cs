@@ -447,6 +447,11 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void update()
 	{
+		if (LoginScr.manualLoginRequired)
+		{
+			waitToLogin = isWait = isAutoConect = false;
+			flagServer = 0;
+		}
 		if (GameCanvas.currentDialog is CustomServerDialog) return;
 		if (waitToLogin)
 		{
@@ -578,7 +583,10 @@ public class ServerListScreen : mScreen, IActionListener
 				{
 					continue;
 				}
-				if (testConnect == -1 || testConnect == 0)
+				// Play connects on demand; account switching must also work while offline.
+				if ((testConnect == -1 || testConnect == 0)
+					&& cmd[i].idAction != 3 && cmd[i].idAction != 11
+					&& cmd[i].idAction != 10100 && cmd[i].idAction != 7)
 				{
 					if (cmd[i].caption.IndexOf(mResources.server) != -1)
 					{
@@ -795,6 +803,7 @@ public class ServerListScreen : mScreen, IActionListener
 			return;
 		}
 		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
+		if ((idAction == 3 || idAction == 11 || idAction == 10100) && !LoginScr.allowLoginFromPlayButton()) return;
 		if (idAction == 3 || idAction == 11 || idAction == 10100) LoginScr.sessionReplaced = false;
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
@@ -898,7 +907,7 @@ public class ServerListScreen : mScreen, IActionListener
 			{
 				GameCanvas.loginScr = new LoginScr();
 			}
-			GameCanvas.loginScr.switchToMe();
+			GameCanvas.loginScr.backToRegister();
 		}
 		if (idAction == 8)
 		{

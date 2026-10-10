@@ -117,7 +117,7 @@ public static class CustomServerAddress
         }
     }
 
-    private static void CloseConnection()
+    public static void CloseConnection()
     {
         connectionPending = false;
         // close() advances the existing network generation before any new endpoint is started.

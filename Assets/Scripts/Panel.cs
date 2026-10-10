@@ -9378,15 +9378,7 @@ public class Panel : IActionListener, IChatable
         }
         if (idAction == 10019)
         {
-            Session_ME.gI().close();
-            Rms.saveRMSString("acc", string.Empty);
-            Rms.saveRMSString("pass", string.Empty);
-            GameCanvas.loginScr.tfPass.setText(string.Empty);
-            GameCanvas.loginScr.tfUser.setText(string.Empty);
-            GameCanvas.loginScr.isLogin2 = false;
-            GameCanvas.serverScreen.switchToMe();
-            GameCanvas.endDlg();
-            hide();
+            GameCanvas.instance.switchAccount();
         }
         if (idAction == 10020)
         {

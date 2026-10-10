@@ -131,6 +131,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public static bool isLoggingIn;
 	public static bool sessionReplaced;
+	public static volatile bool manualLoginRequired;
 	public const string ReplacedMessage = "Tài khoản đang đăng nhập ở nơi khác";
 	public const string LegacyReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
 	public const string PreviousSessionWaitMessage = "Đang lưu phiên đăng nhập cũ, vui lòng chờ...";
@@ -140,10 +141,29 @@ public class LoginScr : mScreen, IActionListener
 	private string pendingUser, pendingPassword;
 	private sbyte pendingLoginType;
 	private bool pendingGuestCreation;
+	private bool editingSwitchedAccount;
+
+	public static void requireManualLogin()
+	{
+		manualLoginRequired = true;
+		Mod.CuongLe.MainMod.StopAccountManagerLogin();
+		finishLoginAttempt();
+		timeLogin = 0;
+		Main.isMiniApp = true;
+	}
+
+	public static bool allowLoginFromPlayButton()
+	{
+		if (!manualLoginRequired) return true;
+		// A launcher worker cannot release the pause created by an explicit account switch.
+		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName) return false;
+		manualLoginRequired = false;
+		return true;
+	}
 
 	public void doGuestLogin(string username, bool accountCreated = false)
 	{
-		if (sessionReplaced) return;
+		if (sessionReplaced || manualLoginRequired) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(username, accountCreated), null);
@@ -177,6 +197,11 @@ public class LoginScr : mScreen, IActionListener
 
 	public static void updateLoginAttempt()
 	{
+		if (manualLoginRequired)
+		{
+			finishLoginAttempt();
+			return;
+		}
 		if (GameCanvas.loginScr == null) return;
 		Action request = System.Threading.Interlocked.Exchange(ref queuedLogin, null);
 		if (request != null) request();
@@ -423,6 +448,20 @@ public class LoginScr : mScreen, IActionListener
 		base.switchToMe();
 	}
 
+	public void prepareAccountSwitch()
+	{
+		editingSwitchedAccount = true;
+		isLogin2 = false;
+		isRes = false;
+		tfUser.setText(string.Empty);
+		tfPass.setText(string.Empty);
+		tfUser.isPaintCarret = true;
+		tfPass.isPaintCarret = true;
+		cmdOK.caption = "Lưu";
+		center = cmdOK;
+		left = cmdMenu;
+	}
+
 	public void setUserPass()
 	{
 		string text = Rms.loadRMSString("acc");
@@ -541,7 +580,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void doLogin()
 	{
-		if (sessionReplaced) return;
+		if (sessionReplaced || manualLoginRequired) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
 			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doLogin(), null);
@@ -1091,6 +1130,28 @@ public class LoginScr : mScreen, IActionListener
 			actRegister();
 			break;
 		case 2008:
+			if (editingSwitchedAccount)
+			{
+				if (string.IsNullOrEmpty(tfUser.getText().Trim()))
+				{
+					focusLoginField(true);
+					GameCanvas.startOKDlg(mResources.userBlank);
+					return;
+				}
+				if (string.IsNullOrEmpty(tfPass.getText()))
+				{
+					focusLoginField(false);
+					GameCanvas.startOKDlg(mResources.passwordBlank);
+					return;
+				}
+				Rms.saveRMSString("acc", tfUser.getText().Trim());
+				Rms.saveRMSString("pass", tfPass.getText());
+				editingSwitchedAccount = false;
+				GameCanvas.endDlg();
+				GameCanvas.serverScreen.switchToMe();
+				return;
+			}
+			if (!allowLoginFromPlayButton()) return;
 			sessionReplaced = false;
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
 			Rms.saveRMSString("pass", tfPass.getText().Trim());
@@ -1149,18 +1210,6 @@ public class LoginScr : mScreen, IActionListener
 
 	public void backToRegister()
 	{
-		GameCanvas.timeBreakLoading = mSystem.currentTimeMillis() + 30000;
-		ServerListScreen.countDieConnect = 0;
-		if (GameCanvas.loginScr.isLogin2)
-		{
-			GameCanvas.startYesNoDlg(mResources.note, new Command(mResources.YES, GameCanvas.panel, 10019, null), new Command(mResources.NO, GameCanvas.panel, 10020, null));
-			return;
-		}
-		if (Main.isWindowsPhone)
-		{
-			GameMidlet.isBackWindowsPhone = true;
-		}
-		GameCanvas.instance.resetToLoginScr = false;
-		GameCanvas.instance.doResetToLoginScr(GameCanvas.loginScr);
+		GameCanvas.instance.switchAccount();
 	}
 }
