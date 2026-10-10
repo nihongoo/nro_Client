@@ -583,7 +583,10 @@ public class ServerListScreen : mScreen, IActionListener
 				{
 					continue;
 				}
-				if (testConnect == -1 || testConnect == 0)
+				// Play connects on demand; account switching must also work while offline.
+				if ((testConnect == -1 || testConnect == 0)
+					&& cmd[i].idAction != 3 && cmd[i].idAction != 11
+					&& cmd[i].idAction != 10100 && cmd[i].idAction != 7)
 				{
 					if (cmd[i].caption.IndexOf(mResources.server) != -1)
 					{
