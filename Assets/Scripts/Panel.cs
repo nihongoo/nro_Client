@@ -9390,7 +9390,7 @@ public class Panel : IActionListener, IChatable
         }
         if (idAction == 10031)
         {
-            Session_ME.gI().close();
+            GameCanvas.menu.showMenu = false;
         }
         if (idAction == 11000)
         {
