@@ -8798,7 +8798,6 @@ public class Panel : IActionListener, IChatable
                 else
                 {
                     myVector.addElement(new Command(mResources.GETOUT, this, 1000, item));
-                    myVector.addElement(new Command(mResources.USE, this, 2000, item));
                 }
                 currItem = item;
             }
@@ -11046,7 +11045,6 @@ public class Panel : IActionListener, IChatable
             else
             {
                 myVector.addElement(new Command(mResources.GETOUT, this, 1000, item));
-                myVector.addElement(new Command(mResources.USE, this, 2000, item));
             }
             currItem = item;
         }
