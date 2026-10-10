@@ -804,13 +804,33 @@ public class ServerListScreen : mScreen, IActionListener
 		}
 		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
 		if ((idAction == 3 || idAction == 11 || idAction == 10100) && !LoginScr.allowLoginFromPlayButton()) return;
-		if (idAction == 3 || idAction == 11 || idAction == 10100) LoginScr.sessionReplaced = false;
+		if (idAction == 3 || idAction == 11 || idAction == 10100)
+		{
+			LoginScr.sessionReplaced = false;
+			stopDownload = false;
+		}
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
 		{
 			GameCanvas.connect();
 		}
-		if (idAction == 1 || idAction == 4)
+		if (idAction == 4)
+		{
+			stopDownload = true;
+			isAutoConect = false;
+			countDieConnect = 0;
+			testConnect = 0;
+			isGetData = false;
+			demPercent = 0;
+			percent = 0;
+			Controller.isLoadingData = false;
+			Session_ME.gI().close();
+			GameCanvas.endDlg();
+			loadScreen = true;
+			switchToMe();
+			return;
+		}
+		if (idAction == 1)
 		{
 			Session_ME.gI().close();
 			isAutoConect = false;
