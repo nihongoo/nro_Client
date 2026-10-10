@@ -8873,8 +8873,7 @@ public class Panel : IActionListener, IChatable
         }
         if (idAction == 170391)
         {
-            Rms.clearAll();
-            if (mGraphics.zoomLevel > 1)
+            if (Rms.loadRMSInt("levelScreenKN") != 1)
             {
                 Rms.saveRMSInt("levelScreenKN", 1);
             }
@@ -10157,7 +10156,7 @@ public class Panel : IActionListener, IChatable
             case 3:
                 if (Main.isPC)
                 {
-                    GameCanvas.startYesNoDlg(mResources.changeSizeScreen, new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
+                    GameCanvas.startYesNoDlg("Đổi kích thước màn hình? Game sẽ thoát. Hãy mở lại để áp dụng cấu hình mới.", new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
                 }
                 else
                 {
@@ -10167,7 +10166,7 @@ public class Panel : IActionListener, IChatable
             case 4:
                 if (Main.isPC)
                 {
-                    GameCanvas.startYesNoDlg(mResources.changeSizeScreen, new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
+                    GameCanvas.startYesNoDlg("Đổi kích thước màn hình? Game sẽ thoát. Hãy mở lại để áp dụng cấu hình mới.", new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
                 }
                 else
                 {
