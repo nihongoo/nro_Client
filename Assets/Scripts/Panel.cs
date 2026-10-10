@@ -9530,14 +9530,10 @@ public class Panel : IActionListener, IChatable
             }
             else if (chatTField.strChat == mResources.input_money_to_trade)
             {
-                int num2 = 0;
-                try
+                int num2;
+                if (!int.TryParse(chatTField.tfChat.getText(), out num2) || num2 <= 0)
                 {
-                    num2 = int.Parse(chatTField.tfChat.getText());
-                }
-                catch (Exception)
-                {
-                    GameCanvas.startOKDlg(mResources.input_money_wrong);
+                    GameCanvas.startOKDlg("Số tiền không hợp lệ. Nhập số nguyên lớn hơn 0.");
                     chatTField.isShow = false;
                     chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
                     return;
