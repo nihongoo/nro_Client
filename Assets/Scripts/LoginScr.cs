@@ -141,6 +141,7 @@ public class LoginScr : mScreen, IActionListener
 	private string pendingUser, pendingPassword;
 	private sbyte pendingLoginType;
 	private bool pendingGuestCreation;
+	private bool editingSwitchedAccount;
 
 	public static void requireManualLogin()
 	{
@@ -449,12 +450,14 @@ public class LoginScr : mScreen, IActionListener
 
 	public void prepareAccountSwitch()
 	{
+		editingSwitchedAccount = true;
 		isLogin2 = false;
 		isRes = false;
 		tfUser.setText(string.Empty);
 		tfPass.setText(string.Empty);
 		tfUser.isPaintCarret = true;
 		tfPass.isPaintCarret = true;
+		cmdOK.caption = "Lưu";
 		center = cmdOK;
 		left = cmdMenu;
 	}
@@ -1127,6 +1130,27 @@ public class LoginScr : mScreen, IActionListener
 			actRegister();
 			break;
 		case 2008:
+			if (editingSwitchedAccount)
+			{
+				if (string.IsNullOrEmpty(tfUser.getText().Trim()))
+				{
+					focusLoginField(true);
+					GameCanvas.startOKDlg(mResources.userBlank);
+					return;
+				}
+				if (string.IsNullOrEmpty(tfPass.getText()))
+				{
+					focusLoginField(false);
+					GameCanvas.startOKDlg(mResources.passwordBlank);
+					return;
+				}
+				Rms.saveRMSString("acc", tfUser.getText().Trim());
+				Rms.saveRMSString("pass", tfPass.getText());
+				editingSwitchedAccount = false;
+				GameCanvas.endDlg();
+				GameCanvas.serverScreen.switchToMe();
+				return;
+			}
 			if (!allowLoginFromPlayButton()) return;
 			sessionReplaced = false;
 			Rms.saveRMSString("acc", tfUser.getText().Trim());
