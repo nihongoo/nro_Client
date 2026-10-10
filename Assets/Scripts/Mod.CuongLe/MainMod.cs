@@ -31,6 +31,8 @@ namespace Mod.CuongLe
 
     	public static string account;
 
+        private static string accountManagerNotice;
+
     	public static string password;
 
     	public static int int_1;
@@ -1606,9 +1608,14 @@ namespace Mod.CuongLe
 
     	public static void GetLoginDataFromAccountManager()
     	{
+            string[] launchArgs = Environment.GetCommandLineArgs();
+            // Ordinary launches (including Unity's own flags) are not Account Manager requests.
+            if (launchArgs.Length < 2 || launchArgs[1].IndexOf('|') < 0) return;
     		try
     		{
-    			string[] array = Environment.GetCommandLineArgs()[1].Split('|');
+                string[] array = launchArgs[1].Split('|');
+                if (array.Length < 4 || string.IsNullOrWhiteSpace(array[1]))
+                    throw new FormatException();
     			account = array[1];
     			server = int.Parse(array[2]);
     			password = DecryptString(array[3], "ud");
@@ -1617,8 +1624,20 @@ namespace Mod.CuongLe
     		catch
     		{
     			account = "";
+                Interlocked.Exchange(ref accountManagerNotice,
+                    "Account Manager: thông tin khởi chạy không hợp lệ. Vui lòng kiểm tra launcher hoặc đăng nhập thủ công.");
     		}
     	}
+
+        public static void ShowAccountManagerNotice()
+        {
+            // Display on the game/UI thread and wait until the initial screens are ready.
+            if (GameCanvas.currentDialog != null || LoginScr.isLoggingIn
+                || !(GameCanvas.currentScreen is LoginScr || GameCanvas.currentScreen is ServerListScreen
+                    || GameCanvas.currentScreen is ServerScr)) return;
+            string notice = Interlocked.Exchange(ref accountManagerNotice, null);
+            if (notice != null) GameCanvas.startOKDlg(notice);
+        }
 
     	public static void Login()
     	{
