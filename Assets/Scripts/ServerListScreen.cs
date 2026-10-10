@@ -904,7 +904,7 @@ public class ServerListScreen : mScreen, IActionListener
 			{
 				GameCanvas.loginScr = new LoginScr();
 			}
-			GameCanvas.loginScr.switchToMe();
+			GameCanvas.loginScr.backToRegister();
 		}
 		if (idAction == 8)
 		{
