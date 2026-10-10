@@ -707,6 +707,36 @@ public class TileMap
         }
     }
 
+    public static MovePoint getSafeBossApproachPoint(int x, int y, int previousY)
+    {
+        if (types == null || tmw <= 0 || tmh <= 0 || types.Length < tmw * tmh)
+        {
+            return new MovePoint(x, y);
+        }
+        int width = tmw * size;
+        int height = tmh * size;
+        int margin = System.Math.Min(size, (width - 1) / 2);
+        x = System.Math.Max(margin, System.Math.Min(x, width - margin - 1));
+        y = System.Math.Max(0, System.Math.Min(y, height - size));
+        int column = x / size;
+        int row = y / size;
+        if ((types[row * tmw + column] & 2) != 0)
+        {
+            while (row > 0 && (types[(row - 1) * tmw + column] & 2) != 0) row--;
+            y = row * size;
+        }
+        int startRow = System.Math.Max(0, System.Math.Min(previousY, y) / size);
+        for (int i = startRow; i <= y / size; i++)
+        {
+            if ((types[i * tmw + column] & 2) != 0)
+            {
+                y = System.Math.Min(y, i * size);
+                break;
+            }
+        }
+        return new MovePoint(x, y);
+    }
+
     public static int tileTypeAt(int x, int y)
     {
         try
