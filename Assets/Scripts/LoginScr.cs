@@ -447,6 +447,18 @@ public class LoginScr : mScreen, IActionListener
 		base.switchToMe();
 	}
 
+	public void prepareAccountSwitch()
+	{
+		isLogin2 = false;
+		isRes = false;
+		tfUser.setText(string.Empty);
+		tfPass.setText(string.Empty);
+		tfUser.isPaintCarret = true;
+		tfPass.isPaintCarret = true;
+		center = cmdOK;
+		left = cmdMenu;
+	}
+
 	public void setUserPass()
 	{
 		string text = Rms.loadRMSString("acc");

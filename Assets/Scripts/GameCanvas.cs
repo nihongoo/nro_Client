@@ -1007,7 +1007,10 @@ public class GameCanvas : IActionListener
 		isLoading = false;
 		Controller.isLoadingData = false;
 		endDlg();
-		doResetToLoginScr(serverScreen);
+		if (loginScr == null) loginScr = new LoginScr();
+		loginScr.prepareAccountSwitch();
+		doResetToLoginScr(loginScr);
+		loginScr.focusLoginField(true);
 		ServerListScreen.isAutoConect = false;
 		ServerListScreen.waitToLogin = ServerListScreen.isWait = false;
 		ServerListScreen.flagServer = 0;
