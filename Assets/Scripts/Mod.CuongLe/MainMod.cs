@@ -32,6 +32,24 @@ namespace Mod.CuongLe
     	public static string account;
 
         private static string accountManagerNotice;
+        private static readonly object accountManagerLoginLock = new object();
+        private static volatile bool accountManagerLoginStopped;
+
+        public static void StopAccountManagerLogin()
+        {
+            // Wait for an in-flight launcher action before clearing game/session state.
+            lock (accountManagerLoginLock) accountManagerLoginStopped = true;
+        }
+
+        private static bool RunAccountManagerAction(Action action)
+        {
+            lock (accountManagerLoginLock)
+            {
+                if (accountManagerLoginStopped) return false;
+                action();
+                return true;
+            }
+        }
 
     	public static string password;
 
@@ -1608,6 +1626,7 @@ namespace Mod.CuongLe
 
     	public static void GetLoginDataFromAccountManager()
     	{
+            if (accountManagerLoginStopped) return;
             string[] launchArgs = Environment.GetCommandLineArgs();
             // Ordinary launches (including Unity's own flags) are not Account Manager requests.
             if (launchArgs.Length < 2 || launchArgs[1].IndexOf('|') < 0) return;
@@ -1619,7 +1638,7 @@ namespace Mod.CuongLe
     			account = array[1];
     			server = int.Parse(array[2]);
     			password = DecryptString(array[3], "ud");
-    			new Thread(Login).Start();
+                RunAccountManagerAction(() => new Thread(Login).Start());
     		}
     		catch
     		{
@@ -1642,49 +1661,67 @@ namespace Mod.CuongLe
     	public static void Login()
     	{
     		Thread.Sleep(1000);
-    		while (true)
+            if (accountManagerLoginStopped) return;
+            while (!accountManagerLoginStopped)
     		{
     			try
     			{
     				if (string.IsNullOrEmpty(Char.myCharz().cName))
     				{
     					Thread.Sleep(100);
-    					while (!ServerListScreen.loadScreen)
+                        if (accountManagerLoginStopped) return;
+                        while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
     					{
     						Thread.Sleep(10);
+                            if (accountManagerLoginStopped) return;
     					}
     					Thread.Sleep(500);
+                        if (accountManagerLoginStopped) return;
+                        if (!RunAccountManagerAction(() =>
+                        {
     					Rms.saveRMSString("acc", "Cuong Le");
     					Rms.saveRMSString("pass", "fuckyou");
+                        })) return;
     					Thread.Sleep(500);
+                        if (accountManagerLoginStopped) return;
+                        if (!RunAccountManagerAction(() =>
+                        {
     					Rms.saveRMSInt("svselect", server - 1);
     					ServerListScreen.ipSelect = server - 1;
+                        })) return;
     					if (server <= 20)
     					{
-    						GameCanvas.serverScreen.selectServer();
-    						while (!ServerListScreen.loadScreen)
+                            if (!RunAccountManagerAction(() => GameCanvas.serverScreen.selectServer())) return;
+                            while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
     						{
     							Thread.Sleep(10);
+                                if (accountManagerLoginStopped) return;
     						}
-    						while (!Session_ME.gI().isConnected())
+                            while (!Session_ME.gI().isConnected() && !accountManagerLoginStopped)
     						{
     							Thread.Sleep(100);
+                                if (accountManagerLoginStopped) return;
     						}
     						Thread.Sleep(100);
-    						while (!ServerListScreen.loadScreen)
+                            if (accountManagerLoginStopped) return;
+                            while (!ServerListScreen.loadScreen && !accountManagerLoginStopped)
     						{
     							Thread.Sleep(10);
+                                if (accountManagerLoginStopped) return;
     						}
     					}
     					Thread.Sleep(1000);
-    					GameCanvas.serverScreen.perform(3, null);
+                        if (accountManagerLoginStopped) return;
+                        if (!RunAccountManagerAction(() => GameCanvas.serverScreen.perform(3, null))) return;
     					Thread.Sleep(1000);
+                        if (accountManagerLoginStopped) return;
     					GameCanvas.gameTick = 0;
     					loginAgain = true;
     					for (int num = 36; num >= 6; num--)
     					{
     						LasterLogin = num;
     						Thread.Sleep(1000);
+                            if (accountManagerLoginStopped) return;
     					}
     				}
     			}
@@ -1695,6 +1732,7 @@ namespace Mod.CuongLe
     			{
     				LasterLogin = num2;
     				Thread.Sleep(1000);
+                    if (accountManagerLoginStopped) return;
     			}
     		}
     	}
