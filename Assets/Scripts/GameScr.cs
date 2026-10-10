@@ -2532,7 +2532,10 @@ public class GameScr : mScreen, IChatable
                 {
                     num16 = 0;
                 }
-                Char.myCharz().currentMovePoint = new MovePoint(Char.myCharz().charFocus.cx + num16, Char.myCharz().charFocus.cy);
+                Char target = Char.myCharz().charFocus;
+                Char.myCharz().currentMovePoint = target.charID < 0
+                    ? TileMap.getSafeBossApproachPoint(target.cx + num16, target.cy, Char.myCharz().cy)
+                    : new MovePoint(target.cx + num16, target.cy);
                 Char.myCharz().endMovePointCommand = new Command(null, null, 8002, null);
                 GameCanvas.clearKeyHold();
                 GameCanvas.clearKeyPressed();
