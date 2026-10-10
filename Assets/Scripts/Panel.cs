@@ -7607,7 +7607,7 @@ public class Panel : IActionListener, IChatable
                     {
                         myVector.addElement(new Command("Auto\nSử Dụng", AutoItem.getInstance(), 1, new AutoItem.Item(currItem.template.id, currItem.template.name)));
                     }
-                    if (currItem.template.id != 455 || currItem.template.id != 194)
+                    if (AutoVutDo.CanAutoDiscard(currItem.template.id))
                     {
                         if (!AutoVutDo.listVutDo.Contains(currItem.template.id))
                         {
@@ -8593,8 +8593,8 @@ public class Panel : IActionListener, IChatable
             if (cTiemNang >= 10 * (2 * (cMPGoc + num2) + 180) / 2 && cTiemNang < 100 * (2 * (cMPGoc + num2) + 1980) / 2)
             {
                 MyVector myVector4 = new MyVector(string.Empty);
-                myVector4.addElement(new Command(mResources.increase_upper + "\n" + Char.myCharz().mpFrom1000TiemNang + mResources.KI + "\n-" + Res.formatNumber2(cHPGoc + num2), this, 9000, null));
-                myVector4.addElement(new Command(mResources.increase_upper + "\n" + 10 * Char.myCharz().mpFrom1000TiemNang + mResources.KI + "\n-" + Res.formatNumber2(10 * (2 * (cHPGoc + num2) + 180) / 2), this, 9006, null));
+                myVector4.addElement(new Command(mResources.increase_upper + "\n" + Char.myCharz().mpFrom1000TiemNang + mResources.KI + "\n-" + Res.formatNumber2(cMPGoc + num2), this, 9000, null));
+                myVector4.addElement(new Command(mResources.increase_upper + "\n" + 10 * Char.myCharz().mpFrom1000TiemNang + mResources.KI + "\n-" + Res.formatNumber2(10 * (2 * (cMPGoc + num2) + 180) / 2), this, 9006, null));
                 GameCanvas.menu.startAt(myVector4, X, (selected + 1) * ITEM_HEIGHT - cmy + yScroll);
                 addSkillDetail2(selected);
             }
@@ -8798,7 +8798,6 @@ public class Panel : IActionListener, IChatable
                 else
                 {
                     myVector.addElement(new Command(mResources.GETOUT, this, 1000, item));
-                    myVector.addElement(new Command(mResources.USE, this, 2000, item));
                 }
                 currItem = item;
             }
@@ -8873,8 +8872,7 @@ public class Panel : IActionListener, IChatable
         }
         if (idAction == 170391)
         {
-            Rms.clearAll();
-            if (mGraphics.zoomLevel > 1)
+            if (Rms.loadRMSInt("levelScreenKN") != 1)
             {
                 Rms.saveRMSInt("levelScreenKN", 1);
             }
@@ -9391,7 +9389,7 @@ public class Panel : IActionListener, IChatable
         }
         if (idAction == 10031)
         {
-            Session_ME.gI().close();
+            GameCanvas.menu.showMenu = false;
         }
         if (idAction == 11000)
         {
@@ -9532,14 +9530,10 @@ public class Panel : IActionListener, IChatable
             }
             else if (chatTField.strChat == mResources.input_money_to_trade)
             {
-                int num2 = 0;
-                try
+                int num2;
+                if (!int.TryParse(chatTField.tfChat.getText(), out num2) || num2 <= 0)
                 {
-                    num2 = int.Parse(chatTField.tfChat.getText());
-                }
-                catch (Exception)
-                {
-                    GameCanvas.startOKDlg(mResources.input_money_wrong);
+                    GameCanvas.startOKDlg("Số tiền không hợp lệ. Nhập số nguyên lớn hơn 0.");
                     chatTField.isShow = false;
                     chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
                     return;
@@ -9594,23 +9588,25 @@ public class Panel : IActionListener, IChatable
             }
             else if (chatTField.strChat.Equals(mResources.input_quantity + " "))
             {
-                currItem.quantilyToBuy = int.Parse(chatTField.tfChat.getText());
-                if (currItem.quantilyToBuy > currItem.quantity)
+                int quantity;
+                if (!int.TryParse(chatTField.tfChat.getText(), out quantity) || quantity <= 0 || quantity > currItem.quantity)
                 {
-                    GameCanvas.startOKDlg(mResources.input_quantity_wrong);
+                    GameCanvas.startOKDlg("Số lượng phải là số nguyên từ 1 đến " + currItem.quantity + ".");
                     return;
                 }
+                currItem.quantilyToBuy = quantity;
                 isKiguiXu = true;
                 chatTField.isShow = false;
             }
             else if (chatTField.strChat.Equals(mResources.input_quantity + "  "))
             {
-                currItem.quantilyToBuy = int.Parse(chatTField.tfChat.getText());
-                if (currItem.quantilyToBuy > currItem.quantity)
+                int quantity;
+                if (!int.TryParse(chatTField.tfChat.getText(), out quantity) || quantity <= 0 || quantity > currItem.quantity)
                 {
-                    GameCanvas.startOKDlg(mResources.input_quantity_wrong);
+                    GameCanvas.startOKDlg("Số lượng phải là số nguyên từ 1 đến " + currItem.quantity + ".");
                     return;
                 }
+                currItem.quantilyToBuy = quantity;
                 isKiguiLuong = true;
                 chatTField.isShow = false;
             }
@@ -10157,7 +10153,7 @@ public class Panel : IActionListener, IChatable
             case 3:
                 if (Main.isPC)
                 {
-                    GameCanvas.startYesNoDlg(mResources.changeSizeScreen, new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
+                    GameCanvas.startYesNoDlg("Đổi kích thước màn hình? Game sẽ thoát. Hãy mở lại để áp dụng cấu hình mới.", new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
                 }
                 else
                 {
@@ -10167,7 +10163,7 @@ public class Panel : IActionListener, IChatable
             case 4:
                 if (Main.isPC)
                 {
-                    GameCanvas.startYesNoDlg(mResources.changeSizeScreen, new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
+                    GameCanvas.startYesNoDlg("Đổi kích thước màn hình? Game sẽ thoát. Hãy mở lại để áp dụng cấu hình mới.", new Command(mResources.YES, this, 170391, null), new Command(mResources.NO, this, 4005, null));
                 }
                 else
                 {
@@ -11047,7 +11043,6 @@ public class Panel : IActionListener, IChatable
             else
             {
                 myVector.addElement(new Command(mResources.GETOUT, this, 1000, item));
-                myVector.addElement(new Command(mResources.USE, this, 2000, item));
             }
             currItem = item;
         }
