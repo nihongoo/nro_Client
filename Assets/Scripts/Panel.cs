@@ -9592,23 +9592,25 @@ public class Panel : IActionListener, IChatable
             }
             else if (chatTField.strChat.Equals(mResources.input_quantity + " "))
             {
-                currItem.quantilyToBuy = int.Parse(chatTField.tfChat.getText());
-                if (currItem.quantilyToBuy > currItem.quantity)
+                int quantity;
+                if (!int.TryParse(chatTField.tfChat.getText(), out quantity) || quantity <= 0 || quantity > currItem.quantity)
                 {
-                    GameCanvas.startOKDlg(mResources.input_quantity_wrong);
+                    GameCanvas.startOKDlg("Số lượng phải là số nguyên từ 1 đến " + currItem.quantity + ".");
                     return;
                 }
+                currItem.quantilyToBuy = quantity;
                 isKiguiXu = true;
                 chatTField.isShow = false;
             }
             else if (chatTField.strChat.Equals(mResources.input_quantity + "  "))
             {
-                currItem.quantilyToBuy = int.Parse(chatTField.tfChat.getText());
-                if (currItem.quantilyToBuy > currItem.quantity)
+                int quantity;
+                if (!int.TryParse(chatTField.tfChat.getText(), out quantity) || quantity <= 0 || quantity > currItem.quantity)
                 {
-                    GameCanvas.startOKDlg(mResources.input_quantity_wrong);
+                    GameCanvas.startOKDlg("Số lượng phải là số nguyên từ 1 đến " + currItem.quantity + ".");
                     return;
                 }
+                currItem.quantilyToBuy = quantity;
                 isKiguiLuong = true;
                 chatTField.isShow = false;
             }
