@@ -799,7 +799,7 @@ public class GameCanvas : IActionListener
 
 	public void onDisconnected()
 	{
-		if (LoginScr.sessionReplaced) return;
+		if (LoginScr.sessionReplaced || LoginScr.manualLoginRequired) return;
 		if (LoginScr.failLoginAttempt("Mất kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (CustomServerAddress.HandleConnectionFailure("Mất kết nối tới máy chủ.")) return;
 		if (Controller.isConnectionFail)
@@ -838,7 +838,7 @@ public class GameCanvas : IActionListener
 
 	public void onConnectionFail()
 	{
-		if (LoginScr.sessionReplaced) return;
+		if (LoginScr.sessionReplaced || LoginScr.manualLoginRequired) return;
 		if (LoginScr.failLoginAttempt("Không thể kết nối tới máy chủ. Kiểm tra mạng rồi thử lại.")) return;
 		if (CustomServerAddress.HandleConnectionFailure("Không thể kết nối tới máy chủ.")) return;
 		if (currentScreen.Equals(SplashScr.instance))
@@ -997,6 +997,24 @@ public class GameCanvas : IActionListener
 	{
 	}
 
+	public void switchAccount()
+	{
+		LoginScr.requireManualLogin();
+		// Cancels endpoint deadlines and advances the network generation before clearing callbacks.
+		CustomServerAddress.CloseConnection();
+		resetToLoginScr = false;
+		Char.isLoadingMap = false;
+		isLoading = false;
+		Controller.isLoadingData = false;
+		endDlg();
+		doResetToLoginScr(serverScreen);
+		ServerListScreen.isAutoConect = false;
+		ServerListScreen.waitToLogin = ServerListScreen.isWait = false;
+		ServerListScreen.flagServer = 0;
+		clearAllPointerEvent();
+		clearKeyPressed();
+	}
+
 	public void doResetToLoginScr(mScreen screen)
 	{
 		LoginScr.finishLoginAttempt();
@@ -1050,7 +1068,7 @@ public class GameCanvas : IActionListener
 		{
 			Cout.println("Loi tai doResetToLoginScr " + ex.ToString());
 		}
-		ServerListScreen.isAutoConect = true;
+		ServerListScreen.isAutoConect = !LoginScr.manualLoginRequired;
 		ServerListScreen.countDieConnect = 0;
 		ServerListScreen.testConnect = -1;
 		ServerListScreen.loadScreen = true;

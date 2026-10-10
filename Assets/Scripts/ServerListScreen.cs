@@ -447,6 +447,11 @@ public class ServerListScreen : mScreen, IActionListener
 
 	public override void update()
 	{
+		if (LoginScr.manualLoginRequired)
+		{
+			waitToLogin = isWait = isAutoConect = false;
+			flagServer = 0;
+		}
 		if (GameCanvas.currentDialog is CustomServerDialog) return;
 		if (waitToLogin)
 		{
@@ -795,6 +800,7 @@ public class ServerListScreen : mScreen, IActionListener
 			return;
 		}
 		if (LoginScr.isLoggingIn && (idAction == 3 || idAction == 11 || idAction == 10100)) return;
+		if ((idAction == 3 || idAction == 11 || idAction == 10100) && !LoginScr.allowLoginFromPlayButton()) return;
 		if (idAction == 3 || idAction == 11 || idAction == 10100) LoginScr.sessionReplaced = false;
 		Res.outz("perform " + idAction);
 		if (idAction == 1000)
