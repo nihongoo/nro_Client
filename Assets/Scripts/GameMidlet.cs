@@ -5,6 +5,10 @@ public class GameMidlet
 	// Default LAN test endpoint. Change these two constants together when needed.
 	public const string DefaultServerHost = "192.168.1.7";
 	public const int DefaultServerPort = 14445;
+	// Set these URLs when the account website is available. Empty URLs hide the actions.
+	public const string RegistrationUrl = "";
+	public const string PasswordRecoveryUrl = "";
+	public const string AccountWebsiteUrl = "";
 	public static string IP = DefaultServerHost;
 
 	public static int PORT = DefaultServerPort;
@@ -80,5 +84,31 @@ public class GameMidlet
 	{
 		Cout.LogWarning("PLATFORM REQUEST: " + url);
 		Application.OpenURL(url);
+	}
+
+	public static bool HasAccountWebPage(string url)
+	{
+		System.Uri address;
+		return System.Uri.TryCreate(url, System.UriKind.Absolute, out address)
+			&& (address.Scheme == System.Uri.UriSchemeHttp || address.Scheme == System.Uri.UriSchemeHttps)
+			&& !string.IsNullOrEmpty(address.Host);
+	}
+
+	public static void OpenAccountWebPage(string url)
+	{
+		if (!HasAccountWebPage(url))
+		{
+			GameCanvas.startOKDlg("Trang tài khoản chưa được cấu hình. Vui lòng thử lại sau.");
+			return;
+		}
+		try
+		{
+			// Never append game credentials to the website URL.
+			Application.OpenURL(url);
+		}
+		catch (System.Exception)
+		{
+			GameCanvas.startOKDlg("Không mở được trang tài khoản. Vui lòng thử lại sau.");
+		}
 	}
 }

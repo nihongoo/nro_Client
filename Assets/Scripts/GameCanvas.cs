@@ -520,6 +520,7 @@ public class GameCanvas : IActionListener
 
 	public void update()
 	{
+		Mod.CuongLe.MainMod.ShowAccountManagerNotice();
 		LoginScr.updateLoginAttempt();
 		CustomServerAddress.UpdateConnection();
 		if (mSystem.currentTimeMillis() > timefps)

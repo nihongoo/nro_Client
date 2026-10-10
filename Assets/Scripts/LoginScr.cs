@@ -131,7 +131,8 @@ public class LoginScr : mScreen, IActionListener
 
 	public static bool isLoggingIn;
 	public static bool sessionReplaced;
-	public const string ReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
+	public const string ReplacedMessage = "Tài khoản đang đăng nhập ở nơi khác";
+	public const string LegacyReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
 	public const string PreviousSessionWaitMessage = "Đang lưu phiên đăng nhập cũ, vui lòng chờ...";
 	private static Action queuedLogin;
 	private int loginStage;
@@ -363,8 +364,10 @@ public class LoginScr : mScreen, IActionListener
 		cmdFogetPass = new Command(mResources.forgetPass, this, 1003, null);
 		cmdFogetPass.x = GameCanvas.w / 2 + 3;
 		cmdFogetPass.y = cmdLogin.y;
+		cmdMenu.x = cmdFogetPass.x;
+		cmdMenu.y = cmdFogetPass.y;
 		center = cmdOK;
-		left = cmdFogetPass;
+		left = cmdMenu;
 	}
 
 	public static void getServerLink()
@@ -441,13 +444,16 @@ public class LoginScr : mScreen, IActionListener
 	protected void doMenu()
 	{
 		MyVector myVector = new MyVector();
-		myVector.addElement(new Command(mResources.registerNewAcc, this, 2004, null));
+		if (GameMidlet.HasAccountWebPage(GameMidlet.RegistrationUrl))
+			myVector.addElement(new Command("Đăng ký trên web", this, 2004, null));
 		if (!isLogin2)
 		{
 			myVector.addElement(new Command(mResources.selectServer, this, 1004, null));
 		}
-		myVector.addElement(new Command(mResources.forgetPass, this, 1003, null));
-		myVector.addElement(new Command(mResources.website, this, 1005, null));
+		if (GameMidlet.HasAccountWebPage(GameMidlet.PasswordRecoveryUrl))
+			myVector.addElement(new Command(mResources.forgetPass, this, 1003, null));
+		if (GameMidlet.HasAccountWebPage(GameMidlet.AccountWebsiteUrl))
+			myVector.addElement(new Command(mResources.website, this, 1005, null));
 		if (Main.isPC)
 		{
 			myVector.addElement(new Command(mResources.EXIT, GameCanvas.instance, 8885, null));
@@ -457,75 +463,12 @@ public class LoginScr : mScreen, IActionListener
 
 	protected void doRegister()
 	{
-		if (tfUser.getText().Equals(string.Empty))
-		{
-			GameCanvas.startOKDlg(mResources.userBlank);
-			return;
-		}
-		char[] array = tfUser.getText().ToCharArray();
-		if (tfPass.getText().Equals(string.Empty))
-		{
-			GameCanvas.startOKDlg(mResources.passwordBlank);
-			return;
-		}
-		if (tfUser.getText().Length < 5)
-		{
-			GameCanvas.startOKDlg(mResources.accTooShort);
-			return;
-		}
-		int num = 0;
-		string text = null;
-		if (mResources.language == 2)
-		{
-			if (tfUser.getText().IndexOf("@") == -1 || tfUser.getText().IndexOf(".") == -1)
-			{
-				text = mResources.emailInvalid;
-			}
-			num = 0;
-		}
-		else
-		{
-			try
-			{
-				long num2 = long.Parse(tfUser.getText());
-				if (tfUser.getText().Length < 8 || tfUser.getText().Length > 12 || (!tfUser.getText().StartsWith("0") && !tfUser.getText().StartsWith("84")))
-				{
-					text = mResources.phoneInvalid;
-				}
-				num = 1;
-			}
-			catch (Exception)
-			{
-				if (tfUser.getText().IndexOf("@") == -1 || tfUser.getText().IndexOf(".") == -1)
-				{
-					text = mResources.emailInvalid;
-				}
-				num = 0;
-			}
-		}
-		if (text != null)
-		{
-			GameCanvas.startOKDlg(text);
-		}
-		else
-		{
-			GameCanvas.msgdlg.setInfo(mResources.plsCheckAcc + ((num != 1) ? (mResources.email + ": ") : (mResources.phone + ": ")) + tfUser.getText(), new Command(mResources.ACCEPT, this, 4000, null), null, new Command(mResources.NO, GameCanvas.instance, 8882, null));
-		}
-		GameCanvas.currentDialog = GameCanvas.msgdlg;
+		GameMidlet.OpenAccountWebPage(GameMidlet.RegistrationUrl);
 	}
 
 	protected void doRegister(string user)
 	{
-		isFAQ = false;
-		GameCanvas.startWaitDlg(mResources.CONNECTING);
-		GameCanvas.connect();
-		GameCanvas.startWaitDlg(mResources.REGISTERING);
-		passRe = tfPass.getText();
-		Service.gI().requestRegister(user, tfPass.getText(), Rms.loadRMSString("userAo" + ServerListScreen.ipSelect), Rms.loadRMSString("passAo" + ServerListScreen.ipSelect), GameMidlet.VERSION);
-		Rms.saveRMSString("acc", user);
-		Rms.saveRMSString("pass", tfPass.getText());
-		t = 20;
-		isRegistering = true;
+		GameMidlet.OpenAccountWebPage(GameMidlet.RegistrationUrl);
 	}
 
 	public void doViewFAQ()
@@ -810,7 +753,7 @@ public class LoginScr : mScreen, IActionListener
 			else
 			{
 				center = cmdOK;
-				left = cmdFogetPass;
+				left = cmdMenu;
 			}
 		}
 		else if (isRes)
@@ -821,7 +764,7 @@ public class LoginScr : mScreen, IActionListener
 		else
 		{
 			center = cmdOK;
-			left = cmdFogetPass;
+			left = cmdMenu;
 		}
 		if (!Main.isPC && !TouchScreenKeyboard.visible && !Main.isMiniApp && !Main.isWindowsPhone)
 		{
@@ -1025,7 +968,7 @@ public class LoginScr : mScreen, IActionListener
 			else
 			{
 				center = cmdOK;
-				left = cmdFogetPass;
+				left = cmdMenu;
 			}
 		}
 		else if (isRes)
@@ -1036,7 +979,7 @@ public class LoginScr : mScreen, IActionListener
 		else
 		{
 			center = cmdOK;
-			left = cmdFogetPass;
+			left = cmdMenu;
 		}
 		if (GameCanvas.isPointerJustRelease && (!isLogin2 || isRes))
 		{
@@ -1115,18 +1058,11 @@ public class LoginScr : mScreen, IActionListener
 			actRegisterLeft();
 			break;
 		case 1003:
-			GameCanvas.startOKDlg(mResources.goToWebForPassword);
+			GameMidlet.OpenAccountWebPage(GameMidlet.PasswordRecoveryUrl);
 			break;
 		case 1005:
-			try
-			{
-				GameMidlet.instance.platformRequest("http://abc.com");
-				break;
-			}
-			catch (Exception)
-			{
-				break;
-			}
+			GameMidlet.OpenAccountWebPage(GameMidlet.AccountWebsiteUrl);
+			break;
 		case 10041:
 			Rms.saveRMSInt("lowGraphic", 0);
 			GameCanvas.startOK(mResources.plsRestartGame, 8885, null);
@@ -1208,10 +1144,7 @@ public class LoginScr : mScreen, IActionListener
 
 	public void actRegister()
 	{
-		GameCanvas.endDlg();
-		isRes = true;
-		tfPass.isFocus = false;
-		tfUser.isFocus = true;
+		GameMidlet.OpenAccountWebPage(GameMidlet.RegistrationUrl);
 	}
 
 	public void backToRegister()
