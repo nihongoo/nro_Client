@@ -251,6 +251,11 @@ namespace Mod.CuongLe
         {
         }
 
+        public static bool CanAutoDiscard(int idItem)
+        {
+            return idItem != 455 && idItem != 194;
+        }
+
         public static void vutItem(int IDitem)
         {
             for (int i = 0; i < Char.myCharz().arrItemBag.Length; i++)
@@ -260,7 +265,7 @@ namespace Mod.CuongLe
                     break;
                 }
                 Item item = Char.myCharz().arrItemBag[i];
-                if (item != null && item.template.id == IDitem)
+                if (item != null && item.template.id == IDitem && CanAutoDiscard(item.template.id))
                 {
                     while (Char.myCharz().isWaitMonkey)
                     {

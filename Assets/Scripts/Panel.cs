@@ -7607,7 +7607,7 @@ public class Panel : IActionListener, IChatable
                     {
                         myVector.addElement(new Command("Auto\nSử Dụng", AutoItem.getInstance(), 1, new AutoItem.Item(currItem.template.id, currItem.template.name)));
                     }
-                    if (currItem.template.id != 455 || currItem.template.id != 194)
+                    if (AutoVutDo.CanAutoDiscard(currItem.template.id))
                     {
                         if (!AutoVutDo.listVutDo.Contains(currItem.template.id))
                         {
