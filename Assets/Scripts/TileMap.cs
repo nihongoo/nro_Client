@@ -720,6 +720,20 @@ public class TileMap
         y = System.Math.Max(0, System.Math.Min(y, height - size));
         int column = x / size;
         int row = y / size;
+        // The tiles under a floor can contain visible dirt without the floor flag.
+        if (maps != null && maps.Length >= tmw * tmh)
+        {
+            int surfaceRow = -1;
+            for (int i = row; i >= 0 && maps[i * tmw + column] != 0; i--)
+            {
+                if ((types[i * tmw + column] & 2) != 0) surfaceRow = i;
+            }
+            if (surfaceRow >= 0)
+            {
+                y = surfaceRow * size;
+                row = surfaceRow;
+            }
+        }
         if ((types[row * tmw + column] & 2) != 0)
         {
             while (row > 0 && (types[(row - 1) * tmw + column] & 2) != 0) row--;

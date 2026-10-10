@@ -1493,8 +1493,26 @@ public class Char : IMapObject
     {
     }
 
+    private void correctBossTerrainPosition()
+    {
+        if (me || charID >= 0 || isPet || isMiniPet || statusMe == 14 || isLoadingMap) return;
+        MovePoint point = TileMap.getSafeBossApproachPoint(cx, cy, cy);
+        if (point.yEnd < cy)
+        {
+            cy = point.yEnd;
+            cvy = 0;
+            cyStartFall = 0;
+            if (currentMovePoint != null)
+            {
+                currentMovePoint = TileMap.getSafeBossApproachPoint(currentMovePoint.xEnd,
+                    currentMovePoint.yEnd, cy);
+            }
+        }
+    }
+
     public virtual void update()
     {
+        correctBossTerrainPosition();
         if (isMeInNRDMap() && bag >= 0 && ClanImage.idImages.containsKey(bag + string.Empty))
         {
             ClanImage clanImage = (ClanImage)ClanImage.idImages.get(bag + string.Empty);
@@ -5019,8 +5037,17 @@ public class Char : IMapObject
             skillPaint = GameScr.sks[skillPaint.id - 65];
             if (charFocus != null)
             {
-                cx = charFocus.cx;
-                cy = charFocus.cy;
+                if (me && charFocus.charID < 0)
+                {
+                    MovePoint point = TileMap.getSafeBossApproachPoint(charFocus.cx, charFocus.cy, cy);
+                    cx = point.xEnd;
+                    cy = point.yEnd;
+                }
+                else
+                {
+                    cx = charFocus.cx;
+                    cy = charFocus.cy;
+                }
                 currentMovePoint = null;
             }
             if (mobFocus != null)
@@ -6458,6 +6485,12 @@ public class Char : IMapObject
 
     public void moveTo(int toX, int toY, int type)
     {
+        if (!me && charID < 0 && !isPet && !isMiniPet)
+        {
+            MovePoint point = TileMap.getSafeBossApproachPoint(toX, toY, cy);
+            toX = point.xEnd;
+            toY = point.yEnd;
+        }
         if (type == 1 || Res.abs(toX - cx) > 100 || Res.abs(toY - cy) > 300)
         {
             createShadow(cx, cy, 10);
