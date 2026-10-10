@@ -147,7 +147,8 @@ public class SoundMn
 
 	public void getSoundOption()
 	{
-		if (GameCanvas.loginScr.isLogin2 && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId >= 2)
+		if (GameCanvas.loginScr.isLogin2 && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId >= 2
+			&& GameMidlet.HasAccountWebPage(GameMidlet.RegistrationUrl))
 		{
 			Panel.strTool = new string[10]
 			{
@@ -160,7 +161,7 @@ public class SoundMn
 				mResources.account,
 				mResources.option,
 				mResources.change_account,
-				mResources.REGISTOPROTECT
+				"Đăng ký trên web"
 			};
 			if (Char.myCharz().havePet)
 			{
@@ -176,7 +177,7 @@ public class SoundMn
 					mResources.account,
 					mResources.option,
 					mResources.change_account,
-					mResources.REGISTOPROTECT
+					"Đăng ký trên web"
 				};
 			}
 		}
@@ -642,10 +643,7 @@ public class SoundMn
 
 	public void backToRegister()
 	{
-		Session_ME.gI().close();
-		GameCanvas.panel.hide();
 		GameCanvas.loginScr.actRegister();
-		GameCanvas.loginScr.switchToMe();
 	}
 
 	public void newKame()
