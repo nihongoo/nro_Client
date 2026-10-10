@@ -128,10 +128,18 @@ public class Session_ME : ISession
 					}
 				}
 			}
+			catch (ThreadAbortException)
+			{
+				// Closing a session intentionally stops its collector.
+			}
 			catch (Exception ex3)
 			{
-				Debug.Log("error read message!");
-				Debug.Log(ex3.Message.ToString());
+				lock (networkLock)
+				{
+					if (!connected || generation != networkGeneration) return;
+					Debug.Log("error read message!");
+					Debug.Log(ex3.Message.ToString());
+				}
 			}
 			lock (networkLock)
 			{
@@ -254,9 +262,17 @@ public class Session_ME : ISession
 				}
 				return new Message(b, array);
 			}
+			catch (ThreadAbortException)
+			{
+				// Expected when the UI closes this session.
+			}
 			catch (Exception ex)
 			{
-				Debug.Log(ex.StackTrace.ToString());
+				lock (networkLock)
+				{
+					if (connected && generation == networkGeneration)
+						Debug.Log(ex.StackTrace.ToString());
+				}
 			}
 			return null;
 		}
