@@ -131,7 +131,8 @@ public class LoginScr : mScreen, IActionListener
 
 	public static bool isLoggingIn;
 	public static bool sessionReplaced;
-	public const string ReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
+	public const string ReplacedMessage = "Tài khoản đang đăng nhập ở nơi khác";
+	public const string LegacyReplacedMessage = "Tài khoản đã đăng nhập ở nơi khác";
 	public const string PreviousSessionWaitMessage = "Đang lưu phiên đăng nhập cũ, vui lòng chờ...";
 	private static Action queuedLogin;
 	private int loginStage;

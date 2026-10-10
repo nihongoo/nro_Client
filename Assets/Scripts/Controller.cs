@@ -2611,7 +2611,7 @@ public class Controller : IMessageHandler
 			case -26:
 			{
 				string loginMessage = msg.reader().readUTF();
-				if (loginMessage == LoginScr.ReplacedMessage)
+				if (loginMessage == LoginScr.ReplacedMessage || loginMessage == LoginScr.LegacyReplacedMessage)
 				{
 					GameCanvas.onSessionReplaced();
 					break;
