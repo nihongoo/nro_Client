@@ -23,20 +23,20 @@ namespace Notifications
 
         public static Rect BellBounds()
         {
-            int size = TouchSize;
+            int size = Mathf.Max(36, TouchSize); // Keep the bell and readable badge inside one touch target.
             InfoMe info = GameScr.info2;
             int key = GameCanvas.w * 397 ^ GameCanvas.h ^ size * 31 ^ Char.vItemTime.size() * 71 ^
                 GameScr.textTime.size() * 97 ^ (DoHoa.HienThiLogo ? 1 : 0) ^
                 (GameScr.gI().popUpYesNo != null ? 13 : 0) ^ info.cmx * 17 ^ info.cmy * 19;
             if (hasLayout && key == cachedKey && cachedBell.width > 0 && IsFree(cachedBell)) return cachedBell;
             hasLayout = true; cachedKey = key;
-            int start = GameScr.imgPanel.getWidth() + DoHoa.imgSetting.getWidth() + DoHoa.imgBoxOpenItem.getWidth() + 20;
-            // Prefer the existing mod button cluster; search around occupied HUD rectangles if needed.
-            for (int y = 3; y + size < GameCanvas.h - 55; y += 4)
-                for (int x = start; x + size < GameCanvas.w - 4; x += 4)
-                    if (IsFree(new Rect(x, y, size, size))) return cachedBell = new Rect(x, y, size, size);
-            for (int y = 3; y + size < GameCanvas.h - 55; y += 4)
-                for (int x = 4; x + size < GameCanvas.w - 4; x += 4)
+            // Anchor at the upper right, below the existing chat/target HUD strip.
+            int right = GameCanvas.w - size - 8;
+            for (int y = 46; y + size < GameCanvas.h - 55; y += 4)
+                if (right >= 4 && IsFree(new Rect(right, y, size, size))) return cachedBell = new Rect(right, y, size, size);
+            // If that column is occupied, retain the closest free position on the right half.
+            for (int y = 46; y + size < GameCanvas.h - 55; y += 4)
+                for (int x = right - 4; x >= GameCanvas.w / 2; x -= 4)
                     if (IsFree(new Rect(x, y, size, size))) return cachedBell = new Rect(x, y, size, size);
             return cachedBell = new Rect(); // Never steal the hitbox of an existing control on an unsupported tiny viewport.
         }

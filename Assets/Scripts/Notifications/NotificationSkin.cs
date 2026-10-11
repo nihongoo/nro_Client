@@ -2,16 +2,18 @@ namespace Notifications
 {
     internal static class NotificationSkin
     {
-        private static Image bellIcon, closeIcon;
+        private static Image bellIcon, closeIcon, badgeIcon;
         private static int assetZoom = -1;
         internal static Image BellIcon { get { LoadIcons(); return bellIcon; } }
+        internal static Image BadgeIcon { get { LoadIcons(); return badgeIcon; } }
         internal static Image CloseIcon { get { LoadIcons(); return closeIcon; } }
 
         private static void LoadIcons()
         {
-            if (assetZoom == mGraphics.zoomLevel && bellIcon != null && closeIcon != null) return;
+            if (assetZoom == mGraphics.zoomLevel && bellIcon != null && closeIcon != null && badgeIcon != null) return;
             bellIcon = GameCanvas.loadImage("/mainImage/notification-bell.png");
             closeIcon = GameCanvas.loadImage("/mainImage/myTexture2dbtX.png");
+            badgeIcon = GameCanvas.loadImage("/mainImage/notification-badge.png");
             assetZoom = mGraphics.zoomLevel;
         }
 
