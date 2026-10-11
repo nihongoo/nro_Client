@@ -56,6 +56,7 @@ namespace Notifications
                     bell.Contains(new Vector2(GameCanvas.px, GameCanvas.py)))
                 {
                     IsOpen = true; tab = 0; scroll = 0; dragging = false;
+                    UpdateLayout(size);
                     Consume();
                 }
                 backDown = escape;
@@ -64,7 +65,6 @@ namespace Notifications
             consumedTick = GameCanvas.gameTick;
             if (escape && !backDown || GameCanvas.keyPressed[13]) { Close(); backDown = escape; return; }
             backDown = escape;
-            EnsureRows();
             Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
             if (GameCanvas.isPointerJustRelease)
             {
@@ -110,8 +110,12 @@ namespace Notifications
         private static void UpdateLayout(int touchSize)
         {
             const int padding = 10, gap = 6;
-            int width = System.Math.Min(380, GameCanvas.w - 12), height = System.Math.Min(300, GameCanvas.h - 12);
-            window = new Rect((GameCanvas.w - width) / 2, (GameCanvas.h - height) / 2, width, height);
+            // Keep the panel at the bell, on the right side, rather than covering the screen center.
+            int width = System.Math.Min(GameCanvas.w - 12, System.Math.Min(320, System.Math.Max(180, GameCanvas.w * 45 / 100)));
+            int x = System.Math.Max(6, System.Math.Min(GameCanvas.w - width - 6, (int)bell.xMax - width));
+            int y = System.Math.Max(6, System.Math.Min(GameCanvas.h - 6, (int)bell.y));
+            int maxHeight = System.Math.Min(300, GameCanvas.h - y - 6);
+            window = new Rect(x, y, width, maxHeight);
             closeButton = new Rect(window.xMax - padding - touchSize, window.y + padding, touchSize, touchSize);
             int tabHeight = System.Math.Max(30, touchSize);
             int tabWidth = (width - padding * 2 - gap) / 2;
@@ -119,14 +123,19 @@ namespace Notifications
             for (int i = 0; i < tabs.Length; i++)
                 tabs[i] = new Rect(window.x + padding + i * (tabWidth + gap), tabY, tabWidth, tabHeight);
             float contentY = tabY + tabHeight + 8;
-            content = new Rect(window.x + padding, contentY, width - padding * 2,
-                System.Math.Max(0, (int)(window.yMax - padding - contentY)));
+            content = new Rect(window.x + padding, contentY, width - padding * 2, 0);
+            // Measure wrapped rows at the final width before sizing the panel; Server can still scroll.
+            EnsureRows();
+            int headerHeight = (int)(contentY - window.y) + padding;
+            window.height = System.Math.Min(maxHeight, headerHeight + System.Math.Max(20, contentHeight + 3));
+            content.height = System.Math.Max(0, (int)(window.yMax - padding - contentY));
+            scroll = System.Math.Max(0, System.Math.Min(scroll, System.Math.Max(0, contentHeight - (int)content.height)));
         }
 
         public static void Paint(mGraphics g)
         {
             if (!IsOpen || !CanUse) return;
-            EnsureRows();
+            UpdateLayout(NotificationHudLayout.TouchSize);
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             NotificationSkin.PaintFrame(g, x, y, w, h, false);
@@ -170,7 +179,6 @@ namespace Notifications
                 string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)content.width - 8));
                 rows.Add(lines); contentHeight += lines.Length * 12 + 8;
             }
-            scroll = System.Math.Max(0, System.Math.Min(scroll, System.Math.Max(0, contentHeight - (int)content.height)));
         }
     }
 }
