@@ -720,14 +720,7 @@ public class ChatPopup : Effect2, IActionListener
             catch (Exception)
             {
             }
-            if (!Main.isPC)
-            {
-                GameMidlet.instance.notifyDestroyed();
-            }
-            else
-            {
-                idAction = 1001;
-            }
+            idAction = 1001;
             GameCanvas.endDlg();
         }
         if (idAction == 1001)
