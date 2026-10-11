@@ -556,7 +556,7 @@ namespace Mod.CuongLe
                     for (int i = 0; i < Char.myCharz().arrItemBag.Length; i++)
                     {
                         Item item = Char.myCharz().arrItemBag[i];
-                        if (item != null && (item.template.id == 194 || (item.template.id == 193 && item.quantity > 1)))
+                        if (item != null && (item.template.id == 194 || (item.template.id == 193 && item.quantity >= 1)))
                         {
                             isUsingCapsule = true;
                             isOpeningPanel = false;
@@ -583,7 +583,11 @@ namespace Mod.CuongLe
                     {
                         for (int j = 0; j < GameCanvas.panel.mapNames.Length; j++)
                         {
-                            if (GameCanvas.panel.mapNames[j].Contains(TileMap.mapNames[array[num2]]))
+                            string mapNameInPanel = GameCanvas.panel.mapNames[j];
+                            int mapIdTarget = array[num2];
+                            bool isHomeMap = mapIdTarget == 21 || mapIdTarget == 22 || mapIdTarget == 23;
+                            
+                            if (mapNameInPanel.Contains(TileMap.mapNames[mapIdTarget]) || (isHomeMap && mapNameInPanel.Contains("Về nhà")))
                             {
                                 isOpeningPanel = true;
                                 Service.gI().requestMapSelect(j);
