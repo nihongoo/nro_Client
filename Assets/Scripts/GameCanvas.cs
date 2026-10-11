@@ -1273,15 +1273,25 @@ public class GameCanvas : IActionListener
         if (!isLoadBGok)
         {
             g.setColor(12312312);
-            g.fillRect(0, 0, w, h);
+            g.fillRect(0, 0, (int)ScaleGUI.WIDTH, (int)ScaleGUI.HEIGHT);
+            return;
         }
+
+        g.translate(-g.getTranslateX(), -g.getTranslateY());
+        // Luôn xóa màn hình trước để tránh ghosting và lỗi hiển thị khi đang load map
+        g.setColor(skyColor);
+        g.fillRect(0, 0, w, h);
+
         if (!Char.isLoadingMap)
         {
-            _ = GameScr.gW;
-            _ = GameScr.gH;
-            g.translate(-g.getTranslateX(), -g.getTranslateY());
-            g.setColor(7245742);
-            g.fillRect(0, 0, w, h);
+            if (DoHoa.HienThiBackground && !lowGraphic)
+            {
+                // Gọi vẽ các lớp nền đè lên màu trời
+                paintBackgroundtLayer(g, 4, 3, -1, -1);
+                paintBackgroundtLayer(g, 3, 2, -1, -1);
+                paintBackgroundtLayer(g, 2, 1, -1, -1);
+                paintBackgroundtLayer(g, 1, 0, -1, colorBotton[0]);
+            }
         }
     }
 

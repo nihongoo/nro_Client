@@ -242,6 +242,10 @@ namespace Mod.CuongLe
 
     	public static void Update()
     	{
+            if (Char.isLoadingMap || GameScr.gI() == null)
+            {
+                return;
+            }
             if (GameScr.isAnalog == 0 && (Application.isMobilePlatform || IsEmulator()))
             {
                 GameScr.isAnalog = 1;
@@ -859,6 +863,9 @@ namespace Mod.CuongLe
     		case 100:
     			Application.OpenURL("https://www.facebook.com/cuongle1002/");
     			break;
+    		case 111:
+                DoHoa.ShowMenuDoHoa();
+                break;
     		case 103:
     			Application.OpenURL("https://electroheavenvn.github.io/DataNRO/TeaMobi/");
     			break;
@@ -1032,6 +1039,11 @@ namespace Mod.CuongLe
     			ChatPopup.addChatPopupMultiLineGameline(s, 0, null, 10);
                 return true;
             }
+            if (GameCanvas.keyAsciiPress == Hotkeys.G)
+    		{
+    			DoHoa.ShowMenuDoHoa();
+    			return true;
+    		}
             if (GameCanvas.keyAsciiPress == Hotkeys.X)
     		{
     			ShowMenu();
@@ -1142,6 +1154,7 @@ namespace Mod.CuongLe
     		myVector.addElement(new Command("Auto Point", getInstance(), 7, null));
     		myVector.addElement(new Command("Auto Chat", getInstance(), 6, null));
     		myVector.addElement(new Command("Facebook Cường Lê", getInstance(), 100, null));
+            myVector.addElement(new Command("Cài đặt Đồ họa", getInstance(), 111, null));
     		myVector.addElement(new Command("Web xem id vật phẩm", getInstance(), 103, null));
     		GameCanvas.menu.startAt(myVector, 3);
     	}
