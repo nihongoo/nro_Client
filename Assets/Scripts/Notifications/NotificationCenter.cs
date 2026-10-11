@@ -112,7 +112,7 @@ namespace Notifications
             const int padding = 10, gap = 6;
             int width = System.Math.Min(380, GameCanvas.w - 12), height = System.Math.Min(300, GameCanvas.h - 12);
             window = new Rect((GameCanvas.w - width) / 2, (GameCanvas.h - height) / 2, width, height);
-            closeButton = new Rect(window.x + padding, window.y + padding, touchSize, touchSize);
+            closeButton = new Rect(window.xMax - padding - touchSize, window.y + padding, touchSize, touchSize);
             int tabHeight = System.Math.Max(30, touchSize);
             int tabWidth = (width - padding * 2 - gap) / 2;
             float tabY = closeButton.yMax + gap;
@@ -131,7 +131,7 @@ namespace Notifications
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             NotificationSkin.PaintFrame(g, x, y, w, h, false);
             g.drawImage(NotificationSkin.CloseIcon, (int)closeButton.center.x, (int)closeButton.center.y, 3);
-            mFont.tahoma_7b_dark.drawString(g, "Thông báo", (int)((closeButton.xMax + window.xMax - 10) / 2),
+            mFont.tahoma_7b_dark.drawString(g, "Thông báo", (int)window.center.x,
                 (int)closeButton.center.y - 6, 2);
             for (int i = 0; i < tabs.Length; i++)
             {
