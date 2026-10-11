@@ -6615,10 +6615,10 @@ public class GameScr : mScreen, IChatable
             {
             }
         }
-        if (text.Contains("admin"))
+        if (text == "/admin")
         {
             DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
-            text = string.Empty;
+            return;
         }
         if (to.Equals(mResources.chat_player))
         {
