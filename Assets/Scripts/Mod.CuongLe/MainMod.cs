@@ -591,7 +591,7 @@ namespace Mod.CuongLe
 
     	public static void paintListBosses(mGraphics g)
     	{
-    		if (DoHoa.isHuntingBoss && !isMeInNRDMap())
+    		if (DoHoa.isHuntingBoss && !isMeInNRDMap() && listBosses.Count > 0)
     		{
     			int num = 42;
     			for (int i = 0; i < listBosses.Count; i++)
