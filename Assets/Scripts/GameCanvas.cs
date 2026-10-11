@@ -591,6 +591,7 @@ public class GameCanvas : IActionListener
                 }
                 gameTick = 0;
 			}
+			Notifications.NotificationCenter.UpdateInput();
 			if (currentScreen != null)
 			{
 				if (ChatPopup.serverChatPopUp != null)
@@ -1808,6 +1809,7 @@ public class GameCanvas : IActionListener
 
 	public void mapKeyPress(int keyCode)
 	{
+		if (Notifications.NotificationCenter.HandleKey(keyCode)) { keyAsciiPress = 0; return; }
 		if (currentDialog != null)
 		{
 			currentDialog.keyPress(keyCode);
@@ -2206,6 +2208,7 @@ public class GameCanvas : IActionListener
 
 	public static void checkBackButton()
 	{
+		if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
 		if (ChatPopup.serverChatPopUp == null && ChatPopup.currChatPopup == null)
 		{
 			startYesNoDlg(mResources.DOYOUWANTEXIT, new Command(mResources.YES, instance, 8885, null), new Command(mResources.NO, instance, 8882, null));
@@ -2275,6 +2278,7 @@ public class GameCanvas : IActionListener
 				ChatPopup.currChatPopup.paint(g);
 			}
 			Hint.paint(g);
+			Notifications.NotificationCenter.Paint(g);
 			if (ChatPopup.serverChatPopUp != null)
 			{
 				ChatPopup.serverChatPopUp.paint(g);

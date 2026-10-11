@@ -125,6 +125,9 @@ public class Controller : IMessageHandler
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
+			case Notifications.NotificationProtocol.Command:
+				Notifications.NotificationProtocol.Read(msg);
+				break;
 			case 0:
 				readLogin(msg);
 				break;

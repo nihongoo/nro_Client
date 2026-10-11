@@ -862,6 +862,7 @@ public class Service
 
 	public void login(string username, string pass, string version, sbyte type)
 	{
+		Notifications.NotificationCenter.BeginSession();
 		try
 		{
 			Message message = messageNotLogin(0);
@@ -2124,6 +2125,18 @@ public class Service
 			message.cleanup();
 		}
 	}
+
+    public void requestNotificationSnapshot()
+    {
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try
+        {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(Notifications.NotificationProtocol.Snapshot);
+            session.sendMessage(message);
+        }
+        finally { message.cleanup(); }
+    }
 
 	public void chatGlobal(string text)
 	{

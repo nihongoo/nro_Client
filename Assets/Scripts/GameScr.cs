@@ -2679,6 +2679,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
+        if (Notifications.NotificationCenter.ConsumesInput) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -5226,6 +5227,7 @@ public class GameScr : mScreen, IChatable
         if (!isPaintOther)
         {
             MainMod.Paint(g);
+            Notifications.NotificationCenter.PaintBell(g);
             GameCanvas.debug("PA21", 1);
             GameCanvas.debug("PA18", 1);
             g.translate(-g.getTranslateX(), -g.getTranslateY());
