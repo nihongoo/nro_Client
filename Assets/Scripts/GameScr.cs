@@ -3428,6 +3428,10 @@ public class GameScr : mScreen, IChatable
         {
             popUpYesNo.cmdYes.performAction();
         }
+        else if (popUpYesNo != null && popUpYesNo.cmdNo != null && popUpYesNo.cmdNo.isPointerPressInside())
+        {
+            popUpYesNo.cmdNo.performAction();
+        }
         else
         {
             if (checkClickToCapcha())

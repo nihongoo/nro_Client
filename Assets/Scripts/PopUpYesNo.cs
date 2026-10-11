@@ -50,7 +50,8 @@ public class PopUpYesNo : IActionListener
 			if (GameCanvas.isTouch)
 			{
 				cmdYes.paint(g);
-				mFont.tahoma_7_yellow.drawString(g, dem + string.Empty, cmdYes.x + cmdYes.w / 2, cmdYes.y + cmdYes.h + 5, 2, mFont.tahoma_7_grey);
+				cmdNo.paint(g);
+				mFont.tahoma_7_yellow.drawString(g, dem + string.Empty, cmdNo.x + cmdNo.w / 2, cmdNo.y + cmdNo.h + 5, 2, mFont.tahoma_7_grey);
 			}
 			else if (TField.isQwerty)
 			{
@@ -76,6 +77,8 @@ public class PopUpYesNo : IActionListener
 			}
 			cmdYes.x = X - 35;
 			cmdYes.y = Y;
+			cmdNo.x = cmdYes.x;
+			cmdNo.y = cmdYes.y + cmdYes.h + 4;
 			curr = mSystem.currentTimeMillis();
 			Res.outz("curr - last= " + (curr - last));
 			if (curr - last >= 1000)
