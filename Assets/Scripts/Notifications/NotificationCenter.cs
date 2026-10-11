@@ -97,16 +97,46 @@ namespace Notifications
         {
             if (!CanUse || IsOpen || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
-            PopUp.paintPopUp(g, x, y, size, size, 0, true);
-            int cx = x + size / 2, cy = y + size / 2;
-            g.setColor(6702080); // Existing Paint frame outline color; dark icon on the stock button.
-            g.fillRoundRect(cx - 5, cy - 7, 10, 12, 5, 5);
-            g.fillRect(cx - 7, cy + 4, 14, 2); g.fillRect(cx - 2, cy + 7, 4, 2); g.fillRect(cx - 1, cy - 9, 2, 3);
+            PaintBellIcon(g, x + size / 2 - 11, y + size / 2 - 12);
             if (NotificationStore.UnreadCount > 0)
             {
-                g.setColor(0xb5271e); g.fillRoundRect(x + size - 15, y, 15, 14, 5, 5);
+                PopUp.paintPopUp(g, x + size - 16, y, 16, 14, 0xb5271e, false);
                 mFont.tahoma_7_white.drawString(g, NotificationStore.UnreadCount.ToString(), x + size - 8, y + 1, 2);
             }
+        }
+
+        // Logical pixel art, like the neighboring HUD icons; the touch rectangle remains independent.
+        private static void PaintBellIcon(mGraphics g, int x, int y)
+        {
+            g.setColor(0x54331c);
+            g.fillRect(x + 9, y, 4, 2);
+            g.fillRect(x + 8, y + 2, 6, 2);
+            g.fillRect(x + 6, y + 4, 10, 2);
+            g.fillRect(x + 4, y + 6, 14, 3);
+            g.fillRect(x + 3, y + 9, 16, 6);
+            g.fillRect(x + 2, y + 15, 18, 2);
+            g.fillRect(x + 1, y + 17, 20, 3);
+            g.fillRect(x + 3, y + 20, 16, 1);
+            g.fillRect(x + 8, y + 21, 6, 2);
+            g.fillRect(x + 9, y + 23, 4, 1);
+            g.setColor(0xb76b20);
+            g.fillRect(x + 10, y + 1, 2, 2);
+            g.fillRect(x + 7, y + 5, 8, 2);
+            g.fillRect(x + 5, y + 7, 12, 3);
+            g.fillRect(x + 4, y + 10, 14, 6);
+            g.fillRect(x + 3, y + 16, 16, 2);
+            g.fillRect(x + 2, y + 18, 18, 1);
+            g.setColor(0xefb83e);
+            g.fillRect(x + 7, y + 6, 7, 2);
+            g.fillRect(x + 5, y + 8, 10, 3);
+            g.fillRect(x + 4, y + 11, 11, 5);
+            g.fillRect(x + 3, y + 16, 13, 2);
+            g.fillRect(x + 9, y + 21, 4, 1);
+            g.setColor(0xffe59a);
+            g.fillRect(x + 8, y + 6, 4, 1);
+            g.fillRect(x + 6, y + 8, 2, 3);
+            g.fillRect(x + 5, y + 11, 2, 4);
+            g.fillRect(x + 3, y + 17, 14, 1);
         }
 
         public static void Paint(mGraphics g)
@@ -116,12 +146,13 @@ namespace Notifications
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
             int header = NotificationHudLayout.TouchSize;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            GameCanvas.paintz.paintFrame(x, y, w, h, g);
+            // Match the stock Panel frame; ornamental corner sprites use a different outline.
+            GameCanvas.paintz.paintFrameSimple(x, y, w, h, g);
             GameCanvas.paintz.paintFrameInside(x + 5, y + header + 2, w - 10, h - header - 7, g);
             // Use the same tab textures and selected/unselected fonts as Panel.paintTab.
-            int tabWidth = (w - 6) / 2;
+            int tabWidth = (w - 16) / 2;
             for (int i = 0; i < 2; i++)
-                PopUp.paintPopUp(g, x + 3 + i * tabWidth, y + 3, tabWidth - 1, header - 3, i == tab ? 1 : 0, true);
+                PopUp.paintPopUp(g, x + 8 + i * tabWidth, y + 3, tabWidth - 1, header - 3, i == tab ? 1 : 0, true);
             (tab == 0 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, "Boss", x + w / 4, y + header / 2 - 6, 2);
             string label = "Server" + (NotificationStore.UnreadCount > 0 ? " (" + NotificationStore.UnreadCount + ")" : "");
             (tab == 1 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, label, x + w * 3 / 4, y + header / 2 - 6, 2);
@@ -132,7 +163,8 @@ namespace Notifications
             foreach (string[] row in rows)
             {
                 foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, x + 10, rowY, 0); rowY += 12; }
-                g.setColor(13524492); g.drawLine(x + 8, rowY + 2, x + w - 8, rowY + 2); rowY += 8;
+                // drawLine scales axis-aligned coordinates twice; keep this separator in logical pixels.
+                g.setColor(13524492); g.fillRect(x + 8, rowY + 2, w - 16, 1); rowY += 8;
             }
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
