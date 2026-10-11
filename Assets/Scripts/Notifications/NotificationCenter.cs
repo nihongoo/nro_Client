@@ -7,7 +7,8 @@ namespace Notifications
     public static class NotificationCenter
     {
         private static readonly List<string[]> rows = new List<string[]>();
-        private static Rect bell, window;
+        private static Rect bell, window, closeButton, content;
+        private static readonly Rect[] tabs = new Rect[2];
         private static int tab, scroll, contentHeight, cachedRevision = -1, cachedWidth, cachedTab = -1;
         private static long cachedMinute = -1;
         private static bool dragging, backDown;
@@ -48,8 +49,7 @@ namespace Notifications
             if (!CanUse) { if (IsOpen) Close(); backDown = escape; return; }
             bell = NotificationHudLayout.BellBounds();
             int size = NotificationHudLayout.TouchSize;
-            int width = System.Math.Min(380, GameCanvas.w - 12), height = System.Math.Min(300, GameCanvas.h - 12);
-            window = new Rect((GameCanvas.w - width) / 2, (GameCanvas.h - height) / 2, width, height);
+            UpdateLayout(size);
             if (!IsOpen)
             {
                 if (bell.width > 0 && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick &&
@@ -68,18 +68,18 @@ namespace Notifications
             Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
             if (GameCanvas.isPointerJustRelease)
             {
-                if (!window.Contains(pointer)) Close();
-                else if (pointer.y < window.y + size)
+                if (!window.Contains(pointer) || closeButton.Contains(pointer)) Close();
+                else
                 {
-                    int selected = pointer.x < window.center.x ? 0 : 1;
-                    if (selected != tab) { tab = selected; scroll = 0; cachedTab = -1; }
+                    for (int i = 0; i < tabs.Length; i++)
+                        if (tabs[i].Contains(pointer) && i != tab) { tab = i; scroll = 0; cachedTab = -1; }
                 }
                 dragging = false;
             }
-            else if (GameCanvas.isPointerDown && pointer.y >= window.y + size && window.Contains(pointer))
+            else if (GameCanvas.isPointerDown && content.Contains(pointer))
             {
                 if (!dragging) { dragging = true; dragY = GameCanvas.py; dragScroll = scroll; }
-                scroll = System.Math.Max(0, System.Math.Min(System.Math.Max(0, contentHeight - (int)window.height + size + 8), dragScroll + dragY - GameCanvas.py));
+                scroll = System.Math.Max(0, System.Math.Min(System.Math.Max(0, contentHeight - (int)content.height), dragScroll + dragY - GameCanvas.py));
             }
             NotificationStore.ReadingServer = IsOpen && tab == 1;
             if (NotificationStore.ReadingServer) NotificationStore.MarkServerRead();
@@ -97,7 +97,7 @@ namespace Notifications
         {
             if (!CanUse || IsOpen || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
-            PaintBellIcon(g, x + size / 2 - 11, y + size / 2 - 12);
+            g.drawImage(NotificationSkin.BellIcon, x + size / 2, y + size / 2, 3);
             if (NotificationStore.UnreadCount > 0)
             {
                 PopUp.paintPopUp(g, x + size - 16, y, 16, 14, 0xb5271e, false);
@@ -105,38 +105,20 @@ namespace Notifications
             }
         }
 
-        // Logical pixel art, like the neighboring HUD icons; the touch rectangle remains independent.
-        private static void PaintBellIcon(mGraphics g, int x, int y)
+        private static void UpdateLayout(int touchSize)
         {
-            g.setColor(0x54331c);
-            g.fillRect(x + 9, y, 4, 2);
-            g.fillRect(x + 8, y + 2, 6, 2);
-            g.fillRect(x + 6, y + 4, 10, 2);
-            g.fillRect(x + 4, y + 6, 14, 3);
-            g.fillRect(x + 3, y + 9, 16, 6);
-            g.fillRect(x + 2, y + 15, 18, 2);
-            g.fillRect(x + 1, y + 17, 20, 3);
-            g.fillRect(x + 3, y + 20, 16, 1);
-            g.fillRect(x + 8, y + 21, 6, 2);
-            g.fillRect(x + 9, y + 23, 4, 1);
-            g.setColor(0xb76b20);
-            g.fillRect(x + 10, y + 1, 2, 2);
-            g.fillRect(x + 7, y + 5, 8, 2);
-            g.fillRect(x + 5, y + 7, 12, 3);
-            g.fillRect(x + 4, y + 10, 14, 6);
-            g.fillRect(x + 3, y + 16, 16, 2);
-            g.fillRect(x + 2, y + 18, 18, 1);
-            g.setColor(0xefb83e);
-            g.fillRect(x + 7, y + 6, 7, 2);
-            g.fillRect(x + 5, y + 8, 10, 3);
-            g.fillRect(x + 4, y + 11, 11, 5);
-            g.fillRect(x + 3, y + 16, 13, 2);
-            g.fillRect(x + 9, y + 21, 4, 1);
-            g.setColor(0xffe59a);
-            g.fillRect(x + 8, y + 6, 4, 1);
-            g.fillRect(x + 6, y + 8, 2, 3);
-            g.fillRect(x + 5, y + 11, 2, 4);
-            g.fillRect(x + 3, y + 17, 14, 1);
+            const int padding = 10, gap = 6;
+            int width = System.Math.Min(380, GameCanvas.w - 12), height = System.Math.Min(300, GameCanvas.h - 12);
+            window = new Rect((GameCanvas.w - width) / 2, (GameCanvas.h - height) / 2, width, height);
+            closeButton = new Rect(window.x + padding, window.y + padding, touchSize, touchSize);
+            int tabHeight = System.Math.Max(30, touchSize);
+            int tabWidth = (width - padding * 2 - gap) / 2;
+            float tabY = closeButton.yMax + gap;
+            for (int i = 0; i < tabs.Length; i++)
+                tabs[i] = new Rect(window.x + padding + i * (tabWidth + gap), tabY, tabWidth, tabHeight);
+            float contentY = tabY + tabHeight + 8;
+            content = new Rect(window.x + padding, contentY, width - padding * 2,
+                System.Math.Max(0, (int)(window.yMax - padding - contentY)));
         }
 
         public static void Paint(mGraphics g)
@@ -144,27 +126,28 @@ namespace Notifications
             if (!IsOpen || !CanUse) return;
             EnsureRows();
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
-            int header = NotificationHudLayout.TouchSize;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            // Match the stock Panel frame; ornamental corner sprites use a different outline.
-            GameCanvas.paintz.paintFrameSimple(x, y, w, h, g);
-            GameCanvas.paintz.paintFrameInside(x + 5, y + header + 2, w - 10, h - header - 7, g);
-            // Use the same tab textures and selected/unselected fonts as Panel.paintTab.
-            int tabWidth = (w - 16) / 2;
-            for (int i = 0; i < 2; i++)
-                PopUp.paintPopUp(g, x + 8 + i * tabWidth, y + 3, tabWidth - 1, header - 3, i == tab ? 1 : 0, true);
-            (tab == 0 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, "Boss", x + w / 4, y + header / 2 - 6, 2);
-            string label = "Server" + (NotificationStore.UnreadCount > 0 ? " (" + NotificationStore.UnreadCount + ")" : "");
-            (tab == 1 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, label, x + w * 3 / 4, y + header / 2 - 6, 2);
-            g.setClip(x + 5, y + header + 2, w - 10, System.Math.Max(0, h - header - 7));
-            int rowY = y + header + 5 - scroll;
+            NotificationSkin.PaintFrame(g, x, y, w, h, false);
+            g.drawImage(NotificationSkin.CloseIcon, (int)closeButton.center.x, (int)closeButton.center.y, 3);
+            mFont.tahoma_7b_dark.drawString(g, "Thông báo", (int)((closeButton.xMax + window.xMax - 10) / 2),
+                (int)closeButton.center.y - 6, 2);
+            for (int i = 0; i < tabs.Length; i++)
+            {
+                Rect bounds = tabs[i];
+                NotificationSkin.PaintFrame(g, (int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height, i == tab);
+                string label = i == 0 ? "Boss" : "Server" + (NotificationStore.UnreadCount > 0 ? " (" + NotificationStore.UnreadCount + ")" : "");
+                (i == tab ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, label,
+                    (int)bounds.center.x, (int)bounds.center.y - 6, 2);
+            }
+            g.setClip((int)content.x, (int)content.y, (int)content.width, (int)content.height);
+            int rowY = (int)content.y + 3 - scroll;
             if (rows.Count == 0) mFont.tahoma_7b_dark.drawString(g,
-                NotificationStore.HasSnapshot ? "Chưa có thông báo." : "Đang nhận thông báo...", x + 10, rowY, 0);
+                NotificationStore.HasSnapshot ? "Chưa có thông báo." : "Đang nhận thông báo...", (int)content.x + 4, rowY, 0);
             foreach (string[] row in rows)
             {
-                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, x + 10, rowY, 0); rowY += 12; }
+                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, (int)content.x + 4, rowY, 0); rowY += 12; }
                 // drawLine scales axis-aligned coordinates twice; keep this separator in logical pixels.
-                g.setColor(13524492); g.fillRect(x + 8, rowY + 2, w - 16, 1); rowY += 8;
+                g.setColor(13524492); g.fillRect((int)content.x + 4, rowY + 2, (int)content.width - 8, 1); rowY += 8;
             }
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
@@ -172,8 +155,8 @@ namespace Notifications
         private static void EnsureRows()
         {
             long minute = NotificationStore.ServerNow / 60000;
-            if (cachedRevision == NotificationStore.Revision && cachedWidth == (int)window.width && cachedTab == tab && cachedMinute == minute) return;
-            cachedRevision = NotificationStore.Revision; cachedWidth = (int)window.width; cachedTab = tab; cachedMinute = minute;
+            if (cachedRevision == NotificationStore.Revision && cachedWidth == (int)content.width && cachedTab == tab && cachedMinute == minute) return;
+            cachedRevision = NotificationStore.Revision; cachedWidth = (int)content.width; cachedTab = tab; cachedMinute = minute;
             rows.Clear(); contentHeight = 0;
             IReadOnlyList<NotificationEntry> entries = tab == 0 ? NotificationStore.Bosses : NotificationStore.Server;
             foreach (NotificationEntry entry in entries)
@@ -182,10 +165,10 @@ namespace Notifications
                 string text = tab == 0 ? entry.BossName + " - " + entry.MapName + " - " +
                     (entry.Killed ? "bị " + entry.Killer + " tiêu diệt - " : "") + age + " phút trước"
                     : "#" + entry.Id + " " + entry.Text;
-                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)window.width - 24));
+                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)content.width - 8));
                 rows.Add(lines); contentHeight += lines.Length * 12 + 8;
             }
-            scroll = System.Math.Max(0, System.Math.Min(scroll, System.Math.Max(0, contentHeight - (int)window.height + NotificationHudLayout.TouchSize + 8)));
+            scroll = System.Math.Max(0, System.Math.Min(scroll, System.Math.Max(0, contentHeight - (int)content.height)));
         }
     }
 }
