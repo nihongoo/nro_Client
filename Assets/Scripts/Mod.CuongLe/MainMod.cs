@@ -125,7 +125,6 @@ namespace Mod.CuongLe
 
     	public static string[] inputHPChar;
 
-    	public static List<Boss> listBosses;
 
     	public static Image logoServerListScreen;
 
@@ -254,7 +253,7 @@ namespace Mod.CuongLe
             ModProCuongLe.Update();
     		if (thongBao && GameCanvas.gameTick % 1200 == 0)
     		{
-                GameScr.gI().chatVip("Mod: Phím X mở menu, Phím V mở menu Pro, [ Shift + A, Shift + Z ], thay set đồ, Shift + U để dừng bất kỳ auto nào");
+                GameScr.info1.addInfo("Mod: Phím X mở menu, Phím V mở menu Pro, [ Shift + A, Shift + Z ], thay set đồ, Shift + U để dừng bất kỳ auto nào", 0);
                 thongBao = false;
     		}
     		//if (File.Exists(pathfile) && !RunningGoMapQLTK && GameCanvas.gameTick % 40 == 0)
@@ -362,7 +361,6 @@ namespace Mod.CuongLe
     	{
 
             DoHoa.Paint(g);
-            paintListBosses(g);
     		//if (DoHoa.isShowCharsInMap)
     		//{
     		//	paintListCharsInMap(g);
@@ -591,19 +589,6 @@ namespace Mod.CuongLe
 
     	public static void smethod_15(mGraphics g, int x, int y)
     	{
-    	}
-
-    	public static void paintListBosses(mGraphics g)
-    	{
-    		if (DoHoa.isHuntingBoss && !isMeInNRDMap() && listBosses.Count > 0)
-    		{
-    			int num = 42;
-    			for (int i = 0; i < listBosses.Count; i++)
-    			{
-    				listBosses[i].Paint(g, GameCanvas.w - 2, num, mFont.RIGHT);
-    				num += 10;
-    			}
-    		}
     	}
 
     	public void onChatFromMe(string text, string to)
@@ -1241,8 +1226,6 @@ namespace Mod.CuongLe
     		GoldUpdate = 0L;
     		GoldUpdateRealTime = 0L;
     		VersionMod = "2.6";
-    		DoHoa.isHuntingBoss = true;
-    		listBosses = new List<Boss>();
     		listBackgroundImages = new List<Image>();
     		limitHPChar = -1;
     		inputHPChar = new string[2] { "Nhập HP Char:", "HP" };
