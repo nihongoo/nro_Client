@@ -97,9 +97,9 @@ namespace Notifications
         {
             if (!CanUse || IsOpen || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
-            g.setColor(0x593c23); g.fillRoundRect(x, y, size, size, 6, 6);
+            PopUp.paintPopUp(g, x, y, size, size, 0, true);
             int cx = x + size / 2, cy = y + size / 2;
-            g.setColor(0xffdf67);
+            g.setColor(6702080); // Existing Paint frame outline color; dark icon on the stock button.
             g.fillRoundRect(cx - 5, cy - 7, 10, 12, 5, 5);
             g.fillRect(cx - 7, cy + 4, 14, 2); g.fillRect(cx - 2, cy + 7, 4, 2); g.fillRect(cx - 1, cy - 9, 2, 3);
             if (NotificationStore.UnreadCount > 0)
@@ -116,19 +116,23 @@ namespace Notifications
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
             int header = NotificationHudLayout.TouchSize;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            PopUp.paintPopUp(g, x, y, w, h, 0xffffff, false);
-            g.setColor(0x593c23); g.fillRect(x + 3 + tab * ((w - 6) / 2), y + 3, (w - 6) / 2, header - 3);
-            mFont.tahoma_7b_yellow.drawString(g, "Boss", x + w / 4, y + header / 2 - 6, 2);
+            GameCanvas.paintz.paintFrame(x, y, w, h, g);
+            GameCanvas.paintz.paintFrameInside(x + 5, y + header + 2, w - 10, h - header - 7, g);
+            // Use the same tab textures and selected/unselected fonts as Panel.paintTab.
+            int tabWidth = (w - 6) / 2;
+            for (int i = 0; i < 2; i++)
+                PopUp.paintPopUp(g, x + 3 + i * tabWidth, y + 3, tabWidth - 1, header - 3, i == tab ? 1 : 0, true);
+            (tab == 0 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, "Boss", x + w / 4, y + header / 2 - 6, 2);
             string label = "Server" + (NotificationStore.UnreadCount > 0 ? " (" + NotificationStore.UnreadCount + ")" : "");
-            mFont.tahoma_7b_yellow.drawString(g, label, x + w * 3 / 4, y + header / 2 - 6, 2);
+            (tab == 1 ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, label, x + w * 3 / 4, y + header / 2 - 6, 2);
             g.setClip(x + 5, y + header + 2, w - 10, System.Math.Max(0, h - header - 7));
             int rowY = y + header + 5 - scroll;
-            if (rows.Count == 0) mFont.tahoma_7.drawString(g,
+            if (rows.Count == 0) mFont.tahoma_7b_dark.drawString(g,
                 NotificationStore.HasSnapshot ? "Chưa có thông báo." : "Đang nhận thông báo...", x + 10, rowY, 0);
             foreach (string[] row in rows)
             {
-                foreach (string line in row) { mFont.tahoma_7.drawString(g, line, x + 10, rowY, 0); rowY += 12; }
-                g.setColor(0xb79b70); g.drawLine(x + 8, rowY + 2, x + w - 8, rowY + 2); rowY += 8;
+                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, x + 10, rowY, 0); rowY += 12; }
+                g.setColor(13524492); g.drawLine(x + 8, rowY + 2, x + w - 8, rowY + 2); rowY += 8;
             }
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
@@ -146,7 +150,7 @@ namespace Notifications
                 string text = tab == 0 ? entry.BossName + " - " + entry.MapName + " - " +
                     (entry.Killed ? "bị " + entry.Killer + " tiêu diệt - " : "") + age + " phút trước"
                     : "#" + entry.Id + " " + entry.Text;
-                string[] lines = mFont.tahoma_7.splitFontArray(text, System.Math.Max(20, (int)window.width - 24));
+                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)window.width - 24));
                 rows.Add(lines); contentHeight += lines.Length * 12 + 8;
             }
             scroll = System.Math.Max(0, System.Math.Min(scroll, System.Math.Max(0, contentHeight - (int)window.height + NotificationHudLayout.TouchSize + 8)));
