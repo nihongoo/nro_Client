@@ -668,6 +668,9 @@ public class GameScr : mScreen, IChatable
 
     private static int yC;
 
+    internal static int ChatButtonCenterX => xC + 17;
+    internal static int ChatButtonBottom => yC + 34;
+
     private static int xL;
 
     private static int yL;

@@ -97,10 +97,11 @@ namespace Notifications
         {
             if (!CanUse || IsOpen || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
-            g.drawImage(NotificationSkin.BellIcon, x + size / 2 - 4, y + size - 12, 3);
+            int centerX = NotificationHudLayout.BellCenterX;
+            g.drawImage(NotificationSkin.BellIcon, centerX, y + size / 2, 3);
             if (NotificationStore.UnreadCount > 0)
             {
-                int badgeX = x + size - 12;
+                int badgeX = System.Math.Min(x + size - 12, centerX + 10);
                 g.drawImage(NotificationSkin.BadgeIcon, badgeX, y + 9, 3);
                 mFont.tahoma_7b_white.drawString(g, NotificationStore.UnreadCount.ToString(),
                     badgeX, y + (18 - mFont.tahoma_7b_white.getHeight()) / 2, 2);
