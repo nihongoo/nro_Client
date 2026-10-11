@@ -64,7 +64,10 @@ public class Npc : Char
         statusMe = status;
         if (npcId != -1)
         {
-            template = arrNpcTemplate[templateId];
+            if (templateId >= 0 && arrNpcTemplate != null && templateId < arrNpcTemplate.Length)
+            {
+                template = arrNpcTemplate[templateId];
+            }
         }
         if (templateId == 23 || templateId == 42)
         {
@@ -287,9 +290,17 @@ public class Npc : Char
                     int headId = template.headId;
                     int legId = template.legId;
                     int bodyId = template.bodyId;
+                    if (headId < 0 || headId >= GameScr.parts.Length || legId < 0 || legId >= GameScr.parts.Length || bodyId < 0 || bodyId >= GameScr.parts.Length)
+                    {
+                        return;
+                    }
                     Part part = GameScr.parts[headId];
                     Part part2 = GameScr.parts[legId];
                     Part part3 = GameScr.parts[bodyId];
+                    if (part == null || part2 == null || part3 == null)
+                    {
+                        return;
+                    }
                     if (cdir == 1)
                     {
                         SmallImage.drawSmallImage(g, part.pi[Char.CharInfo[cf][0][0]].id, cx + Char.CharInfo[cf][0][1] + part.pi[Char.CharInfo[cf][0][0]].dx, cy - Char.CharInfo[cf][0][2] + part.pi[Char.CharInfo[cf][0][0]].dy, 0, 0);

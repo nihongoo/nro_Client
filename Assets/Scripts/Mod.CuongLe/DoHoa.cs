@@ -101,8 +101,8 @@ namespace Mod.CuongLe
     	public static void loadData()
     	{
     		HienThiLogo = Rms.loadRMSInt("saveLogo") == 1;
-    		HienThiBackground = Rms.loadRMSInt("saveBackground") == 1;
-            isHuntingBoss = Rms.loadRMSInt("sanboss") == 1;
+    		HienThiBackground = Rms.loadRMSInt("saveBackground") != 0;
+            isHuntingBoss = Rms.loadRMSInt("sanboss") != 0;
     		isShowCharsInMap = Rms.loadRMSInt("showchar") == 1;
     		MapLuoi = Rms.loadRMSInt("mapLuoi") == 1;
             DrawFont = mFont.tahoma_7;

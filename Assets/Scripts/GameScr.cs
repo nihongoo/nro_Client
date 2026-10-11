@@ -7159,7 +7159,7 @@ public class GameScr : mScreen, IChatable
             chatVip = chatVip.Substring(1, chatVip.Length);
             isFireWorks = true;
         }
-        if (chatVip.StartsWith("BOSS"))
+        if (chatVip.ToUpper().Contains("BOSS"))
         {
             MainMod.listBosses.Add(new Boss(chatVip));
             if (MainMod.listBosses.Count > 5)

@@ -18,12 +18,57 @@ namespace Mod.CuongLe
 
     	public Boss(string chatVip)
     	{
-    		chatVip = chatVip.Replace("BOSS ", "").Replace(" vừa xuất hiện tại ", "|").Replace(" appear at ", "|");
-    		string[] array = chatVip.Split('|');
-    		NameBoss = array[0].Trim();
-    		MapName = array[1].Trim();
-    		MapId = GetMapID(MapName);
-    		AppearTime = DateTime.Now;
+            try 
+            {
+                // Loại bỏ mã màu |c...| và |r
+                string cleanChat = "";
+                for (int i = 0; i < chatVip.Length; i++)
+                {
+                    if (chatVip[i] == '|' && i + 1 < chatVip.Length && (chatVip[i + 1] == 'c' || chatVip[i + 1] == 'r'))
+                    {
+                        if (chatVip[i + 1] == 'c')
+                        {
+                            i += 2;
+                            while (i < chatVip.Length && chatVip[i] != '|') i++;
+                        }
+                        else if (chatVip[i + 1] == 'r')
+                        {
+                            i += 1;
+                        }
+                    }
+                    else
+                    {
+                        cleanChat += chatVip[i];
+                    }
+                }
+
+                string lowerChat = cleanChat.ToLower();
+                int idxSplit = lowerChat.IndexOf(" vừa xuất hiện tại ");
+                if (idxSplit == -1) idxSplit = lowerChat.IndexOf(" appear at ");
+
+                if (idxSplit != -1)
+                {
+                    NameBoss = cleanChat.Substring(0, idxSplit).Replace("BOSS ", "").Replace("Boss ", "").Replace("boss ", "").Trim();
+                    if (lowerChat.Contains(" vừa xuất hiện tại "))
+                        MapName = cleanChat.Substring(idxSplit + " vừa xuất hiện tại ".Length).Trim();
+                    else 
+                        MapName = cleanChat.Substring(idxSplit + " appear at ".Length).Trim();
+                }
+                else 
+                {
+                    NameBoss = cleanChat;
+                    MapName = "Không xác định";
+                }
+                MapId = GetMapID(MapName);
+                AppearTime = DateTime.Now;
+            }
+            catch (Exception ex) 
+            {
+                NameBoss = "Lỗi phân tách";
+                MapName = chatVip;
+                AppearTime = DateTime.Now;
+                Res.outz("Lỗi Boss parsing: " + ex.ToString());
+            }
     	}
 
     	public int GetMapID(string mapName)
