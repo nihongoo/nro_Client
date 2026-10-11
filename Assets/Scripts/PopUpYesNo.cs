@@ -63,19 +63,38 @@ public class PopUpYesNo : IActionListener
 		}
 	}
 
+	// Actual painted extent, including the accept button and countdown.
+	internal UnityEngine.Rect VisualBounds
+	{
+		get
+		{
+			UpdatePosition();
+			int left = GameCanvas.isTouch ? System.Math.Min(X, cmdYes.x) : X;
+			int bottom = Y + H + (GameCanvas.isTouch ? 0 : 10);
+			if (GameCanvas.isTouch)
+				bottom = System.Math.Max(bottom, cmdYes.y + cmdYes.h + 5 + mFont.tahoma_7_yellow.getHeight());
+			return new UnityEngine.Rect(left, Y, X + W - left, bottom - Y);
+		}
+	}
+
+	private void UpdatePosition()
+	{
+		X = GameCanvas.w - 5 - W;
+		Y = 45;
+		if (GameCanvas.w - 50 > 155 + W)
+		{
+			X = GameCanvas.w - 55 - W;
+			Y = 5;
+		}
+		cmdYes.x = X - 35;
+		cmdYes.y = Y;
+	}
+
 	public void update()
 	{
 		if (info != null)
 		{
-			X = GameCanvas.w - 5 - W;
-			Y = 45;
-			if (GameCanvas.w - 50 > 155 + W)
-			{
-				X = GameCanvas.w - 55 - W;
-				Y = 5;
-			}
-			cmdYes.x = X - 35;
-			cmdYes.y = Y;
+			UpdatePosition();
 			curr = mSystem.currentTimeMillis();
 			Res.outz("curr - last= " + (curr - last));
 			if (curr - last >= 1000)

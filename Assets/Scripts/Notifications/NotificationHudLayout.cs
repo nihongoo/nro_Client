@@ -44,6 +44,20 @@ namespace Notifications
             return cachedBell = new Rect(); // Never steal the hitbox of an existing control on an unsupported tiny viewport.
         }
 
+        // Temporary messages never relocate the control. Hide only while their real bounds cover it.
+        public static bool IsBellObscured
+        {
+            get
+            {
+                PopUpYesNo popup = GameScr.gI().popUpYesNo;
+                if (popup != null) return popup.VisualBounds.Overlaps(cachedBell);
+                InfoMe info = GameScr.info2;
+                return info.isUpdate && !GameScr.gI().isVS() && info.info.info != null && info.info.info.charInfo != null &&
+                    cachedBell.Overlaps(new Rect(info.cmx - info.info.W / 2 - 20,
+                        info.cmy - info.info.H - 10, info.info.W + 40, info.info.H + 30));
+            }
+        }
+
         private static bool IsFree(Rect box)
         {
             int panel = GameScr.imgPanel.getWidth();
@@ -59,10 +73,6 @@ namespace Notifications
             if (box.Overlaps(new Rect(0, GameCanvas.h - 170, Mathf.Min(190, GameCanvas.w / 2), 170))) return false;
             if (box.Overlaps(new Rect(0, GameCanvas.h - 100, 120, 100)) ||
                 box.Overlaps(new Rect(GameCanvas.w - 100, GameCanvas.h - 100, 100, 100))) return false;
-            InfoMe info = GameScr.info2;
-            if (info.info.info != null && info.info.info.charInfo != null && box.Overlaps(new Rect(
-                info.cmx - info.info.W / 2 - 20, info.cmy - info.info.H - 10, info.info.W + 40, info.info.H + 30))) return false;
-            if (GameScr.gI().popUpYesNo != null && box.Overlaps(new Rect(GameCanvas.w - 210, 0, 210, 85))) return false;
             return true;
         }
     }

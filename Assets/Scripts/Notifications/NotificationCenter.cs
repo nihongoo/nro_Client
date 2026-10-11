@@ -48,6 +48,7 @@ namespace Notifications
             bool escape = Input.GetKey(KeyCode.Escape);
             if (!CanUse) { if (IsOpen) Close(); backDown = escape; return; }
             bell = NotificationHudLayout.BellBounds();
+            if (!IsOpen && NotificationHudLayout.IsBellObscured) { backDown = escape; return; }
             int size = NotificationHudLayout.TouchSize;
             UpdateLayout(size);
             if (!IsOpen)
@@ -95,7 +96,7 @@ namespace Notifications
 
         public static void PaintBell(mGraphics g)
         {
-            if (!CanUse || IsOpen || bell.width <= 0) return;
+            if (!CanUse || IsOpen || bell.width <= 0 || NotificationHudLayout.IsBellObscured) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
             int centerX = NotificationHudLayout.BellCenterX;
             g.drawImage(NotificationSkin.BellIcon, centerX, y + size / 2, 3);
