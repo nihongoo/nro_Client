@@ -2621,6 +2621,7 @@ public class Controller : IMessageHandler
 					InfoDlg.showWait(loginMessage);
 					break;
 				}
+				Mod.CuongLe.MainMod.OnAccountManagerLoginMessage(loginMessage);
 				LoginScr.finishLoginAttempt();
 				ServerListScreen.testConnect = 2;
 				GameCanvas.debug("SA2", 2);
