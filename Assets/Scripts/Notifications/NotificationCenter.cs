@@ -15,8 +15,8 @@ namespace Notifications
         public static bool IsOpen { get; private set; }
         public static bool ConsumesInput => IsOpen || consumedTick == GameCanvas.gameTick;
 
-        private static bool CanUse => GameCanvas.currentScreen == GameScr.instance && !GameCanvas.isLoading &&
-            !GameCanvas.panel.isShow && GameCanvas.currentDialog == null && !GameCanvas.menu.showMenu &&
+        private static bool CanUse => GameCanvas.currentScreen == GameScr.instance && GameScr.isPaint && !GameScr.isPaintOther && !GameCanvas.isLoading &&
+            !GameCanvas.panel.isShow && !DoHoa.isShowMenuVIP && GameCanvas.currentDialog == null && !GameCanvas.menu.showMenu &&
             ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null &&
             !ChatTextField.gI().isShow && !Char.ischangingMap;
 
@@ -30,7 +30,8 @@ namespace Notifications
 
         public static void BeginSession()
         {
-            Close(); tab = 0; scroll = 0;
+            // Login can precede GameScr construction; reset data without touching gameplay UI.
+            IsOpen = false; dragging = false; tab = 0; scroll = 0; consumedTick = -1;
             NotificationStore.BeginSession();
         }
 
@@ -55,7 +56,6 @@ namespace Notifications
                     bell.Contains(new Vector2(GameCanvas.px, GameCanvas.py)))
                 {
                     IsOpen = true; tab = 0; scroll = 0; dragging = false;
-                    DoHoa.isShowMenuVIP = false;
                     Consume();
                 }
                 backDown = escape;

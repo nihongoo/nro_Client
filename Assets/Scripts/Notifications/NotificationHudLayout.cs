@@ -28,7 +28,7 @@ namespace Notifications
             int key = GameCanvas.w * 397 ^ GameCanvas.h ^ size * 31 ^ Char.vItemTime.size() * 71 ^
                 GameScr.textTime.size() * 97 ^ (DoHoa.HienThiLogo ? 1 : 0) ^
                 (GameScr.gI().popUpYesNo != null ? 13 : 0) ^ info.cmx * 17 ^ info.cmy * 19;
-            if (hasLayout && key == cachedKey) return cachedBell;
+            if (hasLayout && key == cachedKey && cachedBell.width > 0 && IsFree(cachedBell)) return cachedBell;
             hasLayout = true; cachedKey = key;
             int start = GameScr.imgPanel.getWidth() + DoHoa.imgSetting.getWidth() + DoHoa.imgBoxOpenItem.getWidth() + 20;
             // Prefer the existing mod button cluster; search around occupied HUD rectangles if needed.
