@@ -633,11 +633,6 @@ public class Controller : IMessageHandler
 			{
 				sbyte b42 = msg.reader().readByte();
 				Res.outz("server gui ve giao dich action = " + b42);
-				if (b42 == 0)
-				{
-					int playerID = msg.reader().readInt();
-					GameScr.gI().giaodich(playerID);
-				}
 				if (b42 == 1)
 				{
 					int num99 = msg.reader().readInt();
@@ -1259,12 +1254,6 @@ public class Controller : IMessageHandler
 				GameCanvas.panel.itemRequest(itemAction, info, where, index);
 				break;
 			}
-			case -59:
-			{
-				sbyte typePK = msg.reader().readByte();
-				GameScr.gI().player_vs_player(msg.reader().readInt(), msg.reader().readInt(), msg.reader().readUTF(), typePK);
-				break;
-			}
 			case -62:
 			{
 				int num27 = msg.reader().readUnsignedByte();
@@ -1373,14 +1362,6 @@ public class Controller : IMessageHandler
 					}
 					ClanImage.idImages.put(num169 + string.Empty, clanImage3);
 				}
-				break;
-			}
-			case -57:
-			{
-				string strInvite = msg.reader().readUTF();
-				int clanID = msg.reader().readInt();
-				int code = msg.reader().readInt();
-				GameScr.gI().clanInvite(strInvite, clanID, code);
 				break;
 			}
 			case -51:

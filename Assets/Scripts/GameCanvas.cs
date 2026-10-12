@@ -591,6 +591,8 @@ public class GameCanvas : IActionListener
                 }
                 gameTick = 0;
 			}
+            Notifications.NotificationStore.UpdateInvitations();
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
 			Notifications.NotificationCenter.UpdateInput();
 			if (currentScreen != null)
 			{
@@ -2269,10 +2271,6 @@ public class GameCanvas : IActionListener
 			}
 			GameScr.info1.paint(g);
 			GameScr.info2.paint(g);
-			if (GameScr.gI().popUpYesNo != null)
-			{
-				GameScr.gI().popUpYesNo.paint(g);
-			}
 			if (ChatPopup.currChatPopup != null)
 			{
 				ChatPopup.currChatPopup.paint(g);
@@ -2291,6 +2289,8 @@ public class GameCanvas : IActionListener
 					effect.paint(g);
 				}
 			}
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null)
+                GameScr.instance.popUpYesNo.paint(g);
 			if (Char.isLoadingMap || LoginScr.isContinueToLogin || ServerListScreen.waitToLogin || ServerListScreen.isWait)
 			{
 				paintChangeMap(g);
