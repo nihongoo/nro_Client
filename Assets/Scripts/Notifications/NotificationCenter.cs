@@ -167,20 +167,29 @@ namespace Notifications
             for (int index = 0; index < rows.Count; index++)
             {
                 string[] row = rows[index];
-                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, (int)content.x + 4, rowY, 0); rowY += 12; }
+                int bodyHeight = RowBodyHeight(row);
+                int textY = rowY + (bodyHeight - row.Length * 12) / 2;
+                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, (int)content.x + 4, textY, 0); textY += 12; }
                 if (tab == 2) {
                     NotificationEntry entry = rowEntries[index];
-                    if (entry.Responding) mFont.tahoma_7_grey.drawString(g, "Đang trả lời...", (int)content.x + 4, rowY + 8, 0);
+                    int actionY = rowY + (bodyHeight - ActionSize) / 2;
+                    if (entry.Responding) mFont.tahoma_7_grey.drawString(g, "Đang trả lời...",
+                        (int)ActionBounds(actionY, true).x, rowY + (bodyHeight - 12) / 2, 0);
                     else {
-                        PopUpYesNo.PaintAction(g, ActionBounds(rowY, true), true);
-                        PopUpYesNo.PaintAction(g, ActionBounds(rowY, false), false);
+                        PopUpYesNo.PaintAction(g, ActionBounds(actionY, true), true);
+                        PopUpYesNo.PaintAction(g, ActionBounds(actionY, false), false);
                     }
-                    rowY += ActionSize + 4;
                 }
+                rowY += bodyHeight;
                 // drawLine scales axis-aligned coordinates twice; keep this separator in logical pixels.
                 g.setColor(13524492); g.fillRect((int)content.x + 4, rowY + 2, (int)content.width - 8, 1); rowY += 8;
             }
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+        }
+
+        private static int RowBodyHeight(string[] row)
+        {
+            return tab == 2 ? System.Math.Max(row.Length * 12, ActionSize) : row.Length * 12;
         }
 
         private static Rect ActionBounds(int y, bool accept)
@@ -194,10 +203,11 @@ namespace Notifications
             EnsureRows();
             int y = (int)content.y + 3 - scroll;
             for (int index = 0; index < rows.Count; index++) {
-                y += rows[index].Length * 12;
-                if (ActionBounds(y, true).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, true); return; }
-                if (ActionBounds(y, false).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, false); return; }
-                y += ActionSize + 12;
+                int bodyHeight = RowBodyHeight(rows[index]);
+                int actionY = y + (bodyHeight - ActionSize) / 2;
+                if (ActionBounds(actionY, true).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, true); return; }
+                if (ActionBounds(actionY, false).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, false); return; }
+                y += bodyHeight + 8;
             }
         }
 
@@ -215,8 +225,10 @@ namespace Notifications
                     (entry.Killed ? "bị " + entry.Killer + " tiêu diệt - " : "") + age + " phút trước"
                     : tab == 1 ? "#" + entry.Id + " " + entry.Text
                     : entry.Text + " (" + System.Math.Max(0, (entry.ExpiresAt - NotificationStore.ServerNow + 999) / 1000) + "s)";
-                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)content.width - 8));
-                rows.Add(lines); rowEntries.Add(entry); contentHeight += lines.Length * 12 + 8 + (tab == 2 ? ActionSize + 4 : 0);
+                // Reserve the right column for actions; wrapped text and buttons share one row.
+                int textWidth = tab == 2 ? (int)content.width - ActionSize * 2 - 20 : (int)content.width - 8;
+                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, textWidth));
+                rows.Add(lines); rowEntries.Add(entry); contentHeight += RowBodyHeight(lines) + 8;
             }
         }
     }
