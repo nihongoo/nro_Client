@@ -3420,41 +3420,39 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
+        if (checkClickToCapcha())
         {
-            if (checkClickToCapcha())
+            return;
+        }
+        long num = mSystem.currentTimeMillis();
+        if (lastSingleClick != 0)
+        {
+            lastSingleClick = 0L;
+            GameCanvas.isPointerJustDown = false;
+            if (!disableSingleClick)
             {
-                return;
-            }
-            long num = mSystem.currentTimeMillis();
-            if (lastSingleClick != 0)
-            {
-                lastSingleClick = 0L;
-                GameCanvas.isPointerJustDown = false;
-                if (!disableSingleClick)
-                {
-                    checkSingleClick();
-                    GameCanvas.isPointerJustRelease = false;
-                    isWaitingDoubleClick = true;
-                    timeStartDblClick = mSystem.currentTimeMillis();
-                }
-            }
-            if (isWaitingDoubleClick)
-            {
-                timeEndDblClick = mSystem.currentTimeMillis();
-                if (timeEndDblClick - timeStartDblClick < 300 && GameCanvas.isPointerJustRelease)
-                {
-                    isWaitingDoubleClick = false;
-                    checkDoubleClick();
-                }
-            }
-            if (GameCanvas.isPointerJustRelease)
-            {
-                disableSingleClick = checkSingleClickEarly();
-                lastSingleClick = num;
-                lastClickCMX = cmx;
-                lastClickCMY = cmy;
+                checkSingleClick();
                 GameCanvas.isPointerJustRelease = false;
+                isWaitingDoubleClick = true;
+                timeStartDblClick = mSystem.currentTimeMillis();
             }
+        }
+        if (isWaitingDoubleClick)
+        {
+            timeEndDblClick = mSystem.currentTimeMillis();
+            if (timeEndDblClick - timeStartDblClick < 300 && GameCanvas.isPointerJustRelease)
+            {
+                isWaitingDoubleClick = false;
+                checkDoubleClick();
+            }
+        }
+        if (GameCanvas.isPointerJustRelease)
+        {
+            disableSingleClick = checkSingleClickEarly();
+            lastSingleClick = num;
+            lastClickCMX = cmx;
+            lastClickCMY = cmy;
+            GameCanvas.isPointerJustRelease = false;
         }
     }
 
@@ -6791,10 +6789,6 @@ public class GameScr : mScreen, IChatable
             case 2004:
                 GameCanvas.endDlg();
                 Service.gI().player_vs_player(0, 4, Char.myCharz().charFocus.charID);
-                break;
-            case 2006:
-                GameCanvas.endDlg();
-                Service.gI().player_vs_player(2, 4, Char.myCharz().charFocus.charID);
                 break;
             case 2007:
                 GameCanvas.endDlg();

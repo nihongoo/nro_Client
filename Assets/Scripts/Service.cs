@@ -184,7 +184,7 @@ public class Service
 		{
 			message = new Message((sbyte)(-86));
 			message.writer().writeByte(action);
-			if (action == 0 || action == 1)
+			if (action == 0)
 			{
 				Res.outz2(">>>> len playerID =" + playerID);
 				message.writer().writeInt(playerID);

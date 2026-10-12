@@ -28,6 +28,7 @@ namespace Notifications
         {
             bosses.Clear(); server.Clear(); invitations.Clear(); unread.Clear();
             sequence = 0; HasSnapshot = false; ReadingServer = false; ReadingInvitations = false; PopupId = 0;
+            if (GameScr.instance != null) GameScr.instance.popUpYesNo = null;
             Revision++;
         }
 
@@ -40,7 +41,9 @@ namespace Notifications
         public static void Snapshot(List<NotificationEntry> entries, long value, long time)
         {
             if (HasSnapshot && !IsNewer(value)) return;
-            bool firstSnapshot = !HasSnapshot;
+            var knownIds = new HashSet<long>();
+            foreach (var n in server) knownIds.Add(n.Id);
+            foreach (var n in invitations) knownIds.Add(n.Id);
             var previouslyUnread = new HashSet<long>(unread);
             bosses.Clear(); server.Clear(); invitations.Clear(); unread.Clear();
             foreach (NotificationEntry entry in entries)
@@ -49,8 +52,8 @@ namespace Notifications
                 else if (entry.Kind == NotificationKind.Server) { server.Insert(0, entry); if (!ReadingServer) unread.Add(entry.Id); }
                 else if (entry.ExpiresAt > time) { invitations.Insert(0, entry); if (!ReadingInvitations) unread.Add(entry.Id); }
             }
-            if (!firstSnapshot) unread.IntersectWith(previouslyUnread);
-            if (firstSnapshot && invitations.Count > 0) PopupId = invitations[0].Id;
+            unread.RemoveWhere(id => knownIds.Contains(id) && !previouslyUnread.Contains(id));
+            if (invitations.Count > 0 && invitations[0].Id > PopupId) PopupId = invitations[0].Id;
             HasSnapshot = true;
             Advance(value, time);
         }
