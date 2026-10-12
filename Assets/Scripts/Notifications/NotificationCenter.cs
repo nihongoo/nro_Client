@@ -14,6 +14,7 @@ namespace Notifications
         private static long cachedMinute = -1;
         private static bool dragging, backDown;
         private static int dragY, dragScroll, consumedTick = -1;
+        private static int ActionSize => System.Math.Max(32, NotificationHudLayout.TouchSize);
         public static bool IsOpen { get; private set; }
         public static bool ConsumesInput => IsOpen || consumedTick == GameCanvas.gameTick;
 
@@ -174,7 +175,7 @@ namespace Notifications
                         PopUpYesNo.PaintAction(g, ActionBounds(rowY, true), true);
                         PopUpYesNo.PaintAction(g, ActionBounds(rowY, false), false);
                     }
-                    rowY += NotificationHudLayout.TouchSize + 4;
+                    rowY += ActionSize + 4;
                 }
                 // drawLine scales axis-aligned coordinates twice; keep this separator in logical pixels.
                 g.setColor(13524492); g.fillRect((int)content.x + 4, rowY + 2, (int)content.width - 8, 1); rowY += 8;
@@ -184,7 +185,7 @@ namespace Notifications
 
         private static Rect ActionBounds(int y, bool accept)
         {
-            int size = NotificationHudLayout.TouchSize;
+            int size = ActionSize;
             return new Rect(content.xMax - (accept ? size * 2 + 10 : size + 4), y, size, size);
         }
 
@@ -196,7 +197,7 @@ namespace Notifications
                 y += rows[index].Length * 12;
                 if (ActionBounds(y, true).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, true); return; }
                 if (ActionBounds(y, false).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, false); return; }
-                y += NotificationHudLayout.TouchSize + 12;
+                y += ActionSize + 12;
             }
         }
 
@@ -215,7 +216,7 @@ namespace Notifications
                     : tab == 1 ? "#" + entry.Id + " " + entry.Text
                     : entry.Text + " (" + System.Math.Max(0, (entry.ExpiresAt - NotificationStore.ServerNow + 999) / 1000) + "s)";
                 string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)content.width - 8));
-                rows.Add(lines); rowEntries.Add(entry); contentHeight += lines.Length * 12 + 8 + (tab == 2 ? NotificationHudLayout.TouchSize + 4 : 0);
+                rows.Add(lines); rowEntries.Add(entry); contentHeight += lines.Length * 12 + 8 + (tab == 2 ? ActionSize + 4 : 0);
             }
         }
     }

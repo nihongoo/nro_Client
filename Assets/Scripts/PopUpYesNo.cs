@@ -8,7 +8,7 @@ public class PopUpYesNo : IActionListener
     public readonly Command cmdYes, cmdNo;
     private readonly string text;
     private int X, Y;
-    private const int W = 120, H = 29, ButtonSize = 28;
+    private const int W = 120, H = 29, ButtonSize = 32;
     private int remaining;
 
     public PopUpYesNo(NotificationEntry entry)
@@ -24,11 +24,11 @@ public class PopUpYesNo : IActionListener
         X = GameCanvas.w - 5 - W; Y = 45;
         if (GameCanvas.w - 50 > 155 + W) { X = GameCanvas.w - 55 - W; Y = 5; }
         cmdYes.x = X - ButtonSize - 3; cmdNo.x = cmdYes.x - ButtonSize - 3;
-        cmdYes.y = cmdNo.y = Y;
+        cmdYes.y = cmdNo.y = Y + (H - ButtonSize) / 2;
     }
 
     internal Rect VisualBounds {
-        get { UpdatePosition(); return new Rect(cmdNo.x, Y, X + W - cmdNo.x, H + 17); }
+        get { UpdatePosition(); return new Rect(cmdNo.x, cmdNo.y, X + W - cmdNo.x, Y + H + 17 - cmdNo.y); }
     }
 
     public void update()
@@ -64,12 +64,12 @@ public class PopUpYesNo : IActionListener
     // Sprite fonts lack Unicode check/cross glyphs. Draw the symbols in logical pixels.
     public static void PaintAction(mGraphics g, Rect bounds, bool accept)
     {
-        int x = (int)bounds.x, y = (int)bounds.y, w = (int)bounds.width, h = (int)bounds.height;
-        PopUp.paintPopUp(g, x, y, w, h, 16777215, false);
-        int cx = x + w / 2, cy = y + h / 2;
+        int cx = (int)bounds.center.x, cy = (int)bounds.center.y;
+        // Reuse the original round Yes button at its native size, centered in the touch target.
+        g.drawImage(GameScr.imgNut, cx, cy, 3);
         g.setColor(accept ? 0x187A27 : 0xC02727);
-        if (accept) { Stroke(g, cx - 6, cy, cx - 2, cy + 4); Stroke(g, cx - 2, cy + 4, cx + 6, cy - 5); }
-        else { Stroke(g, cx - 5, cy - 5, cx + 5, cy + 5); Stroke(g, cx + 5, cy - 5, cx - 5, cy + 5); }
+        if (accept) { Stroke(g, cx - 6, cy - 1, cx - 2, cy + 3); Stroke(g, cx - 2, cy + 3, cx + 5, cy - 5); }
+        else { Stroke(g, cx - 5, cy - 5, cx + 4, cy + 4); Stroke(g, cx + 4, cy - 5, cx - 5, cy + 4); }
     }
 
     private static void Stroke(mGraphics g, int x1, int y1, int x2, int y2)
