@@ -5046,14 +5046,7 @@ public class Panel : IActionListener, IChatable
             g.setClip(xScroll, yScroll + cmy, wScroll, hScroll);
             _ = mFont.tahoma_7b_dark;
             mFont.tahoma_7b_green2.drawString(g, infoItem.charInfo.cName, num4 + 5, num5, 0);
-            if (!infoItem.isChatServer)
-            {
-                mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
-            else
-            {
-                mFont.tahoma_7_red.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
+            mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
         }
         paintScrollArrow(g);
     }

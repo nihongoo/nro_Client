@@ -167,7 +167,7 @@ public class Info : IActionListener
                     return;
                 }
                 info.charInfo.paintHead(g, X + 5, Y + H / 2, 0);
-                ((!info.isChatServer) ? mFont.tahoma_7b_greenSmall : mFont.tahoma_7b_yellowSmall2).drawString(g, info.charInfo.cName, X + 12, Y + 3, 0);
+                mFont.tahoma_7b_greenSmall.drawString(g, info.charInfo.cName, X + 12, Y + 3, 0);
                 if (!GameCanvas.isTouch)
                 {
                     if (!TField.isQwerty)
@@ -231,7 +231,7 @@ public class Info : IActionListener
         H = (num + 1) * 12 + 1 + ((info.charInfo != null) ? 5 : 0);
     }
 
-    public void addInfo(string s, int Type, Char cInfo, bool isChatServer)
+    public void addInfo(string s, int Type, Char cInfo)
     {
         type = Type;
         if (GameCanvas.w == 128)
@@ -277,7 +277,6 @@ public class Info : IActionListener
         if (cInfo != null)
         {
             infoItem.charInfo = cInfo;
-            infoItem.isChatServer = isChatServer;
             GameCanvas.panel.addChatMessage(infoItem);
             if (GameCanvas.isTouch && GameCanvas.panel.isViewChatServer)
             {

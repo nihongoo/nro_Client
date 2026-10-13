@@ -1144,7 +1144,7 @@ public class Char : IMapObject
             chatInfo = new Info();
         }
         Char cInfo = null;
-        chatInfo.addInfo(info, 0, cInfo, isChatServer: false);
+        chatInfo.addInfo(info, 0, cInfo);
     }
 
     public int getSys()

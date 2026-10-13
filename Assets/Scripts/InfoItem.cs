@@ -8,7 +8,6 @@ public class InfoItem
 
 	public Char charInfo;
 
-	public bool isChatServer;
 
 	public bool isOnline;
 

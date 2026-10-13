@@ -324,7 +324,7 @@ public class InfoMe
     public void addInfoWithChar(string s, Char c)
     {
         playerID = c.charID;
-        info.addInfo(s, 3, c, false);
+        info.addInfo(s, 3, c);
         isDone = false;
     }
 
@@ -341,7 +341,7 @@ public class InfoMe
                 }
             }
             Char cInfo = null;
-            info.addInfo(s, Type, cInfo, isChatServer: false);
+            info.addInfo(s, Type, cInfo);
             if (info.infoWaitToShow.size() == 1)
             {
                 cmy = 0;
