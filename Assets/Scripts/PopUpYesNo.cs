@@ -1,115 +1,82 @@
+using Notifications;
+using UnityEngine;
+
+// Quick view of the newest invitation. Older invitations remain in NotificationStore.
 public class PopUpYesNo : IActionListener
 {
-	public Command cmdYes;
+    public readonly long InvitationId;
+    public readonly Command cmdYes, cmdNo;
+    private readonly string text;
+    private int X, Y;
+    private const int W = 120, H = 29, ButtonSize = 32;
+    private int remaining;
 
-	public Command cmdNo;
+    public PopUpYesNo(NotificationEntry entry)
+    {
+        InvitationId = entry.Id; text = entry.Text;
+        cmdYes = new Command("", this, 1, null) { w = ButtonSize, h = ButtonSize };
+        cmdNo = new Command("", this, 2, null) { w = ButtonSize, h = ButtonSize };
+        TextInfo.reset(); update();
+    }
 
-	public string[] info;
+    private void UpdatePosition()
+    {
+        X = GameCanvas.w - 5 - W; Y = 45;
+        if (GameCanvas.w - 50 > 155 + W) { X = GameCanvas.w - 55 - W; Y = 5; }
+        cmdYes.x = X - ButtonSize - 3; cmdNo.x = cmdYes.x - ButtonSize - 3;
+        cmdYes.y = cmdNo.y = Y + (H - ButtonSize) / 2;
+    }
 
-	private int X;
+    internal Rect VisualBounds {
+        get { UpdatePosition(); return new Rect(cmdNo.x, cmdNo.y, X + W - cmdNo.x, Y + H + 17 - cmdNo.y); }
+    }
 
-	private int Y;
+    public void update()
+    {
+        UpdatePosition();
+        NotificationEntry entry = NotificationStore.FindInvitation(InvitationId);
+        remaining = entry == null ? 0 : (int)System.Math.Max(0, (entry.ExpiresAt - NotificationStore.ServerNow + 999) / 1000);
+    }
 
-	private int W = 120;
+    // Run before panel/combat input: these two buttons are usable over other panels.
+    public bool HandleInput()
+    {
+        if (!GameCanvas.isPointerJustRelease || !GameCanvas.isPointerClick) return false;
+        Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
+        if (new Rect(cmdYes.x, cmdYes.y, ButtonSize, ButtonSize).Contains(pointer)) cmdYes.performAction();
+        else if (new Rect(cmdNo.x, cmdNo.y, ButtonSize, ButtonSize).Contains(pointer)) cmdNo.performAction();
+        else return false;
+        GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyHold(); GameCanvas.clearKeyPressed();
+        return true;
+    }
 
-	private int H;
+    public void paint(mGraphics g)
+    {
+        UpdatePosition();
+        g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+        PopUp.paintPopUp(g, X, Y, W, H, 16777215, false);
+        TextInfo.paint(g, text, X + 5, Y + H / 2 - 4, W - 10, H, mFont.tahoma_7);
+        PaintAction(g, new Rect(cmdYes.x, cmdYes.y, ButtonSize, ButtonSize), true);
+        PaintAction(g, new Rect(cmdNo.x, cmdNo.y, ButtonSize, ButtonSize), false);
+        mFont.tahoma_7_yellow.drawString(g, remaining + "s", X + W / 2, Y + H + 2, 2, mFont.tahoma_7_grey);
+    }
 
-	private int dem;
+    // Sprite fonts lack Unicode check/cross glyphs. Draw the symbols in logical pixels.
+    public static void PaintAction(mGraphics g, Rect bounds, bool accept)
+    {
+        int cx = (int)bounds.center.x, cy = (int)bounds.center.y;
+        // Reuse the original round Yes button at its native size, centered in the touch target.
+        g.drawImage(GameScr.imgNut, cx, cy, 3);
+        g.setColor(accept ? 0x187A27 : 0xC02727);
+        if (accept) { Stroke(g, cx - 6, cy - 1, cx - 2, cy + 3); Stroke(g, cx - 2, cy + 3, cx + 5, cy - 5); }
+        else { Stroke(g, cx - 5, cy - 5, cx + 4, cy + 4); Stroke(g, cx + 4, cy - 5, cx - 5, cy + 4); }
+    }
 
-	private long last;
+    private static void Stroke(mGraphics g, int x1, int y1, int x2, int y2)
+    {
+        int steps = System.Math.Max(System.Math.Abs(x2 - x1), System.Math.Abs(y2 - y1));
+        for (int i = 0; i <= steps; i++) g.fillRect(x1 + (x2 - x1) * i / steps, y1 + (y2 - y1) * i / steps, 2, 2);
+    }
 
-	private long curr;
-
-	public void setPopUp(string info, Command cmdYes, Command cmdNo)
-	{
-		this.info = new string[1] { info };
-		H = 29;
-		this.cmdYes = cmdYes;
-		this.cmdNo = cmdNo;
-		this.cmdYes.img = (this.cmdNo.img = GameScr.imgNut);
-		this.cmdYes.imgFocus = (this.cmdNo.imgFocus = GameScr.imgNutF);
-		this.cmdYes.w = mGraphics.getImageWidth(cmdYes.img);
-		this.cmdNo.w = mGraphics.getImageWidth(cmdYes.img);
-		this.cmdYes.h = mGraphics.getImageHeight(cmdYes.img);
-		this.cmdNo.h = mGraphics.getImageHeight(cmdYes.img);
-		last = mSystem.currentTimeMillis();
-		dem = this.info[0].Length / 3;
-		if (dem < 15)
-		{
-			dem = 15;
-		}
-		TextInfo.reset();
-	}
-
-	public void paint(mGraphics g)
-	{
-		PopUp.paintPopUp(g, X, Y, W, H + ((!GameCanvas.isTouch) ? 10 : 0), 16777215, false);
-		if (info != null)
-		{
-			TextInfo.paint(g, info[0], X + 5, Y + H / 2 - ((!GameCanvas.isTouch) ? 6 : 4), W - 10, H, mFont.tahoma_7);
-			if (GameCanvas.isTouch)
-			{
-				cmdYes.paint(g);
-				mFont.tahoma_7_yellow.drawString(g, dem + string.Empty, cmdYes.x + cmdYes.w / 2, cmdYes.y + cmdYes.h + 5, 2, mFont.tahoma_7_grey);
-			}
-			else if (TField.isQwerty)
-			{
-				mFont.tahoma_7b_blue.drawString(g, mResources.do_accept_qwerty + dem + ")", X + W / 2, Y + H - 6, 2);
-			}
-			else
-			{
-				mFont.tahoma_7b_blue.drawString(g, mResources.do_accept + dem + ")", X + W / 2, Y + H - 6, 2);
-			}
-		}
-	}
-
-	// Actual painted extent, including the accept button and countdown.
-	internal UnityEngine.Rect VisualBounds
-	{
-		get
-		{
-			UpdatePosition();
-			int left = GameCanvas.isTouch ? System.Math.Min(X, cmdYes.x) : X;
-			int bottom = Y + H + (GameCanvas.isTouch ? 0 : 10);
-			if (GameCanvas.isTouch)
-				bottom = System.Math.Max(bottom, cmdYes.y + cmdYes.h + 5 + mFont.tahoma_7_yellow.getHeight());
-			return new UnityEngine.Rect(left, Y, X + W - left, bottom - Y);
-		}
-	}
-
-	private void UpdatePosition()
-	{
-		X = GameCanvas.w - 5 - W;
-		Y = 45;
-		if (GameCanvas.w - 50 > 155 + W)
-		{
-			X = GameCanvas.w - 55 - W;
-			Y = 5;
-		}
-		cmdYes.x = X - 35;
-		cmdYes.y = Y;
-	}
-
-	public void update()
-	{
-		if (info != null)
-		{
-			UpdatePosition();
-			curr = mSystem.currentTimeMillis();
-			Res.outz("curr - last= " + (curr - last));
-			if (curr - last >= 1000)
-			{
-				last = mSystem.currentTimeMillis();
-				dem--;
-			}
-			if (dem == 0)
-			{
-				GameScr.gI().popUpYesNo = null;
-			}
-		}
-	}
-
-	public void perform(int idAction, object p)
-	{
-	}
+    public void perform(int action, object p) { NotificationStore.RespondToInvitation(InvitationId, action == 1); }
 }

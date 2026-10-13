@@ -1,14 +1,15 @@
 namespace Notifications
 {
-    public enum NotificationKind : byte { Boss = 0, Server = 1 }
+    public enum NotificationKind : byte { Boss = 0, Server = 1, Invitation = 2 }
 
-    // Static news only: no live tracking, navigation or gameplay actions.
     public sealed class NotificationEntry
     {
-        public long Id, UpdatedAt;
+        public long Id, UpdatedAt, ExpiresAt, RespondedAt;
         public NotificationKind Kind;
         public string BossName, MapName, Killer, Category, Text;
         public int MapId;
-        public bool Killed;
+        public bool Killed, Responding;
+        public byte InvitationType;
+        public int SenderId;
     }
 }

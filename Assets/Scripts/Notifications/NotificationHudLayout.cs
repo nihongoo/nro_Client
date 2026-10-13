@@ -34,7 +34,10 @@ namespace Notifications
             hasLayout = true; cachedKey = key;
             // Anchor at the upper right, below the existing chat/target HUD strip.
             int right = Mathf.Clamp(GameScr.ChatButtonCenterX - size / 2, 0, GameCanvas.w - size);
-            int top = System.Math.Max(46, GameScr.ChatButtonBottom + 8);
+            // On compact viewports the quick popup uses y=45 and spans the right edge.
+            // Reserve its extent even when absent so the bell stays anchored and usable.
+            int popupBottom = GameCanvas.w - 50 > 155 + 120 ? 46 : 95;
+            int top = System.Math.Max(popupBottom, GameScr.ChatButtonBottom + 8);
             for (int y = top; y + size < GameCanvas.h - 55; y += 4)
                 if (right >= 4 && IsFree(new Rect(right, y, size, size))) return cachedBell = new Rect(right, y, size, size);
             // If that column is occupied, retain the closest free position on the right half.

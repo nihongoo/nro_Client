@@ -8,11 +8,13 @@ namespace Notifications
     {
         private static readonly List<string[]> rows = new List<string[]>();
         private static Rect bell, window, closeButton, content;
-        private static readonly Rect[] tabs = new Rect[2];
+        private static readonly List<NotificationEntry> rowEntries = new List<NotificationEntry>();
+        private static readonly Rect[] tabs = new Rect[3];
         private static int tab, scroll, contentHeight, cachedRevision = -1, cachedWidth, cachedTab = -1;
         private static long cachedMinute = -1;
         private static bool dragging, backDown;
         private static int dragY, dragScroll, consumedTick = -1;
+        private static int ActionSize => System.Math.Max(32, NotificationHudLayout.TouchSize);
         public static bool IsOpen { get; private set; }
         public static bool ConsumesInput => IsOpen || consumedTick == GameCanvas.gameTick;
 
@@ -23,7 +25,7 @@ namespace Notifications
 
         public static void Close()
         {
-            IsOpen = false; dragging = false; NotificationStore.ReadingServer = false;
+            IsOpen = false; dragging = false; NotificationStore.ReadingServer = false; NotificationStore.ReadingInvitations = false;
             consumedTick = GameCanvas.gameTick;
             GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyHold(); GameCanvas.clearKeyPressed();
             GameCanvas.keyAsciiPress = 0;
@@ -72,8 +74,11 @@ namespace Notifications
                 if (!window.Contains(pointer) || closeButton.Contains(pointer)) Close();
                 else
                 {
+                    bool switched = false;
                     for (int i = 0; i < tabs.Length; i++)
-                        if (tabs[i].Contains(pointer) && i != tab) { tab = i; scroll = 0; cachedTab = -1; }
+                        if (tabs[i].Contains(pointer) && i != tab) { tab = i; scroll = 0; cachedTab = -1; switched = true; }
+                    if (!switched && tab == 2 && content.Contains(pointer) && (!dragging || System.Math.Abs(GameCanvas.py - dragY) < 6))
+                        HandleInvitationAction(pointer);
                 }
                 dragging = false;
             }
@@ -84,6 +89,8 @@ namespace Notifications
             }
             NotificationStore.ReadingServer = IsOpen && tab == 1;
             if (NotificationStore.ReadingServer) NotificationStore.MarkServerRead();
+            NotificationStore.ReadingInvitations = IsOpen && tab == 2;
+            if (NotificationStore.ReadingInvitations) NotificationStore.MarkInvitationsRead();
             Consume();
         }
 
@@ -120,7 +127,7 @@ namespace Notifications
             window = new Rect(x, y, width, maxHeight);
             closeButton = new Rect(window.xMax - padding - touchSize, window.y + padding, touchSize, touchSize);
             int tabHeight = System.Math.Max(30, touchSize);
-            int tabWidth = (width - padding * 2 - gap) / 2;
+            int tabWidth = (width - padding * 2 - gap * 2) / 3;
             float tabY = closeButton.yMax + gap;
             for (int i = 0; i < tabs.Length; i++)
                 tabs[i] = new Rect(window.x + padding + i * (tabWidth + gap), tabY, tabWidth, tabHeight);
@@ -148,7 +155,8 @@ namespace Notifications
             {
                 Rect bounds = tabs[i];
                 NotificationSkin.PaintFrame(g, (int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height, i == tab);
-                string label = i == 0 ? "Boss" : "Server" + (NotificationStore.UnreadCount > 0 ? " (" + NotificationStore.UnreadCount + ")" : "");
+                int count = i == 1 ? NotificationStore.ServerUnreadCount : NotificationStore.InvitationUnreadCount;
+                string label = i == 0 ? "Boss" : (i == 1 ? "Server" : "Lời mời") + (count > 0 ? " (" + count + ")" : "");
                 (i == tab ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g, label,
                     (int)bounds.center.x, (int)bounds.center.y - 6, 2);
             }
@@ -156,30 +164,71 @@ namespace Notifications
             int rowY = (int)content.y + 3 - scroll;
             if (rows.Count == 0) mFont.tahoma_7b_dark.drawString(g,
                 NotificationStore.HasSnapshot ? "Chưa có thông báo." : "Đang nhận thông báo...", (int)content.x + 4, rowY, 0);
-            foreach (string[] row in rows)
+            for (int index = 0; index < rows.Count; index++)
             {
-                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, (int)content.x + 4, rowY, 0); rowY += 12; }
+                string[] row = rows[index];
+                int bodyHeight = RowBodyHeight(row);
+                int textY = rowY + (bodyHeight - row.Length * 12) / 2;
+                foreach (string line in row) { mFont.tahoma_7b_dark.drawString(g, line, (int)content.x + 4, textY, 0); textY += 12; }
+                if (tab == 2) {
+                    NotificationEntry entry = rowEntries[index];
+                    int actionY = rowY + (bodyHeight - ActionSize) / 2;
+                    if (entry.Responding) mFont.tahoma_7_grey.drawString(g, "Đang trả lời...",
+                        (int)ActionBounds(actionY, true).x, rowY + (bodyHeight - 12) / 2, 0);
+                    else {
+                        PopUpYesNo.PaintAction(g, ActionBounds(actionY, true), true);
+                        PopUpYesNo.PaintAction(g, ActionBounds(actionY, false), false);
+                    }
+                }
+                rowY += bodyHeight;
                 // drawLine scales axis-aligned coordinates twice; keep this separator in logical pixels.
                 g.setColor(13524492); g.fillRect((int)content.x + 4, rowY + 2, (int)content.width - 8, 1); rowY += 8;
             }
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
 
+        private static int RowBodyHeight(string[] row)
+        {
+            return tab == 2 ? System.Math.Max(row.Length * 12, ActionSize) : row.Length * 12;
+        }
+
+        private static Rect ActionBounds(int y, bool accept)
+        {
+            int size = ActionSize;
+            return new Rect(content.xMax - (accept ? size * 2 + 10 : size + 4), y, size, size);
+        }
+
+        private static void HandleInvitationAction(Vector2 pointer)
+        {
+            EnsureRows();
+            int y = (int)content.y + 3 - scroll;
+            for (int index = 0; index < rows.Count; index++) {
+                int bodyHeight = RowBodyHeight(rows[index]);
+                int actionY = y + (bodyHeight - ActionSize) / 2;
+                if (ActionBounds(actionY, true).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, true); return; }
+                if (ActionBounds(actionY, false).Contains(pointer)) { NotificationStore.RespondToInvitation(rowEntries[index].Id, false); return; }
+                y += bodyHeight + 8;
+            }
+        }
+
         private static void EnsureRows()
         {
-            long minute = NotificationStore.ServerNow / 60000;
+            long minute = NotificationStore.ServerNow / (tab == 2 ? 1000 : 60000);
             if (cachedRevision == NotificationStore.Revision && cachedWidth == (int)content.width && cachedTab == tab && cachedMinute == minute) return;
             cachedRevision = NotificationStore.Revision; cachedWidth = (int)content.width; cachedTab = tab; cachedMinute = minute;
-            rows.Clear(); contentHeight = 0;
-            IReadOnlyList<NotificationEntry> entries = tab == 0 ? NotificationStore.Bosses : NotificationStore.Server;
+            rows.Clear(); rowEntries.Clear(); contentHeight = 0;
+            IReadOnlyList<NotificationEntry> entries = tab == 0 ? NotificationStore.Bosses : tab == 1 ? NotificationStore.Server : NotificationStore.Invitations;
             foreach (NotificationEntry entry in entries)
             {
                 long age = System.Math.Max(0, (NotificationStore.ServerNow - entry.UpdatedAt) / 60000);
                 string text = tab == 0 ? entry.BossName + " - " + entry.MapName + " - " +
                     (entry.Killed ? "bị " + entry.Killer + " tiêu diệt - " : "") + age + " phút trước"
-                    : "#" + entry.Id + " " + entry.Text;
-                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, (int)content.width - 8));
-                rows.Add(lines); contentHeight += lines.Length * 12 + 8;
+                    : tab == 1 ? "#" + entry.Id + " " + entry.Text
+                    : entry.Text + " (" + System.Math.Max(0, (entry.ExpiresAt - NotificationStore.ServerNow + 999) / 1000) + "s)";
+                // Reserve the right column for actions; wrapped text and buttons share one row.
+                int textWidth = tab == 2 ? (int)content.width - ActionSize * 2 - 20 : (int)content.width - 8;
+                string[] lines = mFont.tahoma_7b_dark.splitFontArray(text, System.Math.Max(20, textWidth));
+                rows.Add(lines); rowEntries.Add(entry); contentHeight += RowBodyHeight(lines) + 8;
             }
         }
     }

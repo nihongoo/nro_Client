@@ -7,7 +7,7 @@ namespace Notifications
     public static class NotificationProtocol
     {
         public const sbyte Command = -109;
-        public const byte Version = 1, Upsert = 0, Remove = 1, Snapshot = 2;
+        public const byte Version = 2, Upsert = 0, Remove = 1, Snapshot = 2, Respond = 3;
         private static long nextResync;
 
         public static void Read(Message message)
@@ -20,18 +20,19 @@ namespace Notifications
                 long sequence = reader.readLong(), time = reader.readLong();
                 if (action == Snapshot)
                 {
-                    int count = reader.readUnsignedShort(), bosses = 0, server = 0;
-                    if (count > 56) throw new InvalidOperationException("Notification count");
+                    int count = reader.readUnsignedShort(), bosses = 0, server = 0, invitations = 0;
+                    if (count > 106) throw new InvalidOperationException("Notification count");
                     var entries = new List<NotificationEntry>(count);
                     var ids = new HashSet<long>();
                     for (int i = 0; i < count; i++)
                     {
                         NotificationEntry entry = ReadEntry(reader);
                         if (!ids.Add(entry.Id)) throw new InvalidOperationException("Notification ID");
-                        if (entry.Kind == NotificationKind.Boss) bosses++; else server++;
+                        if (entry.Kind == NotificationKind.Boss) bosses++;
+                        else if (entry.Kind == NotificationKind.Server) server++; else invitations++;
                         entries.Add(entry);
                     }
-                    if (bosses > 6 || server > 50) throw new InvalidOperationException("Notification limits");
+                    if (bosses > 6 || server > 50 || invitations > 50) throw new InvalidOperationException("Notification limits");
                     NotificationStore.Snapshot(entries, sequence, time);
                 }
                 else if (action == Upsert)
@@ -55,7 +56,7 @@ namespace Notifications
         private static NotificationKind ReadKind(myReader reader)
         {
             int value = reader.readByte();
-            if (value != 0 && value != 1) throw new InvalidOperationException("Notification kind");
+            if (value < 0 || value > 2) throw new InvalidOperationException("Notification kind");
             return (NotificationKind)value;
         }
 
@@ -67,6 +68,13 @@ namespace Notifications
             {
                 entry.BossName = reader.readUTF(); entry.MapId = reader.readInt(); entry.MapName = reader.readUTF();
                 entry.Killed = reader.readBoolean(); entry.Killer = reader.readUTF();
+            }
+            else if (entry.Kind == NotificationKind.Invitation)
+            {
+                entry.InvitationType = (byte)reader.readByte(); entry.SenderId = reader.readInt();
+                entry.ExpiresAt = reader.readLong(); entry.Text = reader.readUTF();
+                if (entry.InvitationType > 3 || entry.ExpiresAt <= entry.UpdatedAt)
+                    throw new InvalidOperationException("Invitation payload");
             }
             else { entry.Category = reader.readUTF(); entry.Text = reader.readUTF(); }
             return entry;

@@ -14,11 +14,7 @@ using UnityEngine;
 using Color = UnityEngine.Color;
 using Font = UnityEngine.Font;
 using FontStyle = UnityEngine.FontStyle;
-using System.Net;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Collections.Specialized;
-using System.IO;
 
 
 namespace Mod.CuongLe
@@ -585,10 +581,6 @@ namespace Mod.CuongLe
     			mFont.tahoma_7b_yellow.drawString(g, "Bị TDHS: " + ch.freezSeconds + " giây", GameCanvas.w / 2, num, 2);
     			num += num2;
     		}
-    	}
-
-    	public static void smethod_15(mGraphics g, int x, int y)
-    	{
     	}
 
     	public void onChatFromMe(string text, string to)
