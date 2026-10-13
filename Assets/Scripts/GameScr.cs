@@ -5230,7 +5230,6 @@ public class GameScr : mScreen, IChatable
             paintInfoBar(g);
         }
         resetTranslate(g);
-        paint_xp_bar(g);
         if (!isPaintOther)
         {
             MainMod.Paint(g);
@@ -7352,21 +7351,6 @@ public class GameScr : mScreen, IChatable
     public static bool isSmallScr()
     {
         return GameCanvas.w <= 320;
-    }
-
-    private void paint_xp_bar(mGraphics g)
-    {
-        g.setColor(8421504);
-        g.fillRect(0, GameCanvas.h - 2, GameCanvas.w, 2);
-        int w = (int)(Char.myCharz().cLevelPercent * GameCanvas.w / 10000);
-        g.setColor(16777215);
-        g.fillRect(0, GameCanvas.h - 2, w, 2);
-        g.setColor(0);
-        w = GameCanvas.w / 10;
-        for (int i = 1; i < 10; i++)
-        {
-            g.fillRect(i * w, GameCanvas.h - 2, 1, 2);
-        }
     }
 
     private void paint_ios_bg(mGraphics g)
