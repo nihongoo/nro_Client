@@ -23,7 +23,12 @@ public static class WorldChatTests
         Check(WorldChatStore.GemFee == 10 && WorldChatStore.GoldFee == 10000000L, "fee wire mismatch");
         Check(WorldChatStore.MaxCharacters == 100 && WorldChatStore.CooldownMs == 5000, "limits wire mismatch");
         Check(WorldChatStore.Entries[0].Id == 6 && WorldChatStore.Entries[29].Id == 35, "snapshot order");
-        Check(WorldChatStore.Entries[29].Text == "Tin số 35", "Java UTF-8 text lost");
+        Check(WorldChatStore.Entries[29].Text == "Tin số 35 😀", "Java modified UTF text/surrogate lost");
+        byte[] utfPacket = File.ReadAllBytes(args[1]);
+        Check(WorldChatProtocol.ReadText(new myReader(mSystem.convertToSbyte(utfPacket))) == "Xin chào 😀", "Java modified UTF decode");
+        var writer = new myWriter(); WorldChatProtocol.WriteText(writer, "Xin chào 😀");
+        sbyte[] encoded = writer.getData(); byte[] actual = new byte[encoded.Length]; Buffer.BlockCopy(encoded, 0, actual, 0, encoded.Length);
+        Check(Convert.ToBase64String(actual) == Convert.ToBase64String(utfPacket), "client encoder differs from Java writeUTF");
         Check(WorldChatStore.FeeLabel.Contains("10 gem") && WorldChatStore.FeeLabel.Contains("10.000.000"), "fee label");
         Check(NotificationStore.UnreadCount == 1 && NotificationStore.Server.Count == 1, "world chat changed notification badge");
         int revision = WorldChatStore.Revision;

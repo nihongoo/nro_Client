@@ -2163,7 +2163,7 @@ public class Service
         try {
             message.writer().writeByte(Notifications.NotificationProtocol.Version);
             message.writer().writeByte(WorldChat.WorldChatProtocol.Submit);
-            message.writer().writeLong(requestId); message.writer().writeUTF(text);
+            message.writer().writeLong(requestId); WorldChat.WorldChatProtocol.WriteText(message.writer(), text);
             session.sendMessage(message); return true;
         } catch (Exception e) { Cout.println(e.Message); return false; }
         finally { message.cleanup(); }
