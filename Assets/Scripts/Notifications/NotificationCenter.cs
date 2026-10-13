@@ -53,15 +53,14 @@ namespace Notifications
             if (!CanUse) { if (IsOpen) Close(); backDown = escape; return; }
             bell = NotificationHudLayout.BellBounds();
             if (!IsOpen && NotificationHudLayout.IsBellObscured) { backDown = escape; return; }
-            int size = NotificationHudLayout.TouchSize;
-            UpdateLayout(size);
+            UpdateLayout();
             if (!IsOpen)
             {
                 if (bell.width > 0 && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick &&
                     bell.Contains(new Vector2(GameCanvas.px, GameCanvas.py)))
                 {
                     IsOpen = true; tab = 0; scroll = 0; dragging = false;
-                    UpdateLayout(size);
+                    UpdateLayout();
                     Consume();
                 }
                 backDown = escape;
@@ -118,7 +117,7 @@ namespace Notifications
             }
         }
 
-        private static void UpdateLayout(int touchSize)
+        private static void UpdateLayout()
         {
             const int padding = 10, gap = 6;
             // Keep the panel at the bell, on the right side, rather than covering the screen center.
@@ -131,7 +130,8 @@ namespace Notifications
             int titleRowHeight = System.Math.Max(TitleFont.getHeight(), closeSize);
             closeButton = new Rect(window.xMax - padding - closeSize,
                 window.y + padding + (titleRowHeight - closeSize) / 2, closeSize, closeSize);
-            int tabHeight = System.Math.Max(30, touchSize);
+            // Use the standard Command button height instead of the bell's DPI-sized touch target.
+            int tabHeight = mScreen.cmdH;
             int tabWidth = (width - padding * 2 - gap * 2) / 3;
             float tabY = window.y + padding + titleRowHeight + gap;
             for (int i = 0; i < tabs.Length; i++)
@@ -149,7 +149,7 @@ namespace Notifications
         public static void Paint(mGraphics g)
         {
             if (!IsOpen || !CanUse) return;
-            UpdateLayout(NotificationHudLayout.TouchSize);
+            UpdateLayout();
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             NotificationSkin.PaintFrame(g, x, y, w, h, false);
