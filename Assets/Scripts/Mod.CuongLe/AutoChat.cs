@@ -26,7 +26,6 @@ namespace Mod.CuongLe
         private static string[] inputContentChatInbox = new string[2] { "Nhập nội dung inbox:", "Nội dung" };
 
         private static string tempChatPublicContent;
-        private static string tempChatInboxContent;
 
         public static AutoChat getInstance()
         {

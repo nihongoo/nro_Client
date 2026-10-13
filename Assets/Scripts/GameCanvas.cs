@@ -2207,7 +2207,6 @@ public class GameCanvas : IActionListener
 
 	public static void checkBackButton()
 	{
-		if (currentDialog is WorldChat.WorldChatDialog chat) { chat.Close(); return; }
         if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
 		if (ChatPopup.serverChatPopUp == null && ChatPopup.currChatPopup == null)
 		{
@@ -2257,12 +2256,6 @@ public class GameCanvas : IActionListener
 			}
 			Res.paintOnScreenDebug(g);
 			InfoDlg.paint(g);
-			bool worldHistory = currentDialog is WorldChat.WorldChatDialog;
-			if (worldHistory)
-			{
-				GameScr.info1.paint(g);
-				GameScr.info2.paint(g);
-			}
 			if (currentDialog != null)
 			{
 				debug("PC", 1);
@@ -2273,11 +2266,8 @@ public class GameCanvas : IActionListener
 				debug("PD", 1);
 				menu.paintMenu(g);
 			}
-			if (!worldHistory)
-			{
-				GameScr.info1.paint(g);
-				GameScr.info2.paint(g);
-			}
+			GameScr.info1.paint(g);
+			GameScr.info2.paint(g);
 			if (ChatPopup.currChatPopup != null)
 			{
 				ChatPopup.currChatPopup.paint(g);

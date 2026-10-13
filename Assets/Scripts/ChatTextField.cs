@@ -1,3 +1,5 @@
+using UnityEngine;
+
 public class ChatTextField : IActionListener
 {
 	private static ChatTextField instance;
@@ -26,7 +28,91 @@ public class ChatTextField : IActionListener
 
 	private int h;
 
-	private bool isPublic;
+    private readonly WorldChat.WorldChatComposer composer = new WorldChat.WorldChatComposer();
+    private int worldResultRevision;
+    private long submittedRequest;
+    private string submittedText;
+    private bool ownsSubmittedDraft;
+    private bool HasChannelTabs => parentScreen == GameScr.instance && parentScreen != null && string.IsNullOrEmpty(to);
+    private int TabBand => HasChannelTabs ? mScreen.cmdH + 6 : 0;
+    private Rect TabBounds(bool world) => new Rect(tfChat.x + (world ? (tfChat.width + 6) / 2 : 0),
+        tfChat.y - mScreen.cmdH - 4, (tfChat.width - 6) / 2, mScreen.cmdH);
+
+    public static void ResetWorldSession()
+    {
+        if (instance == null) return;
+        instance.composer.Select(false); instance.submittedRequest = 0;
+        instance.worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
+    }
+    public void OpenWorldChat()
+    {
+        startChat(GameScr.gI(), string.Empty);
+        composer.Select(true); ApplyLimit();
+    }
+    private void ApplyLimit()
+    {
+        tfChat.setMaxTextLenght(composer.WorldMode ? (WorldChat.WorldChatStore.Ready ? WorldChat.WorldChatStore.MaxCharacters * 2 : 200) : 80);
+    }
+    private void PrepareNormal(IChatable listener, string target)
+    {
+        parentScreen = listener; to = target; composer.Select(false); ownsSubmittedDraft = false; ApplyLimit();
+    }
+    private static void ConsumeInput()
+    {
+        GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyHold(); GameCanvas.clearKeyPressed(); GameCanvas.keyAsciiPress = 0;
+    }
+    private string BalanceError()
+    {
+        bool gems = Char.myCharz().luong < WorldChat.WorldChatStore.GemFee;
+        bool gold = Char.myCharz().xu < WorldChat.WorldChatStore.GoldFee;
+        return gems || gold ? "Không đủ " + (gems && gold ? "gem và vàng" : gems ? "gem" : "vàng") + "." : null;
+    }
+    private void ResumeWorldForm()
+    {
+        GameCanvas.endDlg(); if (GameCanvas.currentScreen != GameScr.instance) { isShow = false; return; }
+        isShow = true; tfChat.isFocus = true; right.caption = mResources.CLOSE; ConsumeInput();
+    }
+    private void HideWorldKeyboard()
+    {
+        GameCanvas.closeKeyBoard();
+        if (TField.kb != null) TField.kb.active = false;
+        TField.kb = null;
+    }
+    private void WorldError(string error)
+    {
+        isShow = false; HideWorldKeyboard(); ConsumeInput();
+        GameCanvas.msgdlg.setInfo(error, null, new Command(mResources.OK, this, 8005, null), null);
+        GameCanvas.currentDialog = GameCanvas.msgdlg;
+    }
+    private void SendCurrent(bool throttleNormal = true)
+    {
+        if (parentScreen == null) return;
+        if (!HasChannelTabs) composer.Select(false);
+        if (composer.WorldMode && WorldChat.WorldChatStore.Ready) {
+            string funds = BalanceError(); if (funds != null) { WorldError(funds); return; }
+        }
+        if (throttleNormal && !composer.WorldMode && mSystem.currentTimeMillis() - lastChatTime < 1000) return;
+        string error = composer.Submit(tfChat.getText(), text => {
+            lastChatTime = mSystem.currentTimeMillis();
+            parentScreen.onChatFromMe(text, to); tfChat.setText(string.Empty);
+            right.caption = mResources.CLOSE; tfChat.clearKb();
+        }, question => {
+            isShow = false; HideWorldKeyboard(); ConsumeInput();
+            GameCanvas.startYesNoDlg(question, new Command("Đồng ý", this, 8003, null), new Command("Từ chối", this, 8004, null));
+        });
+        if (error != null) WorldError(error);
+    }
+    public void HandleWorldResult()
+    {
+        if (worldResultRevision == WorldChat.WorldChatStore.ResultRevision) return;
+        worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
+        if (submittedRequest == 0 || WorldChat.WorldChatStore.ResultText == null) return;
+        submittedRequest = 0;
+        if (WorldChat.WorldChatStore.ResultAccepted && ownsSubmittedDraft && composer.WorldMode && tfChat.getText() == submittedText) tfChat.setText(string.Empty);
+        if (!WorldChat.WorldChatStore.ResultAccepted && isShow && composer.WorldMode && GameCanvas.currentDialog == null)
+            WorldError(WorldChat.WorldChatStore.ResultText);
+        else GameScr.info1.addInfo(WorldChat.WorldChatStore.ResultText, 0);
+    }
 
 	public Command cmdChat2;
 
@@ -93,32 +179,16 @@ public class ChatTextField : IActionListener
 			right.y = GameCanvas.h - 30;
 		}
 		cmdChat = new Command();
-		ActionChat actionChat = delegate(string str)
-		{
-			tfChat.justReturnFromTextBox = false;
-			tfChat.setText(str);
-			parentScreen.onChatFromMe(str, to);
-			tfChat.setText(string.Empty);
-			right.caption = mResources.CLOSE;
-		};
-		cmdChat.actionChat = actionChat;
-		cmdChat2 = new Command();
-		cmdChat2.actionChat = delegate(string str)
-		{
-			tfChat.justReturnFromTextBox = false;
-			if (parentScreen != null)
-			{
-				tfChat.setText(str);
-				parentScreen.onChatFromMe(str, to);
-				tfChat.setText(string.Empty);
-				tfChat.clearKb();
-				if (right != null)
-				{
-					right.performAction();
-				}
-			}
-			isShow = false;
-		};
+        cmdChat.actionChat = delegate(string str) {
+            tfChat.justReturnFromTextBox = false; tfChat.setText(str); SendCurrent(false);
+        };
+        cmdChat2 = new Command();
+        cmdChat2.actionChat = delegate(string str) {
+            tfChat.justReturnFromTextBox = false; tfChat.setText(str); SendCurrent(false);
+            if (!composer.WorldMode && tfChat.getText() == string.Empty) {
+                tfChat.clearKb(); if (right != null) right.performAction(); isShow = false;
+            }
+        };
 		yBegin = tfChat.y;
 		yUp = GameCanvas.h / 2 - 2 * tfChat.height;
 		if (Main.isWindowsPhone)
@@ -141,7 +211,7 @@ public class ChatTextField : IActionListener
 		{
 			tfChat.keyPressed(keyCode);
 		}
-		if (tfChat.getText().Equals(string.Empty))
+		if (HasChannelTabs || tfChat.getText().Equals(string.Empty))
 		{
 			right.caption = mResources.CLOSE;
 		}
@@ -158,8 +228,8 @@ public class ChatTextField : IActionListener
 
 	public void startChat(int firstCharacter, IChatable parentScreen, string to)
 	{
+        PrepareNormal(parentScreen, to);
 		right.caption = mResources.CLOSE;
-		this.to = to;
 		if (Main.isWindowsPhone)
 		{
 			tfChat.showSubTextField = false;
@@ -178,8 +248,8 @@ public class ChatTextField : IActionListener
 
 	public void startChat(IChatable parentScreen, string to)
 	{
+        PrepareNormal(parentScreen, to);
 		right.caption = mResources.CLOSE;
-		this.to = to;
 		if (Main.isWindowsPhone)
 		{
 			tfChat.showSubTextField = false;
@@ -200,14 +270,12 @@ public class ChatTextField : IActionListener
 		}
 		tfChat.setText(string.Empty);
 		tfChat.clearAll();
-		isPublic = false;
 	}
 
 	public void startChat2(IChatable parentScreen, string to)
 	{
+        PrepareNormal(parentScreen, to);
 		tfChat.setFocusWithKb(true);
-		this.to = to;
-		this.parentScreen = parentScreen;
 		if (Main.isWindowsPhone)
 		{
 			tfChat.showSubTextField = false;
@@ -227,7 +295,6 @@ public class ChatTextField : IActionListener
 		}
 		tfChat.setText(string.Empty);
 		tfChat.clearAll();
-		isPublic = false;
 	}
 
 	public void updateKey()
@@ -240,6 +307,14 @@ public class ChatTextField : IActionListener
 		{
 			return;
 		}
+        if (HasChannelTabs && GameCanvas.currentDialog == null && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick) {
+            Vector2 point = new Vector2(GameCanvas.px, GameCanvas.py);
+            if (TabBounds(false).Contains(point) || TabBounds(true).Contains(point)) {
+                composer.Select(TabBounds(true).Contains(point)); if (!composer.WorldMode) ownsSubmittedDraft = false; ApplyLimit();
+                if (composer.WorldMode && !WorldChat.WorldChatStore.Ready) WorldChat.WorldChatProtocol.RequestSnapshot();
+                ConsumeInput(); return;
+            }
+        }
 		tfChat.update();
 		if (Main.isWindowsPhone)
 		{
@@ -248,9 +323,7 @@ public class ChatTextField : IActionListener
 		if (tfChat.justReturnFromTextBox)
 		{
 			tfChat.justReturnFromTextBox = false;
-			parentScreen.onChatFromMe(tfChat.getText(), to);
-			tfChat.setText(string.Empty);
-			right.caption = mResources.CLOSE;
+            SendCurrent(false);
 		}
 		if (!Main.isPC)
 		{
@@ -258,7 +331,7 @@ public class ChatTextField : IActionListener
 		}
 		if (GameCanvas.keyPressed[15])
 		{
-			if (left != null && tfChat.getText() != string.Empty)
+			if (left != null && (composer.WorldMode || tfChat.getText() != string.Empty))
 			{
 				left.performAction();
 			}
@@ -288,12 +361,20 @@ public class ChatTextField : IActionListener
 			int num = ((!Main.isWindowsPhone) ? (y - KC) : (tfChat.y - 5));
 			int num2 = ((!Main.isWindowsPhone) ? x : 0);
 			int num3 = ((!Main.isWindowsPhone) ? w : GameCanvas.w);
-			PopUp.paintPopUp(g, num2, num, num3, h, -1, true);
+			PopUp.paintPopUp(g, num2, num - TabBand, num3, h + TabBand, -1, true);
 			if (Main.isPC)
 			{
-				mFont.tahoma_7b_green2.drawString(g, strChat + to, tfChat.x, tfChat.y - ((!GameCanvas.isTouch) ? 12 : 17), 0);
+				mFont.tahoma_7b_green2.drawString(g, strChat + to, tfChat.x, tfChat.y - ((!GameCanvas.isTouch) ? 12 : 17) - TabBand, 0);
 				GameCanvas.paintz.paintCmdBar(g, left, center, right);
 			}
+            if (HasChannelTabs) {
+                for (int i = 0; i < 2; i++) {
+                    Rect bounds = TabBounds(i == 1);
+                    Notifications.NotificationSkin.PaintFrame(g, (int)bounds.x, (int)bounds.y, (int)bounds.width, (int)bounds.height, composer.WorldMode == (i == 1));
+                    mFont font = composer.WorldMode == (i == 1) ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey;
+                    font.drawString(g, i == 0 ? "Thường" : "Thế giới", (int)bounds.center.x, (int)bounds.center.y - font.getHeight() / 2, 2);
+                }
+            }
 			tfChat.paint(g);
 		}
 	}
@@ -302,26 +383,32 @@ public class ChatTextField : IActionListener
 	{
 		switch (idAction)
 		{
-		case 8000:
-			Cout.LogError("perform chat 8000");
-			if (parentScreen != null)
-			{
-				long num = mSystem.currentTimeMillis();
-				if (num - lastChatTime >= 1000)
-				{
-					lastChatTime = num;
-					parentScreen.onChatFromMe(tfChat.getText(), to);
-					tfChat.setText(string.Empty);
-					right.caption = mResources.CLOSE;
-					tfChat.clearKb();
-				}
-			}
-			break;
+        case 8000:
+            SendCurrent(); break;
+        case 8003:
+            string funds = BalanceError();
+            if (funds != null) { composer.Decline(); WorldError(funds); break; }
+            string error; long request = composer.Agree(out error);
+            if (error != null) { WorldError(error); break; }
+            if (request == 0) break;
+            submittedRequest = request; submittedText = composer.Draft; ownsSubmittedDraft = true;
+            worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
+            ResumeWorldForm();
+            if (!Service.gI().submitWorldChat(request, submittedText)) {
+                WorldChat.WorldChatStore.SendFailed(request); submittedRequest = 0;
+                WorldError("Chưa gửi được tin. Kiểm tra kết nối.");
+            }
+            break;
+        case 8004:
+            composer.Decline(); ResumeWorldForm(); break;
+        case 8005:
+            ResumeWorldForm(); break;
 		case 8001:
 			Cout.LogError("perform chat 8001");
-			if (tfChat.getText().Equals(string.Empty))
+			if (HasChannelTabs || tfChat.getText().Equals(string.Empty))
 			{
 				isShow = false;
+                tfChat.clearKb();
 				parentScreen.onCancelChat();
 			}
 			tfChat.clear();

@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace WorldChat
@@ -15,18 +14,15 @@ namespace WorldChat
     // Main-thread store. Policy values arrive from the server, never from translated fee labels.
     public static class WorldChatStore
     {
-        private static readonly List<WorldChatEntry> entries = new List<WorldChatEntry>();
+        public static readonly WorldChatTicker Ticker = new WorldChatTicker();
         private static long sequence, clock, clockAnchor, nextRequest, pendingSince;
-        public static IReadOnlyList<WorldChatEntry> Entries => entries;
         public static bool Ready { get; private set; }
         public static int GemFee { get; private set; }
         public static long GoldFee { get; private set; }
         public static int MaxCharacters { get; private set; }
         public static int CooldownMs { get; private set; }
-        public static int HistoryLimit { get; private set; }
         public static long NextAllowedAt { get; private set; }
         public static long PendingId { get; private set; }
-        public static int Revision { get; private set; }
         public static int ResultRevision { get; private set; }
         public static string ResultText { get; private set; }
         public static bool ResultAccepted { get; private set; }
@@ -35,28 +31,24 @@ namespace WorldChat
 
         public static void BeginSession()
         {
-            entries.Clear(); sequence = 0; Ready = false; PendingId = 0; NextAllowedAt = 0;
-            GemFee = 0; GoldFee = 0; MaxCharacters = 0; CooldownMs = 0; HistoryLimit = 0;
-            ResultText = null; ResultAccepted = false; SetClock(0); Revision++; ResultRevision++;
+            Ticker.Reset(); sequence = 0; Ready = false; PendingId = 0; NextAllowedAt = 0;
+            GemFee = 0; GoldFee = 0; MaxCharacters = 0; CooldownMs = 0;
+            ResultText = null; ResultAccepted = false; SetClock(0); ResultRevision++;
         }
         private static void SetClock(long time) { clock = time; clockAnchor = Stopwatch.GetTimestamp(); }
 
-        public static void Snapshot(List<WorldChatEntry> snapshot, long value, long time,
-            int gems, long gold, int maxCharacters, int cooldown, int retention, long nextAllowedAt)
+        public static void Snapshot(long value, long time, int gems, long gold,
+            int maxCharacters, int cooldown, long nextAllowedAt)
         {
             if (Ready && value < sequence) return;
-            entries.Clear(); entries.AddRange(snapshot); sequence = value;
-            GemFee = gems; GoldFee = gold; MaxCharacters = maxCharacters; CooldownMs = cooldown;
-            HistoryLimit = retention; NextAllowedAt = nextAllowedAt; Ready = true; SetClock(time); Revision++;
+            sequence = value; GemFee = gems; GoldFee = gold; MaxCharacters = maxCharacters;
+            CooldownMs = cooldown; NextAllowedAt = nextAllowedAt; Ready = true; SetClock(time);
         }
-
-        public static bool Append(WorldChatEntry entry, long value, long time)
+        public static bool Receive(WorldChatEntry entry, long value, long time)
         {
-            if (value <= sequence) return true;
-            if (!Ready || value != sequence + 1) return false;
-            entries.Add(entry);
-            while (entries.Count > HistoryLimit) entries.RemoveAt(0);
-            sequence = value; SetClock(time); Revision++; return true;
+            if (value <= sequence) return false;
+            // No replay/history: accept live gaps after a disconnect, never requeue old messages.
+            sequence = value; SetClock(time); Ticker.Enqueue(entry.Display); return true;
         }
 
         public static long StartRequest()
@@ -65,17 +57,16 @@ namespace WorldChat
             PendingId = ++nextRequest; pendingSince = Stopwatch.GetTimestamp(); return PendingId;
         }
         public static void SendFailed(long id) { if (PendingId == id) PendingId = 0; }
-        public static bool Result(long requestId, bool accepted, string text, long nextAllowedAt, long value, long time)
+        public static void Result(long requestId, bool accepted, string text, long nextAllowedAt, long time)
         {
-            if (requestId != PendingId || PendingId == 0) return true;
+            if (requestId != PendingId || PendingId == 0) return;
             PendingId = 0; ResultText = text; ResultAccepted = accepted; ResultRevision++;
             NextAllowedAt = nextAllowedAt; SetClock(time);
-            return value <= sequence;
         }
         public static bool CheckTimeout()
         {
             if (PendingId == 0 || Stopwatch.GetTimestamp() - pendingSince < Stopwatch.Frequency * 10) return false;
-            PendingId = 0; ResultAccepted = false; ResultText = "Chưa nhận được kết quả. Đang đồng bộ lịch sử; kiểm tra tin trước khi gửi lại.";
+            PendingId = 0; ResultAccepted = false; ResultText = "Chưa nhận được kết quả. Tin có thể đã phát; không tự gửi lại. Đang đồng bộ phí và cooldown.";
             ResultRevision++; return true;
         }
         public static int CharacterCount(string text)

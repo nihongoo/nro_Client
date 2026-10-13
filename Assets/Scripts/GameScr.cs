@@ -480,13 +480,9 @@ public class GameScr : mScreen, IChatable
 
     public static bool isUseTouch;
 
-    public Command cmdDoiCo;
 
-    public Command cmdLogOut;
 
-    public Command cmdChatTheGioi;
 
-    public Command cmdshowInfo;
 
     private static Command[] cmdTestLogin;
 
@@ -1062,22 +1058,6 @@ public class GameScr : mScreen, IChatable
         {
             isHaveSelectSkill = true;
         }
-        cmdDoiCo = new Command("Đổi cờ", GameCanvas.gI(), 100001, null);
-        cmdLogOut = new Command("Logout", GameCanvas.gI(), 100002, null);
-        cmdChatTheGioi = new Command("chat world", GameCanvas.gI(), 100003, null);
-        cmdshowInfo = new Command("InfoLog", GameCanvas.gI(), 100004, null);
-        cmdDoiCo.setType();
-        cmdLogOut.setType();
-        cmdChatTheGioi.setType();
-        cmdshowInfo.setType();
-        cmdChatTheGioi.x = GameCanvas.w - cmdChatTheGioi.w;
-        cmdshowInfo.x = GameCanvas.w - cmdshowInfo.w;
-        cmdLogOut.x = GameCanvas.w - cmdLogOut.w;
-        cmdDoiCo.x = GameCanvas.w - cmdDoiCo.w;
-        cmdChatTheGioi.y = cmdChatTheGioi.h + mFont.tahoma_7_white.getHeight();
-        cmdshowInfo.y = cmdChatTheGioi.h * 2 + mFont.tahoma_7_white.getHeight();
-        cmdLogOut.y = cmdChatTheGioi.h * 3 + mFont.tahoma_7_white.getHeight();
-        cmdDoiCo.y = cmdChatTheGioi.h * 4 + mFont.tahoma_7_white.getHeight();
     }
 
     public static void loadBg()
@@ -6033,7 +6013,7 @@ public class GameScr : mScreen, IChatable
             this.paintCapcha(g);
             return;
         }
-        if ((GameCanvas.currentDialog != null && !(GameCanvas.currentDialog is WorldChat.WorldChatDialog)) || ChatPopup.currChatPopup != null || GameCanvas.menu.showMenu || this.isPaintPopup() || GameCanvas.panel.isShow || global::Char.myCharz().taskMaint.taskId == 0 || ChatTextField.gI().isShow || GameCanvas.currentScreen == MoneyCharge.instance)
+        if (GameCanvas.currentDialog != null || ChatPopup.currChatPopup != null || GameCanvas.menu.showMenu || this.isPaintPopup() || GameCanvas.panel.isShow || global::Char.myCharz().taskMaint.taskId == 0 || ChatTextField.gI().isShow || GameCanvas.currentScreen == MoneyCharge.instance)
         {
             return;
         }
@@ -6477,7 +6457,7 @@ public class GameScr : mScreen, IChatable
 
     public bool isNotPaintTouchControl()
     {
-        if ((GameCanvas.isTouchControl || GameCanvas.currentScreen != gI()) && GameCanvas.isTouch && !ChatTextField.gI().isShow && !InfoDlg.isShow && (GameCanvas.currentDialog == null || GameCanvas.currentDialog is WorldChat.WorldChatDialog) && ChatPopup.currChatPopup == null && !GameCanvas.menu.showMenu && !GameCanvas.panel.isShow)
+        if ((GameCanvas.isTouchControl || GameCanvas.currentScreen != gI()) && GameCanvas.isTouch && !ChatTextField.gI().isShow && !InfoDlg.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && !GameCanvas.menu.showMenu && !GameCanvas.panel.isShow)
         {
             return isPaintPopup();
         }
