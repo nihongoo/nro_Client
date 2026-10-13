@@ -1,0 +1,17 @@
+﻿file,line,class,base,report
+Assets/Scripts/Assets.src.g/ClientInput.cs,3,ClientInput,mScreen,06-settings-dialogs.md
+Assets/Scripts/Assets.src.g/RegisterScreen.cs,5,RegisterScreen,mScreen,01-login-server.md
+Assets/Scripts/ChooseCharScr.cs,3,ChooseCharScr,mScreen,01-login-server.md
+Assets/Scripts/CrackBallScr.cs,3,CrackBallScr,mScreen,04-npc-shop.md
+Assets/Scripts/CreateCharScr.cs,3,CreateCharScr,mScreen,01-login-server.md
+Assets/Scripts/CustomServerDialog.cs,1,CustomServerDialog,Dialog,01-login-server.md
+Assets/Scripts/GameScr.cs,7,GameScr,mScreen,02-hud.md
+Assets/Scripts/InputDlg.cs,1,InputDlg,Dialog,06-settings-dialogs.md
+Assets/Scripts/LoginScr.cs,4,LoginScr,mScreen,01-login-server.md
+Assets/Scripts/MoneyCharge.cs,1,MoneyCharge,mScreen,04-npc-shop.md
+Assets/Scripts/MsgDlg.cs,1,MsgDlg,Dialog,06-settings-dialogs.md
+Assets/Scripts/RadarScr.cs,4,RadarScr,mScreen,04-npc-shop.md
+Assets/Scripts/ServerListScreen.cs,4,ServerListScreen,mScreen,01-login-server.md
+Assets/Scripts/ServerScr.cs,1,ServerScr,mScreen,01-login-server.md
+Assets/Scripts/SplashScr.cs,3,SplashScr,mScreen,01-login-server.md
+Assets/Scripts/TransportScr.cs,1,TransportScr,mScreen,04-npc-shop.md
