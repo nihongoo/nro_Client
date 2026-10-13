@@ -27,10 +27,11 @@ public class PopUpYesNo {
 public class Service {
     private static readonly Service instance = new Service();
     public static Service gI() { return instance; }
-    public int responses, snapshots;
+    public int responses, snapshots, worldSnapshots;
     public bool sendSucceeds = true;
     public bool respondToInvitation(long id, bool accept) { if (!sendSucceeds) return false; responses++; return true; }
     public void requestNotificationSnapshot() { snapshots++; }
+    public void requestWorldChatSnapshot() { worldSnapshots++; }
 }
 public static class StoreTests {
     private static int assertions;
