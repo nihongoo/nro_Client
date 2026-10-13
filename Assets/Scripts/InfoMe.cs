@@ -321,10 +321,10 @@ public class InfoMe
         }
     }
 
-    public void addInfoWithChar(string s, Char c, bool isChatServer)
+    public void addInfoWithChar(string s, Char c)
     {
         playerID = c.charID;
-        info.addInfo(s, 3, c, isChatServer);
+        info.addInfo(s, 3, c, false);
         isDone = false;
     }
 

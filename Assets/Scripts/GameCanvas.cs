@@ -472,7 +472,6 @@ public class GameCanvas : IActionListener
 		borderCenterH = mGraphics.getImageHeight(imgBorder[1]);
 		Panel.graphics = Rms.loadRMSInt("lowGraphic");
 		lowGraphic = Rms.loadRMSInt("lowGraphic") == 1;
-		GameScr.isPaintChatVip = Rms.loadRMSInt("serverchat") != 1;
 		Char.isPaintAura = Rms.loadRMSInt("isPaintAura") == 1;
 		Char.isPaintAura2 = Rms.loadRMSInt("isPaintAura2") == 1;
 		Res.init();
@@ -594,6 +593,7 @@ public class GameCanvas : IActionListener
             Notifications.NotificationStore.UpdateInvitations();
             if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
 			Notifications.NotificationCenter.UpdateInput();
+            WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)
 			{
 				if (ChatPopup.serverChatPopUp != null)
@@ -1109,7 +1109,7 @@ public class GameCanvas : IActionListener
 		try
 		{
 			int num = layer - 1;
-			if (num == imgBG.Length - 1 && (GameScr.gI().isRongThanXuatHien || GameScr.gI().isFireWorks))
+			if (num == imgBG.Length - 1 && GameScr.gI().isRongThanXuatHien)
 			{
 				g.setColor(GameScr.gI().mautroi);
 				g.fillRect(0, 0, w, h);
@@ -1118,10 +1118,7 @@ public class GameCanvas : IActionListener
 					drawSun1(g);
 					drawSun2(g);
 				}
-				if (GameScr.gI().isFireWorks && !lowGraphic)
-				{
-					FireWorkEff.paint(g);
-				}
+
 			}
 			else
 			{
@@ -2210,7 +2207,8 @@ public class GameCanvas : IActionListener
 
 	public static void checkBackButton()
 	{
-		if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
+		if (currentDialog is WorldChat.WorldChatDialog chat) { chat.Close(); return; }
+        if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
 		if (ChatPopup.serverChatPopUp == null && ChatPopup.currChatPopup == null)
 		{
 			startYesNoDlg(mResources.DOYOUWANTEXIT, new Command(mResources.YES, instance, 8885, null), new Command(mResources.NO, instance, 8882, null));
@@ -2276,7 +2274,8 @@ public class GameCanvas : IActionListener
 				ChatPopup.currChatPopup.paint(g);
 			}
 			Hint.paint(g);
-			Notifications.NotificationCenter.Paint(g);
+			WorldChat.WorldChatHud.Paint(g);
+            Notifications.NotificationCenter.Paint(g);
 			if (ChatPopup.serverChatPopUp != null)
 			{
 				ChatPopup.serverChatPopUp.paint(g);

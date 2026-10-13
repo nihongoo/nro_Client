@@ -895,11 +895,9 @@ public class GameScr : mScreen, IChatable
 
     public PopUpYesNo popUpYesNo;
 
-    public static MyVector vChatVip;
 
     public static int vBig;
 
-    public bool isFireWorks;
 
     public int[] winnumber;
 
@@ -919,11 +917,8 @@ public class GameScr : mScreen, IChatable
 
     private int tShow;
 
-    private int xChatVip;
 
-    private int currChatWidth;
 
-    private bool startChat;
 
     public sbyte percentMabu;
 
@@ -931,7 +926,6 @@ public class GameScr : mScreen, IChatable
 
     public int tMabuEff;
 
-    public static bool isPaintChatVip;
 
     public static sbyte mabuPercent;
 
@@ -1217,7 +1211,6 @@ public class GameScr : mScreen, IChatable
 
     public override void switchToMe()
     {
-        vChatVip.removeAllElements();
         ServerListScreen.isWait = false;
         if (BackgroudEffect.isHaveRain())
         {
@@ -4822,7 +4815,6 @@ public class GameScr : mScreen, IChatable
             {
                 ((ItemTime)textTime.elementAt(num11)).update();
             }
-            updateChatVip();
         }
         catch (Exception)
         {
@@ -4952,7 +4944,7 @@ public class GameScr : mScreen, IChatable
         GameCanvas.debug("PA2", 1);
         GameCanvas.paintBGGameScr(g);
         paint_ios_bg(g);
-        if ((isRongThanXuatHien || isFireWorks) && TileMap.bgID != 3)
+        if (isRongThanXuatHien && TileMap.bgID != 3)
         {
             paintBlackSky(g);
         }
@@ -5276,7 +5268,6 @@ public class GameScr : mScreen, IChatable
                 paintTouchControl(g);
             }
             resetTranslate(g);
-            paintChatVip(g);
             if (!GameCanvas.panel.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null && GameCanvas.currentScreen.Equals(instance))
             {
                 base.paint(g);
@@ -7044,63 +7035,6 @@ public class GameScr : mScreen, IChatable
         lastXS = (currXS = mSystem.currentTimeMillis());
     }
 
-    public void chatVip(string chatVip)
-    {
-        if (!startChat)
-        {
-            currChatWidth = mFont.tahoma_7b_yellowSmall.getWidth(chatVip);
-            xChatVip = GameCanvas.w;
-            startChat = true;
-        }
-        if (chatVip.StartsWith("!"))
-        {
-            chatVip = chatVip.Substring(1, chatVip.Length);
-            isFireWorks = true;
-        }
-        vChatVip.addElement(chatVip);
-    }
-
-    public void clearChatVip()
-    {
-        vChatVip.removeAllElements();
-        xChatVip = GameCanvas.w;
-        startChat = false;
-    }
-
-    public void paintChatVip(mGraphics g)
-    {
-        if (vChatVip.size() != 0 && isPaintChatVip)
-        {
-            g.setClip(0, GameCanvas.h - 13, GameCanvas.w, 15);
-            g.fillRect(0, GameCanvas.h - 13, GameCanvas.w, 15, 0, 90);
-            string st = (string)vChatVip.elementAt(0);
-            mFont.tahoma_7b_yellow.drawString(g, st, xChatVip, GameCanvas.h - 13, 0, mFont.tahoma_7b_dark);
-        }
-    }
-
-    public void updateChatVip()
-    {
-        if (!startChat)
-        {
-            return;
-        }
-        xChatVip -= 2;
-        if (xChatVip < -currChatWidth)
-        {
-            xChatVip = GameCanvas.w;
-            vChatVip.removeElementAt(0);
-            if (vChatVip.size() == 0)
-            {
-                isFireWorks = false;
-                startChat = false;
-            }
-            else
-            {
-                currChatWidth = mFont.tahoma_7b_white.getWidth((string)vChatVip.elementAt(0));
-            }
-        }
-    }
-
     public void showYourNumber(string strNum)
     {
         yourNumber = strNum;
@@ -7717,7 +7651,6 @@ public class GameScr : mScreen, IChatable
         STORE = 1;
         ZONE = 2;
         UPGRADE = 3;
-        vChatVip = new MyVector();
         nCT_TeamB = 50;
         nCT_TeamA = 50;
         nCT_nBoyBaller = 100;
