@@ -1,0 +1,9 @@
+{
+  "result": "Succeeded, errors=0",
+  "apk": "Build\\world-chat-p3\\NRO_WORLD_CHAT_P3.apk",
+  "bytes": 53902466,
+  "sha256": "7156C85A9D47E54BDC83A4C3AD609D4E750FDCF8D3C1F678C7B829D615DCCC61",
+  "log": "Logs/world-chat-ui-build.log",
+  "sourceCommit": "ca3f845",
+  "exitCode": 0
+}
