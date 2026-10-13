@@ -9,7 +9,7 @@ namespace WorldChat
         private readonly TField input = new TField();
         private readonly List<string> lines = new List<string>();
         private Rect window, history, send, close;
-        private int revision = -1, cachedWidth, resultRevision = WorldChatStore.ResultRevision;
+        private int revision = -1, cachedWidth, cachedHeight, resultRevision = WorldChatStore.ResultRevision;
         private int scroll, contentHeight, dragY, dragScroll;
         private bool dragging;
         private string confirmedText, submittedText, status;
@@ -18,28 +18,28 @@ namespace WorldChat
         {
             input.name = "Tin thế giới"; input.loginInput = true;
             input.setFocus(true);
-            input.height = mScreen.ITEM_HEIGHT + 2;
+            input.height = System.Math.Min(22, mScreen.ITEM_HEIGHT + 2);
             input.setMaxTextLenght(WorldChatStore.Ready ? WorldChatStore.MaxCharacters * 2 : 200);
             input.cmdDoneAction = new Command("Gửi", this, 3, null);
             status = WorldChatStore.ResultText; Layout();
         }
         private void Layout()
         {
-            int width = System.Math.Min(380, GameCanvas.w - 12), height = System.Math.Min(320, GameCanvas.h - 12);
-            window = new Rect((GameCanvas.w - width) / 2, (GameCanvas.h - height) / 2, width, height);
-            close = new Rect(window.xMax - 34, window.y + 5, 28, 24);
-            send = new Rect(window.xMax - 76, window.yMax - 34, 68, 26);
-            input.x = (int)window.x + 8; input.width = width - 16;
-            input.y = (int)send.y - input.height - 6;
-            history = new Rect(window.x + 8, window.y + 43, width - 16, System.Math.Max(0, input.y - window.y - 49));
+            window = WorldChatLayout.HistoryBounds();
+            int width = (int)window.width;
+            close = new Rect(window.xMax - 29, window.y + 3, 24, 20);
+            int sendWidth = width < 160 ? 44 : 68;
+            send = new Rect(window.xMax - sendWidth - 8, window.yMax - 26, sendWidth, 22);
+            input.x = (int)window.x + 8; input.width = width - sendWidth - 24;
+            input.y = (int)send.y;
+            history = new Rect(window.x + 8, window.y + 32, width - 16, System.Math.Max(0, input.y - window.y - 48));
             if (WorldChatStore.Ready) input.setMaxTextLenght(WorldChatStore.MaxCharacters * 2);
-            if (revision == WorldChatStore.Revision && cachedWidth == (int)history.width) return;
-            bool atBottom = revision < 0 || scroll >= System.Math.Max(0, contentHeight - (int)history.height) - 4;
-            revision = WorldChatStore.Revision; cachedWidth = (int)history.width; lines.Clear();
+            if (revision == WorldChatStore.Revision && cachedWidth == (int)history.width && cachedHeight == (int)history.height) return;
+            bool atBottom = revision < 0 || scroll >= System.Math.Max(0, contentHeight - cachedHeight) - 4;
+            revision = WorldChatStore.Revision; cachedWidth = (int)history.width; cachedHeight = (int)history.height; lines.Clear();
             foreach (WorldChatEntry entry in WorldChatStore.Entries)
             {
                 lines.AddRange(mFont.tahoma_7b_dark.splitFontArray(entry.Display, System.Math.Max(20, (int)history.width - 8)));
-                lines.Add("");
             }
             contentHeight = lines.Count * 12;
             int maxScroll = System.Math.Max(0, contentHeight - (int)history.height);
@@ -97,7 +97,7 @@ namespace WorldChat
         }
         public override void update()
         {
-            if (GameCanvas.currentScreen != GameScr.instance) { Close(); return; }
+            if (GameCanvas.currentScreen != GameScr.instance || WorldChatLayout.HistoryBounds().width == 0) { Close(); return; }
             Layout();
             if (resultRevision != WorldChatStore.ResultRevision)
             {
@@ -108,6 +108,7 @@ namespace WorldChat
             Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
             if (GameCanvas.isPointerJustRelease)
             {
+                if (!window.Contains(pointer)) { Close(); return; }
                 if (close.Contains(pointer)) { Close(); return; }
                 if (send.Contains(pointer)) { Consume(); Confirm(); return; }
                 dragging = false;
@@ -123,8 +124,10 @@ namespace WorldChat
         {
             Layout(); g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             Notifications.NotificationSkin.PaintFrame(g, (int)window.x, (int)window.y, (int)window.width, (int)window.height, false);
-            mFont.tahoma_7b_dark.drawString(g, "Chat thế giới", (int)window.x + 10, (int)window.y + 8, 0);
-            mFont.tahoma_7_grey.drawString(g, WorldChatStore.FeeLabel, (int)window.x + 10, (int)window.y + 25, 0);
+            mFont.tahoma_7b_dark.drawString(g, "Chat thế giới", (int)window.x + 10, (int)window.y + 4, 0);
+            g.setClip((int)window.x + 6, (int)window.y + 19, (int)window.width - 12, 13);
+            mFont.tahoma_7_grey.drawString(g, WorldChatStore.FeeLabel, (int)window.x + 6, (int)window.y + 19, 0);
+            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             PaintButton(g, close, "X");
             g.setClip((int)history.x, (int)history.y, (int)history.width, (int)history.height);
             if (lines.Count == 0) mFont.tahoma_7_grey.drawString(g, WorldChatStore.Ready ? "Chưa có tin thế giới." : "Đang nhận lịch sử...", (int)history.x + 4, (int)history.y + 4, 0);
@@ -132,8 +135,9 @@ namespace WorldChat
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h); input.paint(g);
             PaintButton(g, send, WorldChatStore.PendingId != 0 ? "Đang gửi" : "Gửi");
             string label = status ?? (WorldChatStore.Ready ? WorldChatStore.CharacterCount(input.getText()) + "/" + WorldChatStore.MaxCharacters + " ký tự" : "Đang đồng bộ...");
-            string[] statusLines = mFont.tahoma_7_grey.splitFontArray(label, System.Math.Max(20, (int)send.x - (int)window.x - 16));
-            for (int i = 0; i < System.Math.Min(2, statusLines.Length); i++) mFont.tahoma_7_grey.drawString(g, statusLines[i], (int)window.x + 8, (int)send.y + i * 12, 0);
+            g.setClip((int)window.x + 8, (int)send.y - 15, (int)window.width - 16, 13);
+            mFont.tahoma_7_grey.drawString(g, label, (int)window.x + 8, (int)send.y - 15, 0);
+            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
         private static void PaintButton(mGraphics g, Rect bounds, string text)
         {

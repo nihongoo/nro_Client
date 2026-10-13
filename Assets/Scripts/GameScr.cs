@@ -671,6 +671,37 @@ public class GameScr : mScreen, IChatable
     internal static int ChatButtonCenterX => xC + 17;
     internal static int ChatButtonBottom => yC + 34;
 
+    // The chat strip must yield to the existing controls, including their larger touch targets.
+    internal static void CollectChatObstacles(System.Collections.Generic.List<Rect> bounds)
+    {
+        bounds.Clear();
+        bounds.Add(new Rect(xC, yC, 34, 34));
+        bounds.Add(Notifications.NotificationHudLayout.BellBounds());
+        if (Char.myCharz().cmdMenu != null)
+            bounds.Add(new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34));
+        if (instance != null && instance.cmdMenu != null)
+            bounds.Add(new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h));
+        if (xS != null && yS != null)
+            for (int i = 0; i < xS.Length; i++)
+            {
+                bounds.Add(new Rect(xSkill + xS[i] - 1, yS[i] - 1, 30, 30));
+                bounds.Add(new Rect(xSkill + xS[i] - wSkill / 2 + 12, yS[i] - wSkill / 2 + 12, wSkill, wSkill));
+            }
+        if (GameCanvas.isTouch)
+        {
+            bounds.Add(new Rect(xHP, yHP + 10, 40, 40));
+            bounds.Add(new Rect(xHP - 1, yHP - 6, 42, 50));
+            bounds.Add(new Rect(xHP + 5, yHP - 36, 40, 40));
+            if (isAnalog != 0)
+            {
+                bounds.Add(new Rect(xF, yF, 40, 40));
+                bounds.Add(new Rect(xTG, yTG, 40, 40));
+                if (gamePad != null) bounds.Add(Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone));
+            }
+        }
+        else bounds.Add(new Rect(xSkill + xHP - 1, yHP - 1, 30, 30));
+    }
+
     private static int xL;
 
     private static int yL;
@@ -5260,6 +5291,7 @@ public class GameScr : mScreen, IChatable
             GameCanvas.debug("PA19", 1);
             GameCanvas.debug("PA20", 1);
             resetTranslate(g);
+            WorldChat.WorldChatHud.Paint(g);
             paintSelectedSkill(g);
             GameCanvas.debug("PA22", 1);
             resetTranslate(g);
@@ -6002,7 +6034,7 @@ public class GameScr : mScreen, IChatable
             this.paintCapcha(g);
             return;
         }
-        if (GameCanvas.currentDialog != null || ChatPopup.currChatPopup != null || GameCanvas.menu.showMenu || this.isPaintPopup() || GameCanvas.panel.isShow || global::Char.myCharz().taskMaint.taskId == 0 || ChatTextField.gI().isShow || GameCanvas.currentScreen == MoneyCharge.instance)
+        if ((GameCanvas.currentDialog != null && !(GameCanvas.currentDialog is WorldChat.WorldChatDialog)) || ChatPopup.currChatPopup != null || GameCanvas.menu.showMenu || this.isPaintPopup() || GameCanvas.panel.isShow || global::Char.myCharz().taskMaint.taskId == 0 || ChatTextField.gI().isShow || GameCanvas.currentScreen == MoneyCharge.instance)
         {
             return;
         }
@@ -6446,7 +6478,7 @@ public class GameScr : mScreen, IChatable
 
     public bool isNotPaintTouchControl()
     {
-        if ((GameCanvas.isTouchControl || GameCanvas.currentScreen != gI()) && GameCanvas.isTouch && !ChatTextField.gI().isShow && !InfoDlg.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && !GameCanvas.menu.showMenu && !GameCanvas.panel.isShow)
+        if ((GameCanvas.isTouchControl || GameCanvas.currentScreen != gI()) && GameCanvas.isTouch && !ChatTextField.gI().isShow && !InfoDlg.isShow && (GameCanvas.currentDialog == null || GameCanvas.currentDialog is WorldChat.WorldChatDialog) && ChatPopup.currChatPopup == null && !GameCanvas.menu.showMenu && !GameCanvas.panel.isShow)
         {
             return isPaintPopup();
         }
