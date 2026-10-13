@@ -1,189 +1,118 @@
-# Stage 3 — World chat ở thanh dưới
+# Stage 3 chỉnh lại — form Chat thường, không lịch sử
 
-Ngày: 2026-10-13. Client và server đều dùng branch `feat/world-chat-p3`, tạo trực tiếp trong repo gốc từ `origin/develop` sau fetch. Không clone, không tạo worktree, không áp stash, không push/merge.
+Ngày: 14/10/2026. Repo gốc client `D:/project_Unity/client_Nro/Mod-nro-unity`, server `D:/dowload/SRC NRO NEW 03/SRC`. Branch cả hai: `feat/world-chat-p3`. Nền trước đợt này: client `0934c02`, server `a5d7a99`.
 
-## 1. Kết quả và commit
-
-World chat dùng riêng thanh vàng dưới cùng. Thanh giữ tin mới nhất, đứng yên nếu ngắn và chạy chữ nếu dài. Bấm thanh hoặc mục Chat thế giới trong menu để mở lịch sử và ô nhập. Người chơi xác nhận phí trước mỗi lần gửi; tin world không còn đi qua popup InfoMe ở cạnh nút chat/R.
+## 1. Commit và phạm vi
 
 | Repo | Commit | Nội dung |
 |---|---|---|
-| Client | c3191bb | Store/protocol, thanh dưới, lịch sử/nhập tin/xác nhận phí; thay và xóa luồng world cũ |
-| Client | c77ecde | Test snapshot Java → C#, state client, regression lời mời và entry build APK |
-| Client | 77ef933 | Xóa nốt discriminator màu world chat trong Info/InfoItem/Panel, chuẩn hóa metadata |
-| Client | 47f0caa | Sửa codec modified UTF đúng Java, gồm ký tự ngoài BMP, kiểm tra byte hai chiều |
-| Server | 86b2cc8 | Policy chung, lịch sử RAM, validate/thu phí/broadcast; thay hàng đợi cũ và tách tin bot/minigame |
-| Server | 1fd0907 | 100 kiểm tra tự động về phí, replay, concurrency, cooldown, retention và protocol |
-| Server | 1914cd7 | Fixture Java modified UTF có surrogate pair để kiểm tra codec client |
+| Client | `9151b31` | Form Chat có tab, xác nhận giá, phân luồng riêng; bỏ WorldChatDialog và lịch sử; ticker một lượt, queue giới hạn; dọn command/field chết |
+| Client | `b974e64` | Xóa quyền sở hữu và bản nháp world khi đổi phiên, tránh rơi sang chat thường |
+| Client | `0e37438` | Test form thật, consent, keyboard, S13 isolation, giá snapshot, ticker và hồi quy invitation |
+| Server | `ba40e09` | Test snapshot policy-only và thứ tự broadcast live |
+| Server | `10f35ea` | Snapshot chỉ còn phí/chính sách; bỏ lưu/phát lịch sử; giữ broadcast live và cơ chế thu/hoàn phí |
 
-Commit báo cáo được tạo sau các commit trên; xem `git log origin/develop..HEAD` ở mỗi repo để có danh sách đầy đủ.
+Commit test/tài liệu được ghi sau khi chạy build; xem `git log` để lấy toàn bộ commit của đợt này. Client/server phải được phát hành cùng nhau. Không hỗ trợ APK dùng payload snapshot world cũ.
 
-Nền client: `e9f1721`; nền server: `335d8a1`. Hai phía Stage 3 phải được merge/phát hành cùng nhau. APK cũ không có giao diện/protocol world chat mới; không giữ đường gửi -71 cũ để tránh bypass chính sách.
+Không tạo branch/worktree/clone, không áp/drop stash, không push/merge. Không sửa hoặc commit Config.properties, Packages, ProjectSettings, UserSettings, .idea và logo local có sẵn. Compile server vào output riêng, không thay con trỏ runtime đang chạy.
 
-## 2. Luồng mới và file:line
+## 2. Luồng mới và điểm vào
 
-Đường dẫn tính từ root của repo tương ứng.
+1. **Nút R/chat thường hoặc gõ để mở chat:** các lời gọi `startChat` hiện có giữ nguyên. `Assets/Scripts/ChatTextField.cs:250` gọi `PrepareNormal` (`:57`), mặc định tab **Thường**. Khi OK/Enter, gọi listener cũ `parentScreen.onChatFromMe`; không popup giá. Tiêu đề vẫn `strChat + to` như form cũ, không thêm nhãn phí.
+2. **Bấm thanh dưới đang có tin:** `Assets/Scripts/WorldChat/WorldChatHud.cs:15` → `ChatTextField.OpenWorldChat` (`ChatTextField.cs:48`) → cùng form nhưng chọn tab **Thế giới**. Menu Chat thế giới trong Panel cũng mở đường này. `SoundMn.CaseAnalog` ở chế độ không touch vốn có điểm vào WorldChatHud; giữ nguyên và nay mở tab Thế giới.
+3. **Đổi tab:** `ChatTextField.cs:313` dùng hai vùng bấm cùng kích thước nút Command. Đổi tab không xóa nội dung. Tab chỉ xuất hiện ở form chat công khai của GameScr; ô nhập của mod và chat riêng giữ luồng/caption/listener hiện có.
+4. **OK/Enter/bàn phím native:** cùng đi qua `ChatTextField.SendCurrent` (`:88`) → `WorldChatComposer.Submit` (`Assets/Scripts/WorldChat/WorldChatComposer.cs:15`). Tab Thế giới không gọi listener chat thường và không chạy lệnh mod/S13. Validate lỗi được hiện qua MsgDlg và trả lại form với bản nháp.
+5. **Popup giá:** lấy `WorldChatStore.FeeLabel` từ snapshot server. Hai nút Đồng ý/Từ chối. Giá không ghi cứng ở code client; test dùng cả giá 17 gem + 123.456 vàng để kiểm chứng.
+6. **Từ chối:** `ChatTextField.cs:403` → `composer.Decline` → quay lại form, giữ nội dung, không tạo request. Đóng bàn phím native bằng việc giải phóng keyboard handle, không xóa bản nháp.
+7. **Đồng ý:** `ChatTextField.cs:389` → `WorldChatComposer.Agree` (`:27`) kiểm tra lại policy/cooldown/pending; nếu giá đã đổi thì yêu cầu xác nhận lại. Sau đó `Service.submitWorldChat` (`Assets/Scripts/Service.cs:2159`) gửi -109/v2/action 6, request ID và modified UTF text. Chỉ xóa bản nháp đã gửi sau RESULT thành công; lỗi giữ nội dung.
+8. **Server:** `src/nro/models/server/Controller.java:342` → `WorldChatService.submit` (`src/nro/models/services/WorldChatService.java:90`). Vẫn kiểm tra phiên online, replay, text, 100 Unicode code point, ký tự điều khiển, bảo trì, cooldown 5 giây, đủ gem/vàng. Vẫn lock submit + inventory, serialize trước thu phí, áp dụng cả admin.
+9. **Thu phí/broadcast:** `src/nro/models/services/WorldChatService.java:115`–`:163`: trừ đúng 10 gem và 10.000.000 vàng theo WorldChatPolicy, enqueue tới các phiên online gồm cả người gửi. Không queue nào nhận thì hoàn cả hai khoản. Có queue nhận thì cập nhật sequence/cooldown/tiền và RESULT. Không còn thêm vào history.
+10. **Nhận và chạy chữ:** `WorldChatProtocol.Read` (`Assets/Scripts/WorldChat/WorldChatProtocol.cs:10`) → `WorldChatStore.Receive` → `WorldChatTicker.Enqueue` (`WorldChatTicker.cs:16`). `WorldChatHud.UpdateInput` gọi ticker update; bắt đầu tại mép phải, dịch trái 2 pixel logic/tick, hết chiều rộng text thì biến mất. Tin tiếp theo lấy từ queue; không đứng yên hay lặp lại.
 
-| Bước | Vị trí | Hành vi |
-|---|---|---|
-| Policy server | server `src/nro/models/services/WorldChatPolicy.java:5` | Nguồn duy nhất: 10 gem thường + 10.000.000 vàng; 100 Unicode code point; cooldown 5 giây; giữ 30 tin |
-| Snapshot khi vào game | server `src/nro/models/server/Controller.java:944` | Gửi policy, cooldown còn lại và lịch sử RAM trong sendInfo |
-| Snapshot chủ động | server `src/nro/models/server/Controller.java:341`, `src/nro/models/services/WorldChatService.java:66` | Client có thể xin lại khi mở lần đầu, mất gói hoặc timeout |
-| Decode/tách kênh | client `Assets/Scripts/Notifications/NotificationProtocol.cs:20`, `Assets/Scripts/WorldChat/WorldChatProtocol.cs:11` | Dispatch action world riêng, không đưa world vào NotificationStore/badge |
-| Codec UTF world | client `Assets/Scripts/WorldChat/WorldChatProtocol.cs:60`, `:73`, `Assets/Scripts/Service.cs:2166` | Encode/decode modified UTF đúng Java; giữ nguyên surrogate pair, không sửa UTF helper toàn game |
-| Lưu lịch sử/policy | client `Assets/Scripts/WorldChat/WorldChatStore.cs:44` | Thay snapshot nguyên khối, bỏ snapshot cũ, giữ thứ tự và retention server cung cấp |
-| Thanh tin mới nhất | client `Assets/Scripts/WorldChat/WorldChatHud.cs:28`, `:51` | Chỉ chọn entry cuối cùng; reset chạy chữ khi có tin mới hoặc đổi chiều rộng |
-| Hook HUD | client `Assets/Scripts/GameCanvas.cs:596`, `:2277` | Input thanh trước input gameplay; paint sau HUD game |
-| Mở lịch sử | client `Assets/Scripts/WorldChat/WorldChatHud.cs:18`, `Assets/Scripts/Panel.cs:7699`, `:7750` | Mở dialog chứa lịch sử cuộn, phí, input, nút gửi/đóng |
-| Layout và cuộn | client `Assets/Scripts/WorldChat/WorldChatDialog.cs:26`, `:98`, `:122` | Wrap tên/nội dung theo viewport, tự theo tin mới khi đang ở cuối, giữ vị trí nếu đang xem tin cũ |
-| Validate/hiện phí | client `Assets/Scripts/WorldChat/WorldChatDialog.cs:62`, `:69`, `Assets/Scripts/WorldChat/WorldChatStore.cs:34`, `:88` | Lấy số phí từ snapshot; kiểm tra text, pending/cooldown và số dư cache; popup xác nhận trước khi tạo request |
-| Gửi sau xác nhận | client `Assets/Scripts/WorldChat/WorldChatDialog.cs:77`, `Assets/Scripts/Service.cs:2159` | Chỉ callback xác nhận mới gửi request ID + text; hủy không gửi/trừ phí |
-| Server nhận | server `src/nro/models/server/Controller.java:342` | Nhận -109/version 2/action 6; không nhận lời khai phí/số dư từ client |
-| Kiểm tra lại | server `src/nro/models/services/WorldChatService.java:94` | Phiên online hiện tại, request ID, text, độ dài, ký tự điều khiển, bảo trì, cooldown, gem/vàng; admin đi cùng luồng |
-| Thu phí/broadcast | server `src/nro/models/services/WorldChatService.java:115`, `:132`, `:137` | Lock toàn kênh + inventory, serialize trước thu phí, reserve đúng một lần, enqueue tới các phiên online |
-| Xác nhận enqueue | server `src/nro/models/network/Session.java:105`, `src/nro/models/network/Sender.java:80` | API trả bool khi queue outgoing nhận gói, thay vì dựa vào API void có thể bỏ gói âm thầm |
-| Commit hoặc hoàn phí | server `src/nro/models/services/WorldChatService.java:143` | Không queue nào nhận: hoàn cả gem/vàng, không thêm history/cooldown. Có queue nhận: commit ID/history, giữ 30 tin, cập nhật tiền và RESULT |
-| Chặn replay | server `src/nro/models/network/MySession.java:31`, `src/nro/models/services/WorldChatService.java:97` | High-water request ID theo connection; ID đã xử lý không được chạy lại kể cả sau cooldown |
-| Cooldown qua relog | server `src/nro/models/services/WorldChatService.java:22`, `:47`, `:151` | Deadline monotonic theo character ID; phiên mới vẫn bị giới hạn nếu tin trước chưa đủ 5 giây |
-| Kết quả/timeout client | client `Assets/Scripts/WorldChat/WorldChatStore.cs:68`, `:75` | Chỉ nhận RESULT khớp pending; timeout 10 giây xin snapshot, không tự gửi lại gây trừ phí lặp |
-| Reset khi login | client `Assets/Scripts/Service.cs:858`, `Assets/Scripts/WorldChat/WorldChatHud.cs:14` | Xóa policy/history/pending của phiên trước; bộ đếm request tiếp tục tăng |
+`WorldChatTicker.WaitingLimit = 3` tại `Assets/Scripts/WorldChat/WorldChatTicker.cs:9`: tối đa **3 tin đang chờ**, cộng một tin đang chạy. Khi đầy, bỏ tin chờ cũ nhất; không bỏ tin đang chạy. Không có tin thì thanh/text không vẽ, không còn placeholder. Điểm vào menu vẫn dùng được khi không có tin trên thanh.
 
-## 3. Protocol
+## 3. Protocol hai phía
 
-Dùng lại opcode **-109, version 2**, thêm action **4/5/6/7**. Không tạo opcode mới: kênh này đã có routing, snapshot và session initialization phù hợp. Các action notification **0/1/2/3** và payload P1/2a giữ nguyên; world có sequence/store riêng nên không ảnh hưởng badge chuông hoặc invitation.
+Giữ opcode **-109**, version **2**; action notification/invitation **0/1/2/3** không đổi. Không cần opcode mới. Modified UTF tương thích Java giữ nguyên.
 
-Các số dùng Java DataOutputStream big-endian và reader tương ứng phía client. UTF là **Java modified UTF-8** của DataInputStream.readUTF/DataOutputStream.writeUTF. WorldChatProtocol.WriteText/ReadText phía client có codec riêng tương thích byte với Java, gồm surrogate pair; không dùng writer/reader UTF-8 thường của các luồng game cũ. Độ dài tin đếm Unicode code point ở cả hai phía, không phải số byte UTF hay số UTF-16 code unit. Tin được trim; tin toàn khoảng trắng, quá 100 code point hoặc có ký tự điều khiển/xuống dòng bị từ chối.
+Header server → client của world vẫn: `byte version, byte action, int64 sequence, int64 serverTimeMs`.
 
-### Client → server
-
-| Action | Payload sau opcode |
+| Action | Sau đợt chỉnh lại |
 |---|---|
-| 4: xin snapshot | byte version=2, byte action=4 |
-| 6: gửi tin | byte version=2, byte action=6, int64 requestId dương tăng dần, UTF text |
+| **4 — snapshot policy** | Client xin chỉ gửi version/action. Server trả `int32 gemFee, int64 goldFee, uint16 maxCharacters, int32 cooldownMs, int64 nextAllowedAtMs`. Tổng packet payload 44 byte gồm header. **Bỏ** historyLimit, count và Entry[]. Login mới chỉ nhận policy, không phát lại tin cũ. |
+| **5 — broadcast live** | Đổi tên constant từ APPEND/Append thành BROADCAST/Broadcast. Wire vẫn một Entry: `int64 id, int64 sentAtMs, int32 senderId, UTF senderName, UTF text`. Client đưa vào queue ticker, không lưu lịch sử. |
+| **6 — submit** | Giữ `int64 requestId, UTF text`. Không gửi phí/số dư từ client. |
+| **7 — result** | Giữ `int64 requestId, bool accepted, UTF message, int64 nextAllowedAtMs`. Client chỉ xử lý khi khớp pending. Không xin replay lịch sử. |
 
-### Server → client
+Không bỏ action nào; **đổi payload action 4** và ý nghĩa lưu trữ của action 5. Các tin trùng/cũ bị bỏ; live sequence có gap vẫn nhận tin mới vì không còn cơ chế replay/history. Snapshot không đụng queue chữ đang chờ/chạy.
 
-Header chung world: `byte version=2, byte action, int64 sequence, int64 serverTimeMs`.
+Mất RESULT: sau 10 giây báo rằng tin có thể đã phát, không tự gửi lại, xin đồng bộ policy/cooldown. Không còn lịch sử để xác minh tin bị mất. Queue/bản nháp phiên trước được reset khi login.
 
-| Action | Payload sau header |
+## 4. Đã xóa / thay thế
+
+- `WorldChatDialog.cs` và metadata; toàn bộ layout/cuộn/history/status riêng của dialog.
+- HistoryBounds/tìm vùng trống/cache kích thước lịch sử trong WorldChatLayout. Giữ BarBounds và loại vùng bấm điều khiển.
+- List 30 Entry, HistoryLimit, Revision lịch sử và logic retention ở store client; ArrayDeque/historyLimit/count/Entries trong snapshot server.
+- Ticker chỉ giữ tin cuối, pause, offset lặp, lastWidth/latestText và chuỗi placeholder. Thay bằng queue 3 tin chờ và một lượt chạy theo cơ chế gốc `origin/develop` (`xChatVip = GameCanvas.w`, `xChatVip -= 2`, kết thúc ở `-currChatWidth`).
+- Các ngoại lệ vẽ/input dành riêng cho WorldChatDialog ở GameScr/GameCanvas.
+- `cmdChatTheGioi`, `cmdshowInfo`, `cmdLogOut`, `cmdDoiCo`: đã tìm mọi tham chiếu; chỉ còn khai báo, khởi tạo, setType và đặt vị trí, không có renderer/input/callback tương ứng. Đã xóa cả nhóm.
+- `AutoChat.tempChatInboxContent`: chỉ có khai báo, đã xóa.
+- `ChatTextField.isPublic`: chỉ có field và hai phép gán false, không có nơi đọc; đã xóa trong file đang sửa.
+- Editor helper WorldChatUiReview, script test UI lịch sử, ảnh/matrix và báo cáo UI cũ chỉ phục vụ dialog đã bỏ. Có thể xem lại bằng Git ở HEAD trước đợt chỉnh này.
+- Test history/retention/dialog cũ; thay bằng test policy-only, broadcast live/order, form thật, consent/cancel, queue và giới hạn.
+
+**Còn lại, có dùng:** `Panel.isViewChatServer`, `ServerNotify.sendNotifyTab`, opcode 92 cho tin riêng/hệ thống. Không xóa. S13 `Contains("admin")` của GameScr chat thường giữ nguyên; đã so sánh toàn thân handler với `0934c02`. Các ô nhập mod/private không dùng tab World.
+
+**Các mục dọn cũ đã không còn ở HEAD:** MainMod.smethod_15, using trùng trong MainMod, ServerNotify.gk, import Functions ở ServerNotify. Không phát sinh thay đổi các mục này trong đợt này.
+
+**Ngoài phạm vi, chưa xóa:** các field/callback rỗng không liên quan world chat và cảnh báo cũ ở MainMod, Panel, GameScr; helper UTF toàn game vẫn dùng codec cũ, world chat dùng codec riêng. Không áp commit UI batch C.
+
+## 5. Bug gặp và xử lý
+
+- Callback OK, Enter và bàn phím trước đây gọi thẳng listener, có thể bypass nhánh world: gom routing và test actual ChatTextField.
+- `startChat(IChatable, string)` trước đây không gán lại listener: giờ luôn gán đúng listener khi mở form, tránh dùng listener của lần nhập mod trước.
+- Xóa text trong keyboard handle trước khi đóng có thể làm mất bản nháp khi trở lại: world popup đóng/giải phóng handle, giữ text của TField; test decline/native callback.
+- RESULT đến muộn có thể xóa bản nháp khác có cùng nội dung: theo dõi quyền sở hữu bản nháp; đổi về Thường hoặc mở form mới không cho receipt world xóa text đó.
+- Đổi phiên đăng nhập: reset bản nháp/ownership/mode world, tránh nội dung world sót lại ở tab Thường (ChatTextField.cs:41).
+- Popup callback sau khi rời màn chơi: không mở lại form trên màn login/khác.
+- Policy đổi giá sau popup: không gửi với giá mới chưa được đồng ý; giữ bản nháp và báo xác nhận lại.
+- Test invitation thiếu dependency ticker sau đổi store: bổ sung source vào runner; hồi quy chạy lại đạt.
+
+## 6. Build và test
+
+- C# client: **236 source, PASS, 0 lỗi**, output/log `Build/world-chat-rework/`.
+- Java server: **551 source, PASS, 0 lỗi**, release 17, output/log `build/world-chat-rework/`. Còn note unchecked/unsafe operations.
+- Test **320 assertions PASS**: 181 world server + 49 world store/protocol/composer/ticker + 24 actual ChatTextField + 42 registry + 6 escrow + 18 invitation client. Không giữ số lượng test cũ bằng các assertion history đã vô hiệu.
+- Cảnh báo C# liên quan reader cũ: CS0675 tại myReader.cs:106 và field không dùng trong test compile; không có lỗi compile WorldChat/ChatTextField.
+- APK: **Succeeded, errors=0**. Artifact `Build/world-chat-p3/NRO_WORLD_CHAT_P3.apk` (53.873.259 byte), SHA-256 `c3180e39200fd7052fbd7356b82f64f7a3854d24571b559d52d26b63b11386aa`, kết quả `Build/world-chat-p3/result.txt`, log `Build/world-chat-rework/unity-apk.log`. Dùng menu Tools/World chat/Build Android sau Refresh, không đổi cấu hình project. Lần đầu Cancelled ở Processing Mapping File; lần build lại với bản sửa đổi phiên đã thành công.
+
+## 7. Ma trận test tay
+
+| Case | Kỳ vọng |
 |---|---|
-| 4: snapshot | int32 gemFee, int64 goldFee, uint16 maxCharacters, int32 cooldownMs, byte historyLimit, int64 nextAllowedAtMs của người nhận, uint16 count, Entry[count] |
-| 5: append | Entry |
-| 7: kết quả | int64 requestId, bool accepted, UTF message, int64 nextAllowedAtMs của người gửi |
+| R / gõ để mở Chat | Tiêu đề Chat như cũ; chọn Thường mặc định; không có nhãn phí |
+| Chuyển Thường ↔ Thế giới khi có text | Text còn nguyên; tab hoạt động, OK/Đóng theo form chung |
+| Thường → OK / Enter / keyboard done | Gửi theo listener cũ, không hỏi phí |
+| Bấm thanh đang chạy / menu Chat thế giới | Mở cùng form, chọn Thế giới |
+| Thế giới → OK → Từ chối | Popup đúng phí snapshot; trở lại form với nguyên nội dung; không gửi/trừ |
+| Thế giới → OK → Đồng ý; bấm liên tục | Chỉ gửi một request, thu đúng một lần; bản nháp chỉ xóa sau thành công |
+| Chỉ thiếu gem / chỉ thiếu vàng / thiếu cả hai | Báo rõ, không broadcast/trừ |
+| Tin rỗng, toàn whitespace, 100/101 ký tự và emoji | Rỗng/quá dài bị từ chối; Unicode đếm code point; server kiểm tra lại |
+| Gửi trước 5 giây / sau 5 giây / relog trong cooldown | Đúng cooldown, không bypass bằng relog |
+| Tin ngắn và dài | Đều chạy từ phải sang trái đúng một lượt rồi biến mất; không đứng yên/lặp |
+| Một tin chạy + bốn tin mới tới | Tin đang chạy giữ nguyên; ba tin chờ mới nhất chạy lần lượt, bỏ tin chờ cũ nhất |
+| Hai client gửi đồng thời | Cùng thứ tự live, mỗi người thấy cả tin mình, mỗi tin được thu đúng một lần |
+| Login sau khi đã có tin trước đó / restart | Chỉ policy; không hiện lại tin cũ |
+| Android: nhập, chuyển tab, done, từ chối rồi chạm lại input | Không mất text/nhảy listener, bàn phím mở lại được, không gửi ngoài consent |
+| Mất kết nối trước gửi / sau submit / mất RESULT | Báo lỗi hoặc kết quả chưa rõ; không tự gửi lại; không tự mở chat trên login |
+| Chat thường chứa admin | S13 vẫn như cũ, dành riêng UI batch C |
+| Chat world chứa admin, qua OK/Enter/native | Chỉ gửi world sau consent; không bật/tắt VIP hay chạy lệnh mod |
+| Ô nhập mod và tin nhắn riêng | Không đổi thành form world; giữ callback hiện có |
 
-Entry: `int64 id, int64 sentAtMs, int32 senderId, UTF senderName, UTF text`. ID bằng sequence của lần broadcast được commit. Snapshot xếp cũ → mới, tối đa 30. Không tăng sequence vì lỗi validate hoặc không enqueue được. Client phát hiện gap thì xin snapshot; decode snapshot xong mới thay store.
+## 8. Việc còn dở / giới hạn
 
-## 4. Thu phí và concurrency
+Chưa test tích hợp trên hai thiết bị thật hoặc bàn phím Android thật trong đợt này; các test form dùng class sản phẩm với renderer/keyboard/transport fixture. Không dựng ảnh mô phỏng để thay kiểm tra thiết bị.
 
-- Server giữ một lock cho submit/snapshot/history. Các tin gửi đồng thời được tuần tự hóa; lock inventory bao quanh kiểm tra và trừ/hoàn phí. Không có miễn phí hoặc bypass cooldown dành cho admin.
-- Serialize toàn bộ packet trước khi trừ tiền. Reserve 10 gem và 10.000.000 vàng; nếu không queue online nào nhận thì hoàn nguyên bằng cộng lại đúng hai khoản. Chưa thành công không cập nhật lịch sử/cooldown.
-- Một khi ít nhất một outgoing queue online nhận gói, broadcast được commit; lỗi ở một recipient không khiến tin đã phát bị thu/hoàn lần hai. Tiếp tục thử mọi recipient còn lại.
-- Broadcast ở đây là enqueue trên server. TCP có thể ngắt sau enqueue; không có cam kết mọi thiết bị đã đọc/hiển thị tin và không dùng client ACK để quyết định phí.
-- Cooldown dùng nanoTime, không lệ thuộc việc chỉnh đồng hồ hệ thống. Lịch sử/cooldown đều trong RAM; restart làm mất chúng như yêu cầu.
-- Gem là `inventory.gem`/`Char.luong`, không cộng ruby/ngọc khóa để giả đủ tiền. Báo riêng thiếu gem, thiếu vàng hoặc thiếu cả hai.
+Phí được commit khi ít nhất một outgoing queue online nhận tin, không dựa trên ACK thiết bị. Không còn lịch sử nên không khôi phục tin trong lúc offline hoặc xác minh lại RESULT thất lạc. Ticker tiếp tục cập nhật theo game tick khi form/panel che nó, giống cơ chế dòng chữ gốc.
 
-## 5. Đã xóa/thay thế
-
-Server:
-
-- Xóa ChatGlobalService cũ: waitingChat/listChatting, worker chạy mỗi giây, API chat1/chatVip/ThôngBáo*, overload SystemColor, luật sức mạnh/30 giây và logic phí ngọc cũ.
-- Bỏ opcode gửi -71 và constant CHAT_VIP=93 không còn dùng.
-- Bỏ field lastTimeChatGlobal cũ trong IDMark.
-- Bỏ broadcast quảng cáo shop bot; giữ chat bot cục bộ trong map và giao dịch bot.
-- Thông báo thắng minigame chuyển sang NotificationService/category minigame ở tab Server, không giả thành tin world của người chơi và không tự thu phí người thắng.
-- Bỏ import/comment callback ChatGlobalService chết trong Mob, NangCapVatPham, PhaLeHoaTrangBi, UseItem.
-
-Client:
-
-- Bỏ Service.chatGlobal/-71, callback nhập world chat cũ trong Panel, kiểm tra/label 5 ngọc trong T1/T2/T3/mResources.
-- Bỏ vChatVip, ticker queue cũ, handler opcode 93, class ChatVip không dùng, preference/toggle ẩn ticker serverchat cũ.
-- Bỏ đường world chat opcode 92 → InfoMe và cờ phân biệt màu isChatServer trong Info/InfoItem/Panel. Opcode 92 còn phục vụ tin nhắn riêng.
-- Bỏ hiệu ứng FireWorkEff và cờ isFireWorks chỉ được ticker quảng cáo cũ kích hoạt; giữ hiệu ứng/nền Rồng Thần.
-- Bỏ AutoChat world và spam world, menu/callback/RMS load-save liên quan. Giữ auto chat cục bộ và inbox; world mới chỉ gửi qua xác nhận phí.
-- Menu Chat thế giới cũ chuyển sang dialog lịch sử mới; không giữ hai đường gửi song song.
-
-### Còn lại, ngoài phạm vi
-
-- `Panel.isViewChatServer` tên cũ vẫn là toggle hiện tin nhắn riêng trong Info/Panel; có hành vi đang dùng, không phải đường world chat mới.
-- `AutoChat.tempChatInboxContent` chưa dùng và các phần auto inbox/local không thuộc world chat; chỉ liệt kê.
-- GameScr.onChatFromMe vẫn kiểm tra chuỗi chứa admin cho chat cục bộ/VIP; commit sửa exact /admin ở branch UI batch C vẫn chờ quyết định. WorldChatDialog không gọi đường này.
-- Không áp các commit UI batch C, không đổi worktree/branch audit hoặc các stash còn giữ từ đợt trước.
-- myReader/myWriter UTF của các luồng cũ ngoài world chat vẫn dùng UTF-8 thường, có thể không tương thích ký tự ngoài BMP với Java writeUTF/readUTF. Đợt này sửa codec riêng cho world, chưa thay protocol toàn bộ game.
-
-## 6. Bug đã sửa
-
-1. Phí cũ kiểm tra >=5 ngọc nhưng chỉ trừ 1, label 5 và có overload bỏ phí: thay bằng policy chung + server snapshot, áp dụng admin.
-2. Cooldown cũ 30 giây nhưng báo 5 giây: thay bằng 5 giây monotonic và truyền deadline về client.
-3. Hàng đợi world cũ dùng ArrayList/LinkedList không khóa giữa worker/người gửi, có thể race và thu tiền trước khi tin được phát: bỏ worker, commit enqueue/tiền/history dưới lock, test gửi 64 request đồng thời.
-4. Tin bot/minigame chen vào world và có thể bị coi là người chơi gửi: tách khỏi kênh world.
-5. Tin quá dài bị cắt âm thầm và có thể cắt đôi surrogate: từ chối quá giới hạn, đếm code point nhất quán.
-6. Gói tin nhắn riêng opcode 92 gọi endDlg và có thể đóng khung world/confirmation đang mở: bỏ thao tác đóng dialog khi nhận tin riêng.
-7. AutoChat.onChatFromMe gọi text.Equals trước kiểm tra null: sửa kiểm tra null an toàn trong file đang dọn.
-8. Java modified UTF và UTF-8 thường của client khác nhau với ký tự ngoài BMP: thêm codec world riêng, fixture đọc emoji và kiểm tra bytes client writer giống hệt DataOutputStream.writeUTF của Java.
-
-## 7. Build và test tự động
-
-- Compile đầy đủ server: **551 file Java**, thành công bằng `scripts/build-server.ps1`. Không khởi động server trong đợt này. Release build: `20261013-125500-4f59af3933784c838dbb6080b93b3ff5`.
-- World server: **100 assertions** qua, chạy production WorldChatService/Policy với session/clock fixture; gồm admin, thiếu từng loại tiền/cả hai, empty/Unicode/control, replay, offline/replacement, bảo trì, relog, refund/partial queue failure, 64 request đồng thời, 30 tin và Java wire snapshot.
-- World client: **32 assertions** qua, đọc packet Java thật; policy, UTF tiếng Việt/emoji, kiểm tra byte writer giống Java, history/order/latest, malformed snapshot, badge isolation, stale/gap/replay, pending/result/cooldown/timeout, session reset.
-- Regression P2a: **42 registry + 6 escrow + 18 client assertions**, tất cả qua.
-- APK cuối **Unity 2022.3.62f1 IL2CPP: Succeeded, errors=0**, gồm cleanup Info và codec modified UTF. Log: `Logs/world-chat-p3-utf-build.log:1181`.
-- APK: `D:/project_Unity/client_Nro/Mod-nro-unity/Build/world-chat-p3/NRO_WORLD_CHAT_P3.apk`, 53.863.981 bytes, source code client `47f0caa`.
-- SHA256 APK: `CD1DA9BE2E4EA559CEED35FC5F10F293BAD2DA07762DF4717E67C51E69CE5A0F`.
-- Tổng cộng **198 assertions** qua: world 100 server + 32 client; regression 42 registry + 6 escrow + 18 client.
-- Chưa xác minh trực quan/thao tác trên thiết bị thật; ma trận test tay bên dưới vẫn cần chạy.
-
-Lệnh:
-
-```powershell
-# Server
-python tests/world_chat/run.py
-.\scripts\build-server.ps1
-# Client, dùng fixture Java vừa sinh
-.\Tests\WorldChat\run.ps1 -JavaPacket 'D:\dowload\SRC NRO NEW 03\SRC\build\world-chat-snapshot.bin'
-.\Tests\Invitations\run.ps1 -JavaPacket 'D:\dowload\SRC NRO NEW 03\SRC\build\invitation-protocol-fixture.bin'
-# Unity CLI: -executeMethod InvitationBuild.BuildWorldChatAndroid
-```
-
-Test server cũ dùng thư mục temp hệ thống bị sandbox Windows từ chối; đã chạy lại với temp nằm dưới build/test-workspaces. Không đổi fixture/logic kiểm tra cũ.
-
-## 8. Ma trận test tay
-
-| Case | Kết quả mong đợi |
-|---|---|
-| Vào game chưa có tin | Thanh dưới có gợi ý mở chat; dialog nhận policy và lịch sử rỗng |
-| Có nhiều tin trước khi login | Snapshot có tối đa 30 tin gần nhất đúng thứ tự; thanh chỉ hiện tin cuối |
-| Tin ngắn | Chữ đứng yên, không chạy khỏi thanh |
-| Tin dài/tên dài, màn hình ngang/dọc | Thanh chạy chữ, dialog wrap và cuộn; input/nút không đè lịch sử |
-| Tin mới trong lúc thanh đang chạy tin cũ | Chuyển ngay sang tin mới, reset vị trí chạy; không xếp hàng phát tin cũ |
-| Bấm thanh/menu world | Mở cùng dialog lịch sử và input; không mở InfoMe world cạnh R |
-| Đủ tiền, bấm Gửi | Hiện phí đúng 10 gem + 10.000.000 vàng; chưa xác nhận chưa gửi/trừ |
-| Hủy popup phí | Không gửi, không trừ; giữ nội dung đang nhập |
-| Xác nhận phí | Hai client nhận cùng một tin; trừ đúng một lần, input chỉ xóa sau kết quả thành công |
-| Admin gửi | Cùng phí/cooldown, không miễn phí |
-| Thiếu gem / thiếu vàng / thiếu cả hai | Báo đúng loại thiếu, không phát tin/không trừ gì |
-| Chỉ đủ ruby/ngọc khóa nhưng thiếu gem thường | Không giả đủ gem; báo thiếu gem |
-| Bấm Gửi liên tục/Enter + touch | Client pending chặn lặp; server không thu/broadcast hai lần |
-| Gửi lại trong 5 giây / đúng sau 5 giây | Bị từ chối / được gửi, phí chỉ trừ lần thành công |
-| Disconnect/relog trong 5 giây | Cooldown theo character còn hiệu lực |
-| Tin rỗng/toàn khoảng trắng | Không gửi/trừ |
-| 100 ký tự / 101 ký tự, gồm Unicode | 100 được gửi; 101 bị từ chối, không cắt âm thầm |
-| Xuống dòng/ký tự điều khiển qua packet tự tạo | Server từ chối, không trừ |
-| Gửi request ID cũ sau cooldown | Không broadcast/trừ lại |
-| Hai người gửi đồng thời | Cùng thứ tự trên hai client, mỗi người bị trừ đúng phí của tin đã phát |
-| Tiền thay đổi sau popup xác nhận | Server kiểm tra lại số dư thật; thiếu thì từ chối không trừ |
-| Recipient ngắt giữa lúc gửi | Các recipient còn online vẫn nhận; không thu/hoàn lặp |
-| Mọi outgoing queue không nhận | Không history/cooldown, hoàn đủ cả hai khoản (có test tự động) |
-| Mất RESULT | Sau 10 giây client xin snapshot; không tự gửi lại/trừ thêm; kiểm tra lịch sử trước khi gửi lại |
-| Cuộn lên xem tin cũ rồi có tin mới | Giữ vị trí xem cũ; đang ở cuối thì theo tin mới |
-| Có tin nhắn riêng khi đang nhập/xác nhận world | Không đóng khung world/confirmation; private chat vẫn hoạt động |
-| Bot shop/minigame/welcome hoạt động | Không chen vào thanh world; minigame/welcome ở Server tab, bot map giữ luồng cục bộ |
-| Restart server | Lịch sử RAM trống; phiên mới nhận snapshot mới, không lẫn dữ liệu phiên trước |
-| P1/2a: boss/server/invitation/combat | Badge và lời mời vẫn đúng; world không tăng badge chuông |
-
-## 9. Workspace và việc còn lại
-
-- Giữ thay đổi local có sẵn: logo App.png, hai file Packages, ProjectSettings.asset, layout Unity; server Config.properties và .idea/. Không đưa vào commit Stage 3.
-- Không sửa ba file được bảo vệ, không áp/drop stash nào. Branch Đổi IP và UI batch C giữ nguyên.
-- Kiểm tra cuối xác nhận SHA256 ba file được bảo vệ vẫn khớp bản trước khi làm; toàn bộ 6 stash client và 1 stash server giữ nguyên hash/thứ tự.
-- Không push/merge. Cần test tay bằng client/server cùng branch trước khi phát hành.
+Không có câu hỏi cần chốt thêm để triển khai các mục đã yêu cầu. S13 chat thường và phần UI batch C giữ nguyên ngoài phạm vi.
