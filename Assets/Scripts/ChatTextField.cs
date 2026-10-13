@@ -41,7 +41,8 @@ public class ChatTextField : IActionListener
     public static void ResetWorldSession()
     {
         if (instance == null) return;
-        instance.composer.Select(false); instance.submittedRequest = 0;
+        if (instance.composer.WorldMode || instance.ownsSubmittedDraft) { instance.tfChat.setText(string.Empty); instance.isShow = false; }
+        instance.composer.Reset(); instance.submittedRequest = 0; instance.ownsSubmittedDraft = false;
         instance.worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
     }
     public void OpenWorldChat()

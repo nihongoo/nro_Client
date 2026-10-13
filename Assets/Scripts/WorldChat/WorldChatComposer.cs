@@ -10,6 +10,7 @@ namespace WorldChat
         public string Draft { get; private set; }
         private int confirmedGems;
         private long confirmedGold;
+        public void Reset() { WorldMode = false; Confirming = false; Draft = null; }
         public void Select(bool world) { WorldMode = world; Confirming = false; }
         public string Submit(string text, Action<string> normal, Action<string> confirm)
         {
