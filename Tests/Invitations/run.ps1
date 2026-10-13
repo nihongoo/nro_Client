@@ -14,6 +14,7 @@ $sources = @(
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationStore.cs'),
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationProtocol.cs'),
     (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatStore.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatTicker.cs'),
     (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatProtocol.cs')
 )
 $exe = Join-Path $output 'StoreTests.exe'

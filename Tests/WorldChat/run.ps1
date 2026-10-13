@@ -15,6 +15,8 @@ $sources = @(
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationStore.cs'),
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationProtocol.cs'),
     (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatStore.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatComposer.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatTicker.cs'),
     (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatProtocol.cs')
 )
 $exe = Join-Path $output 'WorldChatTests.exe'
@@ -22,3 +24,16 @@ $exe = Join-Path $output 'WorldChatTests.exe'
 if ($LASTEXITCODE -ne 0) { throw 'World-chat test compilation failed' }
 & $exe $JavaPacket (Join-Path (Split-Path $JavaPacket -Parent) 'world-chat-utf.bin')
 if ($LASTEXITCODE -ne 0) { throw 'World-chat tests failed' }
+
+$formExe = Join-Path $output 'ChatFormTests.exe'
+$formSources = @(
+    (Join-Path $PSScriptRoot 'ChatFormTests.cs'),
+    (Join-Path $repo 'Assets\Scripts\ChatTextField.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatStore.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatComposer.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatTicker.cs')
+)
+& $Compiler /nologo /target:exe "/out:$formExe" @formSources
+if ($LASTEXITCODE -ne 0) { throw 'Chat form test compilation failed' }
+& $formExe
+if ($LASTEXITCODE -ne 0) { throw 'Chat form tests failed' }
