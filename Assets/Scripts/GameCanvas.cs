@@ -591,6 +591,9 @@ public class GameCanvas : IActionListener
                 }
                 gameTick = 0;
 			}
+            Notifications.NotificationStore.UpdateInvitations();
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
+			Notifications.NotificationCenter.UpdateInput();
 			if (currentScreen != null)
 			{
 				if (ChatPopup.serverChatPopUp != null)
@@ -1808,6 +1811,7 @@ public class GameCanvas : IActionListener
 
 	public void mapKeyPress(int keyCode)
 	{
+		if (Notifications.NotificationCenter.HandleKey(keyCode)) { keyAsciiPress = 0; return; }
 		if (currentDialog != null)
 		{
 			currentDialog.keyPress(keyCode);
@@ -2206,6 +2210,7 @@ public class GameCanvas : IActionListener
 
 	public static void checkBackButton()
 	{
+		if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
 		if (ChatPopup.serverChatPopUp == null && ChatPopup.currChatPopup == null)
 		{
 			startYesNoDlg(mResources.DOYOUWANTEXIT, new Command(mResources.YES, instance, 8885, null), new Command(mResources.NO, instance, 8882, null));
@@ -2266,15 +2271,12 @@ public class GameCanvas : IActionListener
 			}
 			GameScr.info1.paint(g);
 			GameScr.info2.paint(g);
-			if (GameScr.gI().popUpYesNo != null)
-			{
-				GameScr.gI().popUpYesNo.paint(g);
-			}
 			if (ChatPopup.currChatPopup != null)
 			{
 				ChatPopup.currChatPopup.paint(g);
 			}
 			Hint.paint(g);
+			Notifications.NotificationCenter.Paint(g);
 			if (ChatPopup.serverChatPopUp != null)
 			{
 				ChatPopup.serverChatPopUp.paint(g);
@@ -2287,6 +2289,8 @@ public class GameCanvas : IActionListener
 					effect.paint(g);
 				}
 			}
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null)
+                GameScr.instance.popUpYesNo.paint(g);
 			if (Char.isLoadingMap || LoginScr.isContinueToLogin || ServerListScreen.waitToLogin || ServerListScreen.isWait)
 			{
 				paintChangeMap(g);

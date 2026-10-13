@@ -8400,21 +8400,16 @@ public class Panel : IActionListener, IChatable
         switch (selected)
         {
             case 0:
-                DoHoa.isHuntingBoss = !DoHoa.isHuntingBoss;
-                Rms.saveRMSInt("sanboss", DoHoa.isHuntingBoss ? 1 : 0);
-                break;
-
-            case 1:
                 DoHoa.isShowCharsInMap = !DoHoa.isShowCharsInMap;
                 Rms.saveRMSInt("showchar", DoHoa.isShowCharsInMap ? 1 : 0);
                 break;
 
-            case 2:
+            case 1:
                 DoHoa.MapLuoi = !DoHoa.MapLuoi;
                 Rms.saveRMSInt("mapLuoi", DoHoa.MapLuoi ? 1 : 0);
                 break;
 
-            case 3:
+            case 2:
                 ModProCuongLe.hienThiDoKH = !ModProCuongLe.hienThiDoKH;
                 if (ModProCuongLe.hienThiDoKH)
                 {
@@ -8425,7 +8420,7 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
 
-            case 4:
+            case 3:
                 MainMod.infoTrainGold = !MainMod.infoTrainGold;
                 if (MainMod.infoTrainGold)
                 {
@@ -8441,7 +8436,7 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
 
-            case 5:
+            case 4:
                 ModProCuongLe.charw = !ModProCuongLe.charw;
                 if (ModProCuongLe.charw)
                 {
@@ -8452,7 +8447,7 @@ public class Panel : IActionListener, IChatable
                 MainMod.GoldCurrent = 0L;
                 break;
 
-            case 6:
+            case 5:
                 if (!MainMod.AutoCapCha)
                 {
                     string dataFolder = "Data";

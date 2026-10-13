@@ -668,6 +668,9 @@ public class GameScr : mScreen, IChatable
 
     private static int yC;
 
+    internal static int ChatButtonCenterX => xC + 17;
+    internal static int ChatButtonBottom => yC + 34;
+
     private static int xL;
 
     private static int yL;
@@ -2147,14 +2150,6 @@ public class GameScr : mScreen, IChatable
         return true;
     }
 
-    public void clanInvite(string strInvite, int clanID, int code)
-    {
-        ClanObject clanObject = new ClanObject();
-        clanObject.code = code;
-        clanObject.clanID = clanID;
-        startYesNoPopUp(strInvite, new Command(mResources.YES, 12002, clanObject), new Command(mResources.NO, 12003, clanObject));
-    }
-
     public void playerMenu(Char c)
     {
         auto = 0;
@@ -2679,6 +2674,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
+        if (Notifications.NotificationCenter.ConsumesInput) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -3424,46 +3420,39 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
-        if (popUpYesNo != null && popUpYesNo.cmdYes != null && popUpYesNo.cmdYes.isPointerPressInside())
+        if (checkClickToCapcha())
         {
-            popUpYesNo.cmdYes.performAction();
+            return;
         }
-        else
+        long num = mSystem.currentTimeMillis();
+        if (lastSingleClick != 0)
         {
-            if (checkClickToCapcha())
+            lastSingleClick = 0L;
+            GameCanvas.isPointerJustDown = false;
+            if (!disableSingleClick)
             {
-                return;
-            }
-            long num = mSystem.currentTimeMillis();
-            if (lastSingleClick != 0)
-            {
-                lastSingleClick = 0L;
-                GameCanvas.isPointerJustDown = false;
-                if (!disableSingleClick)
-                {
-                    checkSingleClick();
-                    GameCanvas.isPointerJustRelease = false;
-                    isWaitingDoubleClick = true;
-                    timeStartDblClick = mSystem.currentTimeMillis();
-                }
-            }
-            if (isWaitingDoubleClick)
-            {
-                timeEndDblClick = mSystem.currentTimeMillis();
-                if (timeEndDblClick - timeStartDblClick < 300 && GameCanvas.isPointerJustRelease)
-                {
-                    isWaitingDoubleClick = false;
-                    checkDoubleClick();
-                }
-            }
-            if (GameCanvas.isPointerJustRelease)
-            {
-                disableSingleClick = checkSingleClickEarly();
-                lastSingleClick = num;
-                lastClickCMX = cmx;
-                lastClickCMY = cmy;
+                checkSingleClick();
                 GameCanvas.isPointerJustRelease = false;
+                isWaitingDoubleClick = true;
+                timeStartDblClick = mSystem.currentTimeMillis();
             }
+        }
+        if (isWaitingDoubleClick)
+        {
+            timeEndDblClick = mSystem.currentTimeMillis();
+            if (timeEndDblClick - timeStartDblClick < 300 && GameCanvas.isPointerJustRelease)
+            {
+                isWaitingDoubleClick = false;
+                checkDoubleClick();
+            }
+        }
+        if (GameCanvas.isPointerJustRelease)
+        {
+            disableSingleClick = checkSingleClickEarly();
+            lastSingleClick = num;
+            lastClickCMX = cmx;
+            lastClickCMY = cmy;
+            GameCanvas.isPointerJustRelease = false;
         }
     }
 
@@ -4692,10 +4681,6 @@ public class GameScr : mScreen, IChatable
             }
             Char.myCharz().update();
             _ = Char.myCharz().statusMe;
-            if (popUpYesNo != null)
-            {
-                popUpYesNo.update();
-            }
             EffecMn.update();
             GameCanvas.debug("E5x", 0);
             for (int k = 0; k < vMob.size(); k++)
@@ -5226,6 +5211,7 @@ public class GameScr : mScreen, IChatable
         if (!isPaintOther)
         {
             MainMod.Paint(g);
+            Notifications.NotificationCenter.PaintBell(g);
             GameCanvas.debug("PA21", 1);
             GameCanvas.debug("PA18", 1);
             g.translate(-g.getTranslateX(), -g.getTranslateY());
@@ -6725,37 +6711,6 @@ public class GameScr : mScreen, IChatable
         GameCanvas.menu.startAt(myVector, 3);
     }
 
-    public void startYesNoPopUp(string info, Command cmdYes, Command cmdNo)
-    {
-        popUpYesNo = new PopUpYesNo();
-        popUpYesNo.setPopUp(info, cmdYes, cmdNo);
-    }
-
-    public void player_vs_player(int playerId, int xu, string info, sbyte typePK)
-    {
-        Char obj = findCharInMap(playerId);
-        if (obj != null)
-        {
-            if (typePK == 3)
-            {
-                startYesNoPopUp(info, new Command(mResources.OK, 2000, obj), new Command(mResources.CLOSE, 2009, obj));
-            }
-            if (typePK == 4)
-            {
-                startYesNoPopUp(info, new Command(mResources.OK, 2005, obj), new Command(mResources.CLOSE, 2009, obj));
-            }
-        }
-    }
-
-    public void giaodich(int playerID)
-    {
-        Char obj = findCharInMap(playerID);
-        if (obj != null)
-        {
-            startYesNoPopUp(obj.cName + mResources.want_to_trade, new Command(mResources.YES, 11114, obj), new Command(mResources.NO, 2009, obj));
-        }
-    }
-
     public void getFlagImage(int charID, sbyte cflag)
     {
         if (vFlag.size() == 0)
@@ -6823,17 +6778,6 @@ public class GameScr : mScreen, IChatable
             case 2:
                 GameCanvas.menu.showMenu = false;
                 break;
-            case 2000:
-                popUpYesNo = null;
-                GameCanvas.endDlg();
-                if ((Char)p == null)
-                {
-                    Service.gI().player_vs_player(1, 3, -1);
-                    break;
-                }
-                Service.gI().player_vs_player(1, 3, ((Char)p).charID);
-                Service.gI().charMove();
-                break;
             case 2001:
                 GameCanvas.endDlg();
                 break;
@@ -6846,28 +6790,9 @@ public class GameScr : mScreen, IChatable
                 GameCanvas.endDlg();
                 Service.gI().player_vs_player(0, 4, Char.myCharz().charFocus.charID);
                 break;
-            case 2005:
-                GameCanvas.endDlg();
-                popUpYesNo = null;
-                if ((Char)p == null)
-                {
-                    Service.gI().player_vs_player(1, 4, -1);
-                }
-                else
-                {
-                    Service.gI().player_vs_player(1, 4, ((Char)p).charID);
-                }
-                break;
-            case 2006:
-                GameCanvas.endDlg();
-                Service.gI().player_vs_player(2, 4, Char.myCharz().charFocus.charID);
-                break;
             case 2007:
                 GameCanvas.endDlg();
                 GameMidlet.instance.exit();
-                break;
-            case 2009:
-                popUpYesNo = null;
                 break;
             case 8002:
                 doFire(isFireByShortCut: false, skipWaypoint: true);
@@ -6937,17 +6862,6 @@ public class GameScr : mScreen, IChatable
                     }
                     break;
                 }
-            case 11114:
-                {
-                    popUpYesNo = null;
-                    GameCanvas.endDlg();
-                    Char obj = (Char)p;
-                    if (obj != null)
-                    {
-                        Service.gI().giaodich(1, obj.charID, -1, -1);
-                    }
-                    break;
-                }
             case 11115:
                 if (Char.myCharz().charFocus != null)
                 {
@@ -7004,22 +6918,6 @@ public class GameScr : mScreen, IChatable
             case 12001:
                 GameCanvas.endDlg();
                 break;
-            case 12002:
-                {
-                    GameCanvas.endDlg();
-                    ClanObject clanObject2 = (ClanObject)p;
-                    Service.gI().clanInvite(1, -1, clanObject2.clanID, clanObject2.code);
-                    popUpYesNo = null;
-                    break;
-                }
-            case 12003:
-                {
-                    ClanObject clanObject = (ClanObject)p;
-                    GameCanvas.endDlg();
-                    Service.gI().clanInvite(2, -1, clanObject.clanID, clanObject.code);
-                    popUpYesNo = null;
-                    break;
-                }
             case 12004:
                 {
                     Skill skill2 = (Skill)p;
@@ -7049,7 +6947,7 @@ public class GameScr : mScreen, IChatable
                 Service.gI().returnTownFromDead();
                 break;
             case 110391:
-                Service.gI().clanInvite(0, Char.myCharz().charFocus.charID, -1, -1);
+                Service.gI().sendClanInvitation(Char.myCharz().charFocus.charID);
                 break;
             case 888351:
                 Service.gI().petStatus(5);
@@ -7158,14 +7056,6 @@ public class GameScr : mScreen, IChatable
         {
             chatVip = chatVip.Substring(1, chatVip.Length);
             isFireWorks = true;
-        }
-        if (chatVip.ToUpper().Contains("BOSS"))
-        {
-            MainMod.listBosses.Add(new Boss(chatVip));
-            if (MainMod.listBosses.Count > 5)
-            {
-                MainMod.listBosses.RemoveAt(0);
-            }
         }
         vChatVip.addElement(chatVip);
     }

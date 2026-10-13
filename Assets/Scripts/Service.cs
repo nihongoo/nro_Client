@@ -184,7 +184,7 @@ public class Service
 		{
 			message = new Message((sbyte)(-86));
 			message.writer().writeByte(action);
-			if (action == 0 || action == 1)
+			if (action == 0)
 			{
 				Res.outz2(">>>> len playerID =" + playerID);
 				message.writer().writeInt(playerID);
@@ -607,22 +607,14 @@ public class Service
 		}
 	}
 
-	public void clanInvite(sbyte action, int playerID, int clanID, int code)
+	public void sendClanInvitation(int playerID)
 	{
 		Message message = null;
 		try
 		{
 			message = new Message((sbyte)(-57));
-			message.writer().writeByte(action);
-			if (action == 0)
-			{
-				message.writer().writeInt(playerID);
-			}
-			if (action == 1 || action == 2)
-			{
-				message.writer().writeInt(clanID);
-				message.writer().writeInt(code);
-			}
+            message.writer().writeByte(0);
+            message.writer().writeInt(playerID);
 			session.sendMessage(message);
 		}
 		catch (Exception ex)
@@ -862,6 +854,7 @@ public class Service
 
 	public void login(string username, string pass, string version, sbyte type)
 	{
+		Notifications.NotificationCenter.BeginSession();
 		try
 		{
 			Message message = messageNotLogin(0);
@@ -2124,6 +2117,33 @@ public class Service
 			message.cleanup();
 		}
 	}
+
+    public bool respondToInvitation(long id, bool accept)
+    {
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(Notifications.NotificationProtocol.Respond);
+            message.writer().writeLong(id);
+            message.writer().writeByte(accept ? 1 : 0);
+            session.sendMessage(message);
+            return true;
+        }
+        catch (Exception e) { Cout.println(e.Message); return false; }
+        finally { message.cleanup(); }
+    }
+
+    public void requestNotificationSnapshot()
+    {
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try
+        {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(Notifications.NotificationProtocol.Snapshot);
+            session.sendMessage(message);
+        }
+        finally { message.cleanup(); }
+    }
 
 	public void chatGlobal(string text)
 	{
