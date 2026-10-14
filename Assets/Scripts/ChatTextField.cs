@@ -33,6 +33,7 @@ public class ChatTextField : IActionListener
     private long submittedRequest;
     private string submittedText;
     private bool ownsSubmittedDraft;
+    private bool modalPointerHeld, modalPointerClick;
     private bool HasChannelTabs => parentScreen == GameScr.instance && parentScreen != null && string.IsNullOrEmpty(to);
     private int TabBand => HasChannelTabs ? mScreen.cmdH + 6 : 0;
     private Rect TabBounds(bool world) => new Rect(tfChat.x + (world ? (tfChat.width + 6) / 2 : 0),
@@ -42,6 +43,7 @@ public class ChatTextField : IActionListener
     {
         if (instance == null) return;
         if (instance.composer.WorldMode || instance.ownsSubmittedDraft) { instance.tfChat.setText(string.Empty); instance.isShow = false; }
+        instance.modalPointerHeld = instance.modalPointerClick = false;
         instance.composer.Reset(); instance.submittedRequest = 0; instance.ownsSubmittedDraft = false;
         instance.worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
     }
@@ -49,10 +51,21 @@ public class ChatTextField : IActionListener
     public void UpdateModalInput()
     {
         if (!isShow) return;
+        // Canvas flags are cleared before gameplay each frame. Keep the gesture here
+        // until release so tabs, commands and the input retain normal click semantics.
+        if (GameCanvas.isPointerJustDown || (!modalPointerHeld && GameCanvas.isPointerDown)) {
+            modalPointerHeld = true; modalPointerClick = GameCanvas.isPointerClick;
+        }
+        if (GameCanvas.isPointerMove) modalPointerClick = false;
+        if (modalPointerHeld) {
+            GameCanvas.isPointerDown = !GameCanvas.isPointerJustRelease;
+            GameCanvas.isPointerClick = modalPointerClick;
+        }
+        if (GameCanvas.isPointerJustRelease) { modalPointerHeld = false; modalPointerClick = false; }
         if (GameCanvas.keyAsciiPress != 0) keyPressed(GameCanvas.keyAsciiPress);
         if (left != null && (GameCanvas.keyPressed[12] || mScreen.getCmdPointerLast(left))) left.performAction();
         else if (right != null && (GameCanvas.keyPressed[13] || mScreen.getCmdPointerLast(right))) right.performAction();
-        else if (center != null && (GameCanvas.keyPressed[25] || mScreen.getCmdPointerLast(center))) center.performAction();
+        else if (center != null && (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] || mScreen.getCmdPointerLast(center))) center.performAction();
         if (isShow) update();
         ConsumeInput();
     }
@@ -76,6 +89,7 @@ public class ChatTextField : IActionListener
     }
     private void PrepareNormal(IChatable listener, string target)
     {
+        modalPointerHeld = modalPointerClick = false;
         parentScreen = listener; to = target; composer.Select(false); ownsSubmittedDraft = false; ApplyLimit(); ConsumeInput();
     }
     private static void ConsumeInput()
@@ -90,6 +104,7 @@ public class ChatTextField : IActionListener
     }
     private void ResumeWorldForm()
     {
+        modalPointerHeld = modalPointerClick = false;
         GameCanvas.endDlg(); if (GameCanvas.currentScreen != GameScr.instance) { isShow = false; return; }
         isShow = true; tfChat.isFocus = true; right.caption = mResources.CLOSE; ConsumeInput();
     }
@@ -373,6 +388,7 @@ public class ChatTextField : IActionListener
 
 	public void close()
 	{
+        modalPointerHeld = modalPointerClick = false;
 		tfChat.setText(string.Empty);
 		isShow = false;
 	}

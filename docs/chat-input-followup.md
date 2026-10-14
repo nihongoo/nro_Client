@@ -1,5 +1,12 @@
 # Sửa chat modal, tự đóng và lệnh có dấu /
 
+## Sửa sau review: nút/tab không nhận click
+
+Bản modal trước xóa isPointerClick/isPointerDown sau từng frame; pointerReleased không tự đặt lại isPointerClick, nên nhấn ở frame trước rồi thả ở frame sau không kích hoạt nút/tab. ChatTextField.UpdateModalInput hiện giữ trạng thái gesture riêng, phục hồi chỉ khi xử lý form rồi consume trước gameplay. Kéo chuột hủy click, mở lại/đổi phiên reset gesture. Tab, OK, Đóng và ô nhập nhận được thao tác; game vẫn không nhận click xuyên form.
+
+Bổ sung regression source mô phỏng press → hold → release qua nhiều frame cho tab/OK/Đóng, thay fixture cũ chỉ tạo release trong một frame. Theo yêu cầu mới: **không chạy build project, APK, compile C# hay test có compile trong đợt sửa này**; chỉ kiểm tra diff. Người dùng tự build và test. Các kết quả build/test bên dưới thuộc bản trước.
+
+
 Ngày 14/10/2026, branch feat/world-chat-p3, repo gốc client/server. Yêu cầu mới của người dùng thay quyết định trước đây giữ S13: lệnh phải có dấu /; sửa nhập tiếng Việt và /.
 
 ## Commit

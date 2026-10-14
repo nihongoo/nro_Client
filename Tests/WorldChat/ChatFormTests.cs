@@ -33,7 +33,7 @@ public class TField {
     public void keyPressed(int k){if(k==204)clear();else if(k>0)text+=(char)k;} public void update(){} public void paint(mGraphics g){}
 }
 public static class Main { public static bool isPC=true,isWindowsPhone,isIPhone; }
-public static class mScreen { public static int ITEM_HEIGHT=20,cmdH=26; public static bool getCmdPointerLast(Command c)=>false; }
+public static class mScreen { public static int ITEM_HEIGHT=20,cmdH=26; public static bool getCmdPointerLast(Command c)=>GameCanvas.isPointerClick&&GameCanvas.isPointerJustRelease&&GameCanvas.px>=c.x&&GameCanvas.px<c.x+68&&GameCanvas.py>=c.y&&GameCanvas.py<c.y+cmdH; }
 public static class mSystem { public static long time=100000; public static long currentTimeMillis()=>time; }
 public static class mResources { public static string OK="OK",CLOSE="Đóng",DELETE="Xóa"; }
 public static class ipKeyboard { public const int TEXT=0; public static void openKeyBoard(string t,int k,string v,Command c){} }
@@ -53,11 +53,11 @@ public class MsgDlg {
     public void show(){GameCanvas.currentDialog=this;}
 }
 public static class GameCanvas {
-    public static int w=480,h=270,px,py,keyAsciiPress; public static bool isTouch=true,isPointerJustRelease,isPointerClick;
+    public static int w=480,h=270,px,py,keyAsciiPress; public static bool isTouch=true,isPointerJustRelease,isPointerClick,isPointerJustDown,isPointerDown,isPointerMove;
     public static bool[] keyPressed=new bool[32]; public static object currentScreen=GameScr.instance,currentDialog;
     public static MsgDlg msgdlg=new MsgDlg(); public static Paint paintz=new Paint();
     public static void endDlg(){currentDialog=null;} public static void closeKeyBoard(){if(TField.kb!=null)TField.kb.active=false;}
-    public static void clearAllPointerEvent(){isPointerJustRelease=isPointerClick=false;}
+    public static void clearAllPointerEvent(){isPointerJustRelease=isPointerClick=isPointerJustDown=isPointerDown=false;}
     public static void clearKeyHold(){} public static void clearKeyPressed(){Array.Clear(keyPressed,0,keyPressed.Length);}
     public static void startYesNoDlg(string t,Command yes,Command no){msgdlg.setInfo(t,yes,null,no);currentDialog=msgdlg;}
 }
@@ -80,7 +80,16 @@ public static class ChatFormTests {
     private static void Policy(){WorldChatStore.Snapshot(0,1000,17,123456,100,5000,1000);}
     private static void Tab(ChatTextField f,bool world){
         Rect r=(Rect)typeof(ChatTextField).GetMethod("TabBounds",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(f,new object[]{world});
-        GameCanvas.px=(int)r.center.x;GameCanvas.py=(int)r.center.y;GameCanvas.isPointerJustRelease=GameCanvas.isPointerClick=true;f.update();
+        Tap(f,(int)r.center.x,(int)r.center.y);
+    }
+    private static void Tap(ChatTextField f,int x,int y){
+        GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerMove=false;
+        GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;
+        f.UpdateModalInput(); // press frame: gameplay must see no pointer
+        Check(!GameCanvas.isPointerDown&&!GameCanvas.isPointerClick,"press leaked to gameplay");
+        f.UpdateModalInput(); // a held frame with the canvas flags already consumed
+        GameCanvas.isPointerJustRelease=true;f.UpdateModalInput();
+        Check(!GameCanvas.isPointerJustRelease&&!GameCanvas.isPointerClick,"release leaked to gameplay");
     }
     public static void Main(){
         WorldChatStore.BeginSession();Policy();var f=ChatTextField.gI();f.tfChat.y=210;f.initChatTextField();
@@ -136,6 +145,12 @@ public static class ChatFormTests {
         Check(f.tfChat.getText()==""&&!f.isShow,"session retained a world draft in Normal mode");
         GameCanvas.currentScreen=GameScr.instance;f.startChat(GameScr.instance,"");f.tfChat.setText("new session");mSystem.time+=1001;f.perform(8000,null);
         Check(GameScr.instance.normalCalls==3&&Service.gI().sends==sendsBeforeReset,"session reset broke normal routing");
+        Policy();f.OpenWorldChat();f.tfChat.setText("multi-frame button");
+        Tap(f,f.left.x+10,f.left.y+10);
+        Check(GameCanvas.currentDialog!=null&&!f.isShow,"multi-frame OK did not open confirmation");
+        GameCanvas.msgdlg.right.performAction();
+        Tap(f,f.right.x+10,f.right.y+10);
+        Check(!f.isShow&&GameCanvas.currentDialog==null,"multi-frame Close did not close form");
         Console.WriteLine("PASS: "+assertions+" real ChatTextField assertions; tabs, consent/decline, native/Enter routes, admin isolation, snapshot fees, errors and draft ownership");
     }
 }
