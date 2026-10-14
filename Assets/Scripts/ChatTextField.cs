@@ -45,6 +45,22 @@ public class ChatTextField : IActionListener
         instance.composer.Reset(); instance.submittedRequest = 0; instance.ownsSubmittedDraft = false;
         instance.worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
     }
+    // Consume the entire frame, including the click that closes/sends the form.
+    public void UpdateModalInput()
+    {
+        if (!isShow) return;
+        if (GameCanvas.keyAsciiPress != 0) keyPressed(GameCanvas.keyAsciiPress);
+        if (left != null && (GameCanvas.keyPressed[12] || mScreen.getCmdPointerLast(left))) left.performAction();
+        else if (right != null && (GameCanvas.keyPressed[13] || mScreen.getCmdPointerLast(right))) right.performAction();
+        else if (center != null && (GameCanvas.keyPressed[25] || mScreen.getCmdPointerLast(center))) center.performAction();
+        if (isShow) update();
+        ConsumeInput();
+    }
+    public void InsertDesktopText(string text)
+    {
+        if (!isShow || text == null) return;
+        foreach (char c in text) if (!char.IsControl(c)) tfChat.keyPressed(c);
+    }
     public void OpenWorldChat()
     {
         startChat(GameScr.gI(), string.Empty);
@@ -56,7 +72,7 @@ public class ChatTextField : IActionListener
     }
     private void PrepareNormal(IChatable listener, string target)
     {
-        parentScreen = listener; to = target; composer.Select(false); ownsSubmittedDraft = false; ApplyLimit();
+        parentScreen = listener; to = target; composer.Select(false); ownsSubmittedDraft = false; ApplyLimit(); ConsumeInput();
     }
     private static void ConsumeInput()
     {
@@ -109,7 +125,9 @@ public class ChatTextField : IActionListener
         worldResultRevision = WorldChat.WorldChatStore.ResultRevision;
         if (submittedRequest == 0 || WorldChat.WorldChatStore.ResultText == null) return;
         submittedRequest = 0;
-        if (WorldChat.WorldChatStore.ResultAccepted && ownsSubmittedDraft && composer.WorldMode && tfChat.getText() == submittedText) tfChat.setText(string.Empty);
+        if (WorldChat.WorldChatStore.ResultAccepted && ownsSubmittedDraft && composer.WorldMode && tfChat.getText() == submittedText) {
+            tfChat.setText(string.Empty); isShow = false; HideWorldKeyboard(); ConsumeInput();
+        }
         if (!WorldChat.WorldChatStore.ResultAccepted && isShow && composer.WorldMode && GameCanvas.currentDialog == null)
             WorldError(WorldChat.WorldChatStore.ResultText);
         else GameScr.info1.addInfo(WorldChat.WorldChatStore.ResultText, 0);

@@ -24,8 +24,10 @@ namespace WorldChat
         {
             if (WorldChatStore.CheckTimeout()) WorldChatProtocol.RequestSnapshot();
             if (!CanShow) return;
-            WorldChatStore.Ticker.Update(GameCanvas.w, mFont.tahoma_7b_yellow.getWidth);
             ChatTextField.gI().HandleWorldResult();
+            // A hidden ticker must not finish while the player is typing/confirming.
+            if (!ChatTextField.gI().isShow && GameCanvas.currentDialog == null)
+                WorldChatStore.Ticker.Update(GameCanvas.w, mFont.tahoma_7b_yellow.getWidth);
             if (GameCanvas.currentDialog != null || GameCanvas.panel.isShow || Notifications.NotificationCenter.IsOpen
                 || GameCanvas.menu.showMenu || ChatPopup.currChatPopup != null || ChatPopup.serverChatPopUp != null
                 || ChatTextField.gI().isShow || Mod.CuongLe.DoHoa.isShowMenuVIP) return;

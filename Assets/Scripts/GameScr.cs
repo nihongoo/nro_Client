@@ -2678,7 +2678,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
-        if (Notifications.NotificationCenter.ConsumesInput) return;
+        if (Notifications.NotificationCenter.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -2735,21 +2735,6 @@ public class GameScr : mScreen, IChatable
                 }
             }
         }
-        else
-        {
-            if (ChatTextField.gI().left != null && (GameCanvas.keyPressed[12] || mScreen.getCmdPointerLast(ChatTextField.gI().left)) && ChatTextField.gI().left != null)
-            {
-                ChatTextField.gI().left.performAction();
-            }
-            if (ChatTextField.gI().right != null && (GameCanvas.keyPressed[13] || mScreen.getCmdPointerLast(ChatTextField.gI().right)) && ChatTextField.gI().right != null)
-            {
-                ChatTextField.gI().right.performAction();
-            }
-            if (ChatTextField.gI().center != null && (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] || mScreen.getCmdPointerLast(ChatTextField.gI().center)) && ChatTextField.gI().center != null)
-            {
-                ChatTextField.gI().center.performAction();
-            }
-        }
         GameCanvas.debug("F6", 0);
         updateKeyAlert();
         GameCanvas.debug("F7", 0);
@@ -2765,12 +2750,7 @@ public class GameScr : mScreen, IChatable
             }
         }
         GameCanvas.debug("F8", 0);
-        if (ChatTextField.gI().isShow && GameCanvas.keyAsciiPress != 0)
-        {
-            ChatTextField.gI().keyPressed(GameCanvas.keyAsciiPress);
-            GameCanvas.keyAsciiPress = 0;
-        }
-        else if (isLockKey)
+        if (isLockKey)
         {
             GameCanvas.clearKeyHold();
             GameCanvas.clearKeyPressed();
@@ -4673,7 +4653,6 @@ public class GameScr : mScreen, IChatable
             GameCanvas.debug("E1", 0);
             updateCamera();
             GameCanvas.debug("E2", 0);
-            ChatTextField.gI().update();
             GameCanvas.debug("E3", 0);
             for (int i = 0; i < vCharInMap.size(); i++)
             {
@@ -6586,23 +6565,12 @@ public class GameScr : mScreen, IChatable
         {
             ChatTextField.gI().isShow = false;
         }
-        ModProCuongLe.onChatFromMe(text, to);
-        if (text.StartsWith("cheat_"))
-        {
-            try
-            {
-                float num = (Time.timeScale = float.Parse(text.Split('_')[1]));
-                info1.addInfo("Cheat: " + num, 0);
-                text = string.Empty;
-            }
-            catch
-            {
-            }
-        }
-        if (text.Contains("admin"))
-        {
-            DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
-            text = string.Empty;
+        // Commands are explicit and only available in public Normal chat.
+        if (string.IsNullOrEmpty(to) && text.StartsWith("/")) {
+            string command = text.Substring(1).Trim();
+            if (command == "admin") { DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP; return; }
+            if (ModProCuongLe.TryChatCommand(command)) return;
+            // Server commands keep their slash; the server checks authorization.
         }
         if (to.Equals(mResources.chat_player))
         {

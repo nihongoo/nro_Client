@@ -32,7 +32,7 @@ public class TField {
     public void keyPressed(int k){if(k>0)text+=(char)k;} public void update(){} public void paint(mGraphics g){}
 }
 public static class Main { public static bool isPC=true,isWindowsPhone,isIPhone; }
-public static class mScreen { public static int ITEM_HEIGHT=20,cmdH=26; }
+public static class mScreen { public static int ITEM_HEIGHT=20,cmdH=26; public static bool getCmdPointerLast(Command c)=>false; }
 public static class mSystem { public static long time=100000; public static long currentTimeMillis()=>time; }
 public static class mResources { public static string OK="OK",CLOSE="Đóng",DELETE="Xóa"; }
 public static class ipKeyboard { public const int TEXT=0; public static void openKeyBoard(string t,int k,string v,Command c){} }
@@ -64,7 +64,7 @@ public class Info { public void addInfo(string t,int c){} }
 public class GameScr:IChatable {
     public static GameScr instance=new GameScr(); public static GameScr gI()=>instance; public static Info info1=new Info();
     public int normalCalls; public bool vip;
-    public void onChatFromMe(string t,string target){normalCalls++;if(t.Contains("admin"))vip=!vip;}
+    public void onChatFromMe(string t,string target){normalCalls++;if(t=="/admin")vip=!vip;}
     public void onCancelChat(){}
 }
 public class Char { private static Char me=new Char(); public static Char myCharz()=>me; public int luong=1000;public long xu=1000000000; }
@@ -84,7 +84,7 @@ public static class ChatFormTests {
     public static void Main(){
         WorldChatStore.BeginSession();Policy();var f=ChatTextField.gI();f.tfChat.y=210;f.initChatTextField();
         f.startChat(GameScr.instance,"");f.tfChat.setText("admin normal");f.perform(8000,null);
-        Check(GameScr.instance.normalCalls==1&&GameScr.instance.vip,"normal/S13 callback changed");
+        Check(GameScr.instance.normalCalls==1&&!GameScr.instance.vip,"normal content treated as command");
         Check(Service.gI().sends==0&&GameCanvas.currentDialog==null,"normal opened payment/sent world");
         f.OpenWorldChat();f.tfChat.setText("admin world");TField.kb=new FakeKeyboard{text="admin world"};f.perform(8000,null);
         Check(GameCanvas.currentDialog==GameCanvas.msgdlg&&!f.isShow,"OK did not show confirmation");
@@ -97,7 +97,8 @@ public static class ChatFormTests {
         Check(Service.gI().sends==1&&Service.gI().text=="admin world"&&GameScr.instance.normalCalls==1,"agree routing");
         Check(f.tfChat.getText()=="admin world","draft cleared before result");
         WorldChatStore.Result(Service.gI().id,true,"ok",1000,1000);f.HandleWorldResult();
-        Check(f.tfChat.getText()=="","accepted result did not clear sent draft");
+        Check(f.tfChat.getText()==""&&!f.isShow,"accepted result did not clear/close sent draft");
+        f.OpenWorldChat();
         f.tfChat.setText("admin native");f.cmdChat.actionChat("admin native");
         Check(Service.gI().sends==1&&GameScr.instance.normalCalls==1&&GameCanvas.currentDialog!=null,"native callback bypassed confirmation");
         GameCanvas.msgdlg.right.performAction();Tab(f,false);mSystem.time+=1001;f.perform(8000,null);
@@ -119,6 +120,12 @@ public static class ChatFormTests {
         Check(f.tfChat.getText()=="valid","world receipt erased a Normal draft");
         f.OpenWorldChat();f.tfChat.setText("stay");f.perform(8000,null);GameCanvas.currentScreen=new object();GameCanvas.msgdlg.right.performAction();
         Check(!f.isShow,"popup callback reopened chat outside game");
+        GameCanvas.currentScreen=GameScr.instance;f.OpenWorldChat();
+        f.InsertDesktopText("Tiếng Việt /admin");
+        Check(f.tfChat.getText()=="Tiếng Việt /admin","Unicode/slash input dropped characters");
+        GameCanvas.px=0;GameCanvas.py=0;GameCanvas.isPointerClick=GameCanvas.isPointerJustRelease=true;GameCanvas.keyPressed[1]=true;
+        f.UpdateModalInput();
+        Check(!GameCanvas.isPointerClick&&!GameCanvas.keyPressed[1]&&f.isShow,"chat click/key escaped to gameplay");
         int sendsBeforeReset=Service.gI().sends;WorldChatStore.BeginSession();ChatTextField.ResetWorldSession();
         Check(f.tfChat.getText()==""&&!f.isShow,"session retained a world draft in Normal mode");
         GameCanvas.currentScreen=GameScr.instance;f.startChat(GameScr.instance,"");f.tfChat.setText("new session");mSystem.time+=1001;f.perform(8000,null);

@@ -669,13 +669,15 @@ public class GameCanvas : IActionListener
 						panel.hide();
 					}
 				}
+                bool chatModal = currentScreen == GameScr.instance && ChatTextField.gI().isShow;
+                if (chatModal && currentDialog == null) ChatTextField.gI().UpdateModalInput();
 				debug("E", 0);
 				if (!isLoading)
 				{
 					currentScreen.update();
 				}
 				debug("F", 0);
-				if (!panel.isShow && ChatPopup.serverChatPopUp == null)
+				if (!chatModal && !panel.isShow && ChatPopup.serverChatPopUp == null)
 				{
 					currentScreen.updateKey();
 				}
@@ -1799,7 +1801,7 @@ public class GameCanvas : IActionListener
 	public void keyPressedz(int keyCode)
 	{
 		lastTimePress = mSystem.currentTimeMillis();
-		if ((keyCode >= 48 && keyCode <= 57) || (keyCode >= 65 && keyCode <= 122) || keyCode == 10 || keyCode == 8 || keyCode == 13 || keyCode == 32 || keyCode == 31)
+		if (keyCode >= 32 && keyCode != 127 || keyCode == 10 || keyCode == 8 || keyCode == 13 || keyCode == 31)
 		{
 			keyAsciiPress = keyCode;
 		}

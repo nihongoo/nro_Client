@@ -1359,6 +1359,7 @@ namespace Mod.CuongLe
     	}
     	public static void updateTouch()
     	{
+            if (ChatTextField.gI().isShow || GameCanvas.currentDialog != null) return;
             if (AutoMap.isXmaping && GameCanvas.isPointerHoldIn(GameCanvas.w / 2 - GameScr.imgLbtn.getWidth() - 20, GameCanvas.h / 2 - GameScr.imgLbtn.getHeight()- 20, GameScr.imgLbtn.getWidth() + 60, GameScr.imgLbtn.getHeight()+ 60) && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick)
             {
     			stopMap = 1;
