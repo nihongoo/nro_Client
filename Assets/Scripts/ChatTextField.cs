@@ -59,7 +59,11 @@ public class ChatTextField : IActionListener
     public void InsertDesktopText(string text)
     {
         if (!isShow || text == null) return;
-        foreach (char c in text) if (!char.IsControl(c)) tfChat.keyPressed(c);
+        var committed = new System.Text.StringBuilder();
+        foreach (char c in text) if (!char.IsControl(c)) committed.Append(c);
+        int length = System.Math.Min(committed.Length, System.Math.Max(0, tfChat.getMaxTextLenght() - tfChat.getText().Length));
+        if (length > 0 && char.IsHighSurrogate(committed[length - 1])) length--;
+        if (length > 0) tfChat.insertText(committed.ToString(0, length));
     }
     public void OpenWorldChat()
     {

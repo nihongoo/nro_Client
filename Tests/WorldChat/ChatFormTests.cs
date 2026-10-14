@@ -28,6 +28,7 @@ public class TField {
     public string name,strInfo; private string text=""; public int limit;
     public string getText()=>text; public void setText(string t){text=t;} public void clear(){text="";}
     public void clearAll(){} public void clearKb(){if(kb!=null)kb.text="";}
+    public void insertText(string t){text+=t;} public int getMaxTextLenght()=>limit;
     public void setMaxTextLenght(int n){limit=n;} public void setFocusWithKb(bool f){isFocus=f;}
     public void keyPressed(int k){if(k>0)text+=(char)k;} public void update(){} public void paint(mGraphics g){}
 }
@@ -121,8 +122,8 @@ public static class ChatFormTests {
         f.OpenWorldChat();f.tfChat.setText("stay");f.perform(8000,null);GameCanvas.currentScreen=new object();GameCanvas.msgdlg.right.performAction();
         Check(!f.isShow,"popup callback reopened chat outside game");
         GameCanvas.currentScreen=GameScr.instance;f.OpenWorldChat();
-        f.InsertDesktopText("Tiếng Việt /admin");
-        Check(f.tfChat.getText()=="Tiếng Việt /admin","Unicode/slash input dropped characters");
+        f.InsertDesktopText("Tiếng Việt, Ì ạch /admin");
+        Check(f.tfChat.getText()=="Tiếng Việt, Ì ạch /admin","Unicode/slash input dropped characters");
         GameCanvas.px=0;GameCanvas.py=0;GameCanvas.isPointerClick=GameCanvas.isPointerJustRelease=true;GameCanvas.keyPressed[1]=true;
         f.UpdateModalInput();
         Check(!GameCanvas.isPointerClick&&!GameCanvas.keyPressed[1]&&f.isShow,"chat click/key escaped to gameplay");
