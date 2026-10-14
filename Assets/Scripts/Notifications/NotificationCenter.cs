@@ -25,6 +25,8 @@ namespace Notifications
             ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null &&
             !ChatTextField.gI().isShow && !Char.ischangingMap;
 
+        internal static bool IsBellVisible => CanUse && !IsOpen && !NotificationHudLayout.IsBellObscured;
+
         public static void Close()
         {
             IsOpen = false; dragging = false; NotificationStore.ReadingServer = false; NotificationStore.ReadingInvitations = false;
@@ -51,13 +53,13 @@ namespace Notifications
         {
             bool escape = Input.GetKey(KeyCode.Escape);
             if (!CanUse) { if (IsOpen) Close(); backDown = escape; return; }
-            bell = NotificationHudLayout.BellBounds();
+            bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
             if (!IsOpen && NotificationHudLayout.IsBellObscured) { backDown = escape; return; }
             UpdateLayout();
             if (!IsOpen)
             {
                 if (bell.width > 0 && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick &&
-                    bell.Contains(new Vector2(GameCanvas.px, GameCanvas.py)))
+                    Hud.HudLayout.IsTopmost(Hud.HudLayout.Bell, new Vector2(GameCanvas.px, GameCanvas.py)))
                 {
                     IsOpen = true; tab = 0; scroll = 0; dragging = false;
                     UpdateLayout();
@@ -104,7 +106,8 @@ namespace Notifications
 
         public static void PaintBell(mGraphics g)
         {
-            if (!CanUse || IsOpen || bell.width <= 0 || NotificationHudLayout.IsBellObscured) return;
+            bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
+            if (!IsBellVisible || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
             int centerX = NotificationHudLayout.BellCenterX;
             g.drawImage(NotificationSkin.BellIcon, centerX, y + size / 2, 3);
