@@ -242,7 +242,7 @@ public class SoundMn
 		string text3 = ((GameScr.isAnalog != 0) ? (text + mResources.turnOffAnalog) : (text2 + mResources.turnOnAnalog));
 		if (!GameCanvas.isTouch)
 		{
-			text3 = (GameScr.isPaintChatVip ? (text + mResources.serverchat_off) : (text2 + mResources.serverchat_off));
+			text3 = "Chat thế giới";
 		}
 		Panel.strCauhinh = new string[5]
 		{
@@ -326,19 +326,7 @@ public class SoundMn
 		getStrOption();
 	}
 
-	public void chatVipToolOption()
-	{
-		GameScr.isPaintChatVip = !GameScr.isPaintChatVip;
-		if (GameScr.isPaintChatVip)
-		{
-			Rms.saveRMSInt("serverchat", 0);
-		}
-		else
-		{
-			Rms.saveRMSInt("serverchat", 1);
-		}
-		getStrOption();
-	}
+
 
 	public void analogToolOption()
 	{
@@ -357,20 +345,11 @@ public class SoundMn
 		getStrOption();
 	}
 
-	public void CaseAnalog()
-	{
-		if (!Main.isPC)
-		{
-			if (!GameCanvas.isTouch)
-			{
-				chatVipToolOption();
-			}
-			else
-			{
-				analogToolOption();
-			}
-		}
-	}
+    public void CaseAnalog()
+    {
+        if (!GameCanvas.isTouch) WorldChat.WorldChatHud.Open();
+        else if (!Main.isPC) analogToolOption();
+    }
 
 	public void CaseSizeScr()
 	{

@@ -650,8 +650,10 @@ namespace Mod.CuongLe
         }
 
 
-        public static void onChatFromMe(string text, string to)
+        public static bool TryChatCommand(string text)
         {
+            bool recognized = text == "bpao" || text == "ts" || text.StartsWith("k_") || text.StartsWith("s_") || text.StartsWith("cheat_");
+            if (!recognized) return false;
             if (text == "bpao")
             {
                 if (GameScr.isAnalog == 1)
@@ -711,6 +713,7 @@ namespace Mod.CuongLe
                 {
                 }
             }
+            return true;
         }
 
         static ModProCuongLe()

@@ -855,6 +855,7 @@ public class Service
 	public void login(string username, string pass, string version, sbyte type)
 	{
 		Notifications.NotificationCenter.BeginSession();
+        WorldChat.WorldChatHud.BeginSession();
 		try
 		{
 			Message message = messageNotLogin(0);
@@ -2145,24 +2146,28 @@ public class Service
         finally { message.cleanup(); }
     }
 
-	public void chatGlobal(string text)
-	{
-		Message message = null;
-		try
-		{
-			message = new Message((sbyte)(-71));
-			message.writer().writeUTF(text);
-			session.sendMessage(message);
-		}
-		catch (Exception ex)
-		{
-			Cout.println(ex.Message + ex.StackTrace);
-		}
-		finally
-		{
-			message.cleanup();
-		}
-	}
+    public void requestWorldChatSnapshot()
+    {
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(WorldChat.WorldChatProtocol.Snapshot);
+            session.sendMessage(message);
+        } finally { message.cleanup(); }
+    }
+
+    public bool submitWorldChat(long requestId, string text)
+    {
+        if (!session.isConnected()) return false;
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(WorldChat.WorldChatProtocol.Submit);
+            message.writer().writeLong(requestId); WorldChat.WorldChatProtocol.WriteText(message.writer(), text);
+            session.sendMessage(message); return true;
+        } catch (Exception e) { Cout.println(e.Message); return false; }
+        finally { message.cleanup(); }
+    }
 
 	public void chatPrivate(string to, string text)
 	{

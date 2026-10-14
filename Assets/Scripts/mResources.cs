@@ -382,7 +382,6 @@ public class mResources
 
     public static string decrease_vga;
 
-    public static string serverchat_off;
 
     public static string serverchat_on;
 
@@ -706,9 +705,7 @@ public class mResources
 
     public static string use_for_trade;
 
-    public static string not_enough_luong_world_channel;
 
-    public static string world_channel_5_luong;
 
     public static string want_to_trade;
 
@@ -1274,7 +1271,6 @@ public class mResources
         low = string.Empty;
         increase_vga = string.Empty;
         decrease_vga = string.Empty;
-        serverchat_off = string.Empty;
         serverchat_on = string.Empty;
         x2Screen = string.Empty;
         x1Screen = string.Empty;
@@ -1495,8 +1491,6 @@ public class mResources
         can_not_do_when_die = string.Empty;
         use_for_combine = string.Empty;
         use_for_trade = string.Empty;
-        not_enough_luong_world_channel = string.Empty;
-        world_channel_5_luong = string.Empty;
         want_to_trade = string.Empty;
         hasJustUpgrade1 = string.Empty;
         hasJustUpgrade2 = string.Empty;

@@ -287,7 +287,6 @@ public class T1 : mResources
         mResources.low = "Thấp";
         mResources.increase_vga = "Tăng đồ họa (cho máy mạnh)";
         mResources.decrease_vga = "Giảm đồ họa (cho máy yếu)";
-        mResources.serverchat_off = "Thông báo từ máy chủ";
         mResources.serverchat_on = "Thông báo từ máy chủ";
         mResources.aura_on = "Hào quang đặc biệt";
         mResources.aura_off = "Hào quang đặc biệt";
@@ -449,8 +448,6 @@ public class T1 : mResources
         mResources.can_not_do_when_die = "Không thể thực hiện khi đang kiệt sức";
         mResources.use_for_combine = "Sử dụng\nđể\nkết hợp";
         mResources.use_for_trade = "Sử dụng\nđể\ngiao dịch";
-        mResources.not_enough_luong_world_channel = "Bạn không đủ ngọc để chat kênh thế giới";
-        mResources.world_channel_5_luong = "Chat kênh thế giới (5 ngọc)";
         mResources.want_to_trade = " muốn giao dịch với bạn, bạn có đồng ý không ?";
         mResources.hasJustUpgrade1 = "Bạn vừa nâng cấp ";
         mResources.hasJustUpgrade2 = " sang cấp ";

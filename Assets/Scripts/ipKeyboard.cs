@@ -15,7 +15,7 @@ public class ipKeyboard
     public static void openKeyBoard(string caption, int type, string text, Command action)
     {
         act = action;
-        TouchScreenKeyboardType t = ((type == 0 || type == 2) ? TouchScreenKeyboardType.ASCIICapable : TouchScreenKeyboardType.NumberPad);
+        TouchScreenKeyboardType t = ((type == 0 || type == 2) ? (type == TEXT ? TouchScreenKeyboardType.Default : TouchScreenKeyboardType.ASCIICapable) : TouchScreenKeyboardType.NumberPad);
         TouchScreenKeyboard.hideInput = false;
         tk = TouchScreenKeyboard.Open(text, t, false, false, type == 2, false, caption);
     }

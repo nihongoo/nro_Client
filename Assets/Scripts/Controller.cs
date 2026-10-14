@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Assets.src.e;
 using Assets.src.f;
 using Assets.src.g;
@@ -2556,10 +2556,6 @@ public class Controller : IMessageHandler
 			}
 			case 92:
 			{
-				if (GameCanvas.currentScreen == GameScr.instance)
-				{
-					GameCanvas.endDlg();
-				}
 				string text4 = msg.reader().readUTF();
 				string str2 = msg.reader().readUTF();
 				str2 = Res.changeString(str2);
@@ -2585,7 +2581,8 @@ public class Controller : IMessageHandler
 					GameScr.info1.addInfo(empty, 0);
 					break;
 				}
-				GameScr.info2.addInfoWithChar(empty, char8, (b46 == 0) ? true : false);
+				if (b46 != 1) break; // Opcode 92 now belongs only to private chat.
+                GameScr.info2.addInfoWithChar(empty, char8);
 				if (GameCanvas.panel.isShow && GameCanvas.panel.type == 8)
 				{
 					GameCanvas.panel.initLogMessage();

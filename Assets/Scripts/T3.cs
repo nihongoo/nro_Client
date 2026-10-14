@@ -307,7 +307,6 @@ public class T3 : mResources
 		mResources.low = "Rendah";
 		mResources.increase_vga = "Naikkan resolusi (device kuat)";
 		mResources.decrease_vga = "Turunkan resolusi (device lemah)";
-		mResources.serverchat_off = "Kabar Server";
 		mResources.serverchat_on = "Kabar Server";
 		mResources.aura_on = "Aura khusus";
 		mResources.aura_off = "Aura khusus";
@@ -484,8 +483,6 @@ public class T3 : mResources
 		mResources.can_not_do_when_die = "Kamu tidak bisa melakukan ini saat mati";
 		mResources.use_for_combine = "Gunakan untuk kombinasi";
 		mResources.use_for_trade = "Gunakan untuk bertukar";
-		mResources.not_enough_luong_world_channel = "Tidak cukup gem untuk chat di world channel";
-		mResources.world_channel_5_luong = "Chat di world channel (5 gem)";
 		mResources.want_to_trade = "ingin bertukar dengan kamu, terima?";
 		mResources.hasJustUpgrade1 = "Kamu baru saja mengupgrade";
 		mResources.hasJustUpgrade2 = "ke";

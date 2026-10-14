@@ -343,6 +343,26 @@ public class Main : MonoBehaviour
 			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
 			pointerInViewport = false;
 		}
+        // Text comes from the OS/IME character event, not the physical key map.
+        if (isPC && GameCanvas.currentScreen == GameScr.instance && ChatTextField.gI().isShow && GameCanvas.currentDialog == null) {
+            Input.imeCompositionMode = IMECompositionMode.On;
+            if (Event.current.type == EventType.KeyDown) {
+                ChatTextField chat = ChatTextField.gI();
+                bool composing = !string.IsNullOrEmpty(Input.compositionString);
+                if (!composing) {
+                    if (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter) chat.perform(8000, null);
+                    else if (Event.current.keyCode == KeyCode.Escape) chat.perform(8001, null);
+                    else if (Event.current.keyCode == KeyCode.Backspace) chat.keyPressed(-8);
+                    else if (Event.current.keyCode == KeyCode.LeftArrow) chat.keyPressed(14);
+                    else if (Event.current.keyCode == KeyCode.RightArrow) chat.keyPressed(15);
+                    else if ((Event.current.control || Event.current.command) && Event.current.keyCode == KeyCode.V) chat.InsertDesktopText(GUIUtility.systemCopyBuffer);
+                    else if (!Event.current.control && !Event.current.command && Event.current.character >= ' ') chat.InsertDesktopText(Event.current.character.ToString());
+                }
+                Event.current.Use();
+            }
+            return;
+        }
+        Input.imeCompositionMode = IMECompositionMode.Auto;
 		if (Input.anyKeyDown && Event.current.type == EventType.KeyDown)
 		{
 			int num = MyKeyMap.map(Event.current.keyCode);

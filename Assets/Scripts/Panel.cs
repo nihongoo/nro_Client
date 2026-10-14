@@ -1,4 +1,4 @@
-﻿using Assets.src.g;
+using Assets.src.g;
 using Mod.CuongLe;
 using System;
 using System.Collections.Generic;
@@ -5046,14 +5046,7 @@ public class Panel : IActionListener, IChatable
             g.setClip(xScroll, yScroll + cmy, wScroll, hScroll);
             _ = mFont.tahoma_7b_dark;
             mFont.tahoma_7b_green2.drawString(g, infoItem.charInfo.cName, num4 + 5, num5, 0);
-            if (!infoItem.isChatServer)
-            {
-                mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
-            else
-            {
-                mFont.tahoma_7_red.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
+            mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
         }
         paintScrollArrow(g);
     }
@@ -7695,37 +7688,8 @@ public class Panel : IActionListener, IChatable
                     }
                     break;
                 case 5:
-                    GameCanvas.endDlg();
-                    if (Char.myCharz().checkLuong() < 5)
-                    {
-                        GameCanvas.startOKDlg(mResources.not_enough_luong_world_channel);
-                        break;
-                    }
-                    if (chatTField == null)
-                    {
-                        chatTField = new ChatTextField();
-                        chatTField.tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
-                        chatTField.initChatTextField();
-                        chatTField.parentScreen = GameCanvas.panel;
-                    }
-                    chatTField.strChat = mResources.world_channel_5_luong;
-                    chatTField.tfChat.name = mResources.CHAT;
-                    chatTField.to = string.Empty;
-                    chatTField.isShow = true;
-                    chatTField.tfChat.isFocus = true;
-                    chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
-                    if (Main.isWindowsPhone)
-                    {
-                        chatTField.tfChat.strInfo = chatTField.strChat;
-                    }
-                    if (!Main.isPC)
-                    {
-                        chatTField.startChat2(this, string.Empty);
-                    }
-                    else if (GameCanvas.isTouch)
-                    {
-                        chatTField.tfChat.doChangeToTextBox();
-                    }
+                    hide();
+                    WorldChat.WorldChatHud.Open();
                     break;
                 case 6:
                     setTypeAccount();
@@ -7775,37 +7739,8 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
             case 6:
-                GameCanvas.endDlg();
-                if (Char.myCharz().checkLuong() < 5)
-                {
-                    GameCanvas.startOKDlg(mResources.not_enough_luong_world_channel);
-                    break;
-                }
-                if (chatTField == null)
-                {
-                    chatTField = new ChatTextField();
-                    chatTField.tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
-                    chatTField.initChatTextField();
-                    chatTField.parentScreen = GameCanvas.panel;
-                }
-                chatTField.strChat = mResources.world_channel_5_luong;
-                chatTField.tfChat.name = mResources.CHAT;
-                chatTField.to = string.Empty;
-                chatTField.isShow = true;
-                chatTField.tfChat.isFocus = true;
-                chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
-                if (Main.isWindowsPhone)
-                {
-                    chatTField.tfChat.strInfo = chatTField.strChat;
-                }
-                if (!Main.isPC)
-                {
-                    chatTField.startChat2(this, string.Empty);
-                }
-                else if (GameCanvas.isTouch)
-                {
-                    chatTField.tfChat.doChangeToTextBox();
-                }
+                hide();
+                WorldChat.WorldChatHud.Open();
                 break;
             case 7:
                 setTypeAccount();
@@ -9465,16 +9400,7 @@ public class Panel : IActionListener, IChatable
                     return;
                 }
             }
-            if (chatTField.strChat.Equals(mResources.world_channel_5_luong))
-            {
-                if (!chatTField.tfChat.getText().Equals(string.Empty))
-                {
-                    Service.gI().chatGlobal(chatTField.tfChat.getText());
-                    chatTField.isShow = false;
-                    hide();
-                }
-            }
-            else if (chatTField.strChat.Equals(mResources.chat_player))
+            if (chatTField.strChat.Equals(mResources.chat_player))
             {
                 chatTField.isShow = false;
                 InfoItem infoItem = null;

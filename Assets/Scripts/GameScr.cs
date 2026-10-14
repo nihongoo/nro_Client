@@ -480,13 +480,9 @@ public class GameScr : mScreen, IChatable
 
     public static bool isUseTouch;
 
-    public Command cmdDoiCo;
 
-    public Command cmdLogOut;
 
-    public Command cmdChatTheGioi;
 
-    public Command cmdshowInfo;
 
     private static Command[] cmdTestLogin;
 
@@ -670,6 +666,37 @@ public class GameScr : mScreen, IChatable
 
     internal static int ChatButtonCenterX => xC + 17;
     internal static int ChatButtonBottom => yC + 34;
+
+    // The chat strip must yield to the existing controls, including their larger touch targets.
+    internal static void CollectChatObstacles(System.Collections.Generic.List<Rect> bounds)
+    {
+        bounds.Clear();
+        bounds.Add(new Rect(xC, yC, 34, 34));
+        bounds.Add(Notifications.NotificationHudLayout.BellBounds());
+        if (Char.myCharz().cmdMenu != null)
+            bounds.Add(new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34));
+        if (instance != null && instance.cmdMenu != null)
+            bounds.Add(new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h));
+        if (xS != null && yS != null)
+            for (int i = 0; i < xS.Length; i++)
+            {
+                bounds.Add(new Rect(xSkill + xS[i] - 1, yS[i] - 1, 30, 30));
+                bounds.Add(new Rect(xSkill + xS[i] - wSkill / 2 + 12, yS[i] - wSkill / 2 + 12, wSkill, wSkill));
+            }
+        if (GameCanvas.isTouch)
+        {
+            bounds.Add(new Rect(xHP, yHP + 10, 40, 40));
+            bounds.Add(new Rect(xHP - 1, yHP - 6, 42, 50));
+            bounds.Add(new Rect(xHP + 5, yHP - 36, 40, 40));
+            if (isAnalog != 0)
+            {
+                bounds.Add(new Rect(xF, yF, 40, 40));
+                bounds.Add(new Rect(xTG, yTG, 40, 40));
+                if (gamePad != null) bounds.Add(Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone));
+            }
+        }
+        else bounds.Add(new Rect(xSkill + xHP - 1, yHP - 1, 30, 30));
+    }
 
     private static int xL;
 
@@ -895,11 +922,9 @@ public class GameScr : mScreen, IChatable
 
     public PopUpYesNo popUpYesNo;
 
-    public static MyVector vChatVip;
 
     public static int vBig;
 
-    public bool isFireWorks;
 
     public int[] winnumber;
 
@@ -919,11 +944,8 @@ public class GameScr : mScreen, IChatable
 
     private int tShow;
 
-    private int xChatVip;
 
-    private int currChatWidth;
 
-    private bool startChat;
 
     public sbyte percentMabu;
 
@@ -931,7 +953,6 @@ public class GameScr : mScreen, IChatable
 
     public int tMabuEff;
 
-    public static bool isPaintChatVip;
 
     public static sbyte mabuPercent;
 
@@ -1037,22 +1058,6 @@ public class GameScr : mScreen, IChatable
         {
             isHaveSelectSkill = true;
         }
-        cmdDoiCo = new Command("Đổi cờ", GameCanvas.gI(), 100001, null);
-        cmdLogOut = new Command("Logout", GameCanvas.gI(), 100002, null);
-        cmdChatTheGioi = new Command("chat world", GameCanvas.gI(), 100003, null);
-        cmdshowInfo = new Command("InfoLog", GameCanvas.gI(), 100004, null);
-        cmdDoiCo.setType();
-        cmdLogOut.setType();
-        cmdChatTheGioi.setType();
-        cmdshowInfo.setType();
-        cmdChatTheGioi.x = GameCanvas.w - cmdChatTheGioi.w;
-        cmdshowInfo.x = GameCanvas.w - cmdshowInfo.w;
-        cmdLogOut.x = GameCanvas.w - cmdLogOut.w;
-        cmdDoiCo.x = GameCanvas.w - cmdDoiCo.w;
-        cmdChatTheGioi.y = cmdChatTheGioi.h + mFont.tahoma_7_white.getHeight();
-        cmdshowInfo.y = cmdChatTheGioi.h * 2 + mFont.tahoma_7_white.getHeight();
-        cmdLogOut.y = cmdChatTheGioi.h * 3 + mFont.tahoma_7_white.getHeight();
-        cmdDoiCo.y = cmdChatTheGioi.h * 4 + mFont.tahoma_7_white.getHeight();
     }
 
     public static void loadBg()
@@ -1217,7 +1222,6 @@ public class GameScr : mScreen, IChatable
 
     public override void switchToMe()
     {
-        vChatVip.removeAllElements();
         ServerListScreen.isWait = false;
         if (BackgroudEffect.isHaveRain())
         {
@@ -2674,7 +2678,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
-        if (Notifications.NotificationCenter.ConsumesInput) return;
+        if (Notifications.NotificationCenter.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -2731,21 +2735,6 @@ public class GameScr : mScreen, IChatable
                 }
             }
         }
-        else
-        {
-            if (ChatTextField.gI().left != null && (GameCanvas.keyPressed[12] || mScreen.getCmdPointerLast(ChatTextField.gI().left)) && ChatTextField.gI().left != null)
-            {
-                ChatTextField.gI().left.performAction();
-            }
-            if (ChatTextField.gI().right != null && (GameCanvas.keyPressed[13] || mScreen.getCmdPointerLast(ChatTextField.gI().right)) && ChatTextField.gI().right != null)
-            {
-                ChatTextField.gI().right.performAction();
-            }
-            if (ChatTextField.gI().center != null && (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] || mScreen.getCmdPointerLast(ChatTextField.gI().center)) && ChatTextField.gI().center != null)
-            {
-                ChatTextField.gI().center.performAction();
-            }
-        }
         GameCanvas.debug("F6", 0);
         updateKeyAlert();
         GameCanvas.debug("F7", 0);
@@ -2761,12 +2750,7 @@ public class GameScr : mScreen, IChatable
             }
         }
         GameCanvas.debug("F8", 0);
-        if (ChatTextField.gI().isShow && GameCanvas.keyAsciiPress != 0)
-        {
-            ChatTextField.gI().keyPressed(GameCanvas.keyAsciiPress);
-            GameCanvas.keyAsciiPress = 0;
-        }
-        else if (isLockKey)
+        if (isLockKey)
         {
             GameCanvas.clearKeyHold();
             GameCanvas.clearKeyPressed();
@@ -4669,7 +4653,6 @@ public class GameScr : mScreen, IChatable
             GameCanvas.debug("E1", 0);
             updateCamera();
             GameCanvas.debug("E2", 0);
-            ChatTextField.gI().update();
             GameCanvas.debug("E3", 0);
             for (int i = 0; i < vCharInMap.size(); i++)
             {
@@ -4822,7 +4805,6 @@ public class GameScr : mScreen, IChatable
             {
                 ((ItemTime)textTime.elementAt(num11)).update();
             }
-            updateChatVip();
         }
         catch (Exception)
         {
@@ -4952,7 +4934,7 @@ public class GameScr : mScreen, IChatable
         GameCanvas.debug("PA2", 1);
         GameCanvas.paintBGGameScr(g);
         paint_ios_bg(g);
-        if ((isRongThanXuatHien || isFireWorks) && TileMap.bgID != 3)
+        if (isRongThanXuatHien && TileMap.bgID != 3)
         {
             paintBlackSky(g);
         }
@@ -5207,7 +5189,6 @@ public class GameScr : mScreen, IChatable
             paintInfoBar(g);
         }
         resetTranslate(g);
-        paint_xp_bar(g);
         if (!isPaintOther)
         {
             MainMod.Paint(g);
@@ -5268,6 +5249,7 @@ public class GameScr : mScreen, IChatable
             GameCanvas.debug("PA19", 1);
             GameCanvas.debug("PA20", 1);
             resetTranslate(g);
+            WorldChat.WorldChatHud.Paint(g);
             paintSelectedSkill(g);
             GameCanvas.debug("PA22", 1);
             resetTranslate(g);
@@ -5276,7 +5258,6 @@ public class GameScr : mScreen, IChatable
                 paintTouchControl(g);
             }
             resetTranslate(g);
-            paintChatVip(g);
             if (!GameCanvas.panel.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null && GameCanvas.currentScreen.Equals(instance))
             {
                 base.paint(g);
@@ -6584,23 +6565,12 @@ public class GameScr : mScreen, IChatable
         {
             ChatTextField.gI().isShow = false;
         }
-        ModProCuongLe.onChatFromMe(text, to);
-        if (text.StartsWith("cheat_"))
-        {
-            try
-            {
-                float num = (Time.timeScale = float.Parse(text.Split('_')[1]));
-                info1.addInfo("Cheat: " + num, 0);
-                text = string.Empty;
-            }
-            catch
-            {
-            }
-        }
-        if (text.Contains("admin"))
-        {
-            DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
-            text = string.Empty;
+        // Commands are explicit and only available in public Normal chat.
+        if (string.IsNullOrEmpty(to) && text.StartsWith("/")) {
+            string command = text.Substring(1).Trim();
+            if (command == "admin") { DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP; return; }
+            if (ModProCuongLe.TryChatCommand(command)) return;
+            // Server commands keep their slash; the server checks authorization.
         }
         if (to.Equals(mResources.chat_player))
         {
@@ -7044,63 +7014,6 @@ public class GameScr : mScreen, IChatable
         lastXS = (currXS = mSystem.currentTimeMillis());
     }
 
-    public void chatVip(string chatVip)
-    {
-        if (!startChat)
-        {
-            currChatWidth = mFont.tahoma_7b_yellowSmall.getWidth(chatVip);
-            xChatVip = GameCanvas.w;
-            startChat = true;
-        }
-        if (chatVip.StartsWith("!"))
-        {
-            chatVip = chatVip.Substring(1, chatVip.Length);
-            isFireWorks = true;
-        }
-        vChatVip.addElement(chatVip);
-    }
-
-    public void clearChatVip()
-    {
-        vChatVip.removeAllElements();
-        xChatVip = GameCanvas.w;
-        startChat = false;
-    }
-
-    public void paintChatVip(mGraphics g)
-    {
-        if (vChatVip.size() != 0 && isPaintChatVip)
-        {
-            g.setClip(0, GameCanvas.h - 13, GameCanvas.w, 15);
-            g.fillRect(0, GameCanvas.h - 13, GameCanvas.w, 15, 0, 90);
-            string st = (string)vChatVip.elementAt(0);
-            mFont.tahoma_7b_yellow.drawString(g, st, xChatVip, GameCanvas.h - 13, 0, mFont.tahoma_7b_dark);
-        }
-    }
-
-    public void updateChatVip()
-    {
-        if (!startChat)
-        {
-            return;
-        }
-        xChatVip -= 2;
-        if (xChatVip < -currChatWidth)
-        {
-            xChatVip = GameCanvas.w;
-            vChatVip.removeElementAt(0);
-            if (vChatVip.size() == 0)
-            {
-                isFireWorks = false;
-                startChat = false;
-            }
-            else
-            {
-                currChatWidth = mFont.tahoma_7b_white.getWidth((string)vChatVip.elementAt(0));
-            }
-        }
-    }
-
     public void showYourNumber(string strNum)
     {
         yourNumber = strNum;
@@ -7386,21 +7299,6 @@ public class GameScr : mScreen, IChatable
     public static bool isSmallScr()
     {
         return GameCanvas.w <= 320;
-    }
-
-    private void paint_xp_bar(mGraphics g)
-    {
-        g.setColor(8421504);
-        g.fillRect(0, GameCanvas.h - 2, GameCanvas.w, 2);
-        int w = (int)(Char.myCharz().cLevelPercent * GameCanvas.w / 10000);
-        g.setColor(16777215);
-        g.fillRect(0, GameCanvas.h - 2, w, 2);
-        g.setColor(0);
-        w = GameCanvas.w / 10;
-        for (int i = 1; i < 10; i++)
-        {
-            g.fillRect(i * w, GameCanvas.h - 2, 1, 2);
-        }
     }
 
     private void paint_ios_bg(mGraphics g)
@@ -7717,7 +7615,6 @@ public class GameScr : mScreen, IChatable
         STORE = 1;
         ZONE = 2;
         UPGRADE = 3;
-        vChatVip = new MyVector();
         nCT_TeamB = 50;
         nCT_TeamA = 50;
         nCT_nBoyBaller = 100;

@@ -17,6 +17,10 @@ namespace Notifications
                 myReader reader = message.reader();
                 if (reader.readByte() != Version) throw new InvalidOperationException("Notification version");
                 int action = reader.readByte();
+                if (action >= WorldChat.WorldChatProtocol.Snapshot && action <= WorldChat.WorldChatProtocol.Result)
+                {
+                    WorldChat.WorldChatProtocol.Read(action, reader); return;
+                }
                 long sequence = reader.readLong(), time = reader.readLong();
                 if (action == Snapshot)
                 {

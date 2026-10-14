@@ -9,9 +9,13 @@ New-Item -ItemType Directory -Force -Path $output | Out-Null
 $sources = @(
     (Join-Path $PSScriptRoot 'StoreTests.cs'),
     (Join-Path $repo 'Assets\Scripts\myReader.cs'),
+    (Join-Path $repo 'Assets\Scripts\myWriter.cs'),
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationModels.cs'),
     (Join-Path $repo 'Assets\Scripts\Notifications\NotificationStore.cs'),
-    (Join-Path $repo 'Assets\Scripts\Notifications\NotificationProtocol.cs')
+    (Join-Path $repo 'Assets\Scripts\Notifications\NotificationProtocol.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatStore.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatTicker.cs'),
+    (Join-Path $repo 'Assets\Scripts\WorldChat\WorldChatProtocol.cs')
 )
 $exe = Join-Path $output 'StoreTests.exe'
 & $Compiler /nologo /target:exe "/out:$exe" @sources

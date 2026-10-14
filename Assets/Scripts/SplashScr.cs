@@ -38,7 +38,6 @@ public class SplashScr : mScreen
             MainMod.LoadData();
             if (Rms.loadRMSInt("serverchat") != -1)
 			{
-				GameScr.isPaintChatVip = ((Rms.loadRMSInt("serverchat") == 0) ? true : false);
 			}
 			if (Rms.loadRMSInt("isPlaySound") != -1)
 			{

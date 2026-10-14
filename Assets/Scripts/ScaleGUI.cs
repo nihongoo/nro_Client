@@ -14,6 +14,8 @@ public class ScaleGUI
 	private static float nextInsetsRead;
 	private static int insetWidth, insetHeight;
 	private static bool insetWarningLogged;
+	// Device Simulator exposes Screen.safeArea in the Editor, without Android JNI.
+	private static bool UseSafeArea => Application.platform == RuntimePlatform.Android || Application.isEditor;
 
 	// Android 15 can draw behind gesture navigation even when fullscreen is disabled.
 	// Work in GUI's top-left coordinates; game layout retains its existing logical size.
@@ -21,9 +23,10 @@ public class ScaleGUI
 	{
 		get
 		{
-			if (Application.platform != RuntimePlatform.Android)
+			if (!UseSafeArea)
 				return new Rect(0, 0, Screen.width, Screen.height);
-			if (Time.realtimeSinceStartup >= nextInsetsRead || insetWidth != Screen.width || insetHeight != Screen.height)
+			if (Application.isEditor) systemBarArea = new Rect(0, 0, Screen.width, Screen.height);
+			else if (Time.realtimeSinceStartup >= nextInsetsRead || insetWidth != Screen.width || insetHeight != Screen.height)
 				ReadSystemBarArea();
 			Rect safe = Screen.safeArea;
 			float left = Mathf.Max(0, Mathf.Max(safe.xMin, systemBarArea.xMin));
@@ -83,7 +86,7 @@ public class ScaleGUI
 
 	public static Vector2 ToGuiPoint(Vector2 point)
 	{
-		if (Application.platform != RuntimePlatform.Android) return point;
+		if (!UseSafeArea) return point;
 		return MapToLogical(point, Viewport, WIDTH, HEIGHT);
 	}
 
@@ -101,7 +104,7 @@ public class ScaleGUI
 	public static void BeginGUI()
 	{
 		stack.Add(GUI.matrix);
-		if (Application.platform == RuntimePlatform.Android)
+		if (UseSafeArea)
 		{
 			Rect viewport = Viewport;
 			Color previousColor = GUI.color;

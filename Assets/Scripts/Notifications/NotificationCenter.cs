@@ -15,6 +15,8 @@ namespace Notifications
         private static bool dragging, backDown;
         private static int dragY, dragScroll, consumedTick = -1;
         private static int ActionSize => System.Math.Max(32, NotificationHudLayout.TouchSize);
+        // Match the "Chat" label in ChatTextField.paint, including its font size and color.
+        private static mFont TitleFont => mFont.tahoma_7b_green2;
         public static bool IsOpen { get; private set; }
         public static bool ConsumesInput => IsOpen || consumedTick == GameCanvas.gameTick;
 
@@ -51,15 +53,14 @@ namespace Notifications
             if (!CanUse) { if (IsOpen) Close(); backDown = escape; return; }
             bell = NotificationHudLayout.BellBounds();
             if (!IsOpen && NotificationHudLayout.IsBellObscured) { backDown = escape; return; }
-            int size = NotificationHudLayout.TouchSize;
-            UpdateLayout(size);
+            UpdateLayout();
             if (!IsOpen)
             {
                 if (bell.width > 0 && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick &&
                     bell.Contains(new Vector2(GameCanvas.px, GameCanvas.py)))
                 {
                     IsOpen = true; tab = 0; scroll = 0; dragging = false;
-                    UpdateLayout(size);
+                    UpdateLayout();
                     Consume();
                 }
                 backDown = escape;
@@ -116,7 +117,7 @@ namespace Notifications
             }
         }
 
-        private static void UpdateLayout(int touchSize)
+        private static void UpdateLayout()
         {
             const int padding = 10, gap = 6;
             // Keep the panel at the bell, on the right side, rather than covering the screen center.
@@ -125,10 +126,14 @@ namespace Notifications
             int y = System.Math.Max(6, System.Math.Min(GameCanvas.h - 6, (int)bell.y));
             int maxHeight = System.Math.Min(300, GameCanvas.h - y - 6);
             window = new Rect(x, y, width, maxHeight);
-            closeButton = new Rect(window.xMax - padding - touchSize, window.y + padding, touchSize, touchSize);
-            int tabHeight = System.Math.Max(30, touchSize);
+            int closeSize = System.Math.Max(NotificationSkin.CloseIcon.getWidth(), NotificationSkin.CloseIcon.getHeight());
+            int titleRowHeight = System.Math.Max(TitleFont.getHeight(), closeSize);
+            closeButton = new Rect(window.xMax - padding - closeSize,
+                window.y + padding + (titleRowHeight - closeSize) / 2, closeSize, closeSize);
+            // Use the standard Command button height instead of the bell's DPI-sized touch target.
+            int tabHeight = mScreen.cmdH;
             int tabWidth = (width - padding * 2 - gap * 2) / 3;
-            float tabY = closeButton.yMax + gap;
+            float tabY = window.y + padding + titleRowHeight + gap;
             for (int i = 0; i < tabs.Length; i++)
                 tabs[i] = new Rect(window.x + padding + i * (tabWidth + gap), tabY, tabWidth, tabHeight);
             float contentY = tabY + tabHeight + 8;
@@ -144,13 +149,13 @@ namespace Notifications
         public static void Paint(mGraphics g)
         {
             if (!IsOpen || !CanUse) return;
-            UpdateLayout(NotificationHudLayout.TouchSize);
+            UpdateLayout();
             int x = (int)window.x, y = (int)window.y, w = (int)window.width, h = (int)window.height;
             g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
             NotificationSkin.PaintFrame(g, x, y, w, h, false);
             g.drawImage(NotificationSkin.CloseIcon, (int)closeButton.center.x, (int)closeButton.center.y, 3);
-            mFont.tahoma_7b_dark.drawString(g, "Thông báo", (int)window.center.x,
-                (int)closeButton.center.y - 6, 2);
+            TitleFont.drawString(g, "Thông báo", (int)content.x,
+                (int)closeButton.center.y - TitleFont.getHeight() / 2, 0);
             for (int i = 0; i < tabs.Length; i++)
             {
                 Rect bounds = tabs[i];
