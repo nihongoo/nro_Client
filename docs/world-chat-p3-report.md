@@ -1,5 +1,7 @@
 # Stage 3 chỉnh lại — form Chat thường, không lịch sử
 
+**Cập nhật sau review:** xem [chat-input-followup.md](chat-input-followup.md). Lệnh hiện yêu cầu dấu /, đã sửa S13 theo quyết định mới; form chặn thao tác game, World gửi thành công tự đóng, ticker tạm dừng khi Chat/popup che. Phần dưới ghi trạng thái đợt chỉnh form ban đầu; các nhận xét S13 giữ nguyên và ticker chạy khi form che đã được thay thế bởi cập nhật này.
+
 Ngày: 14/10/2026. Repo gốc client `D:/project_Unity/client_Nro/Mod-nro-unity`, server `D:/dowload/SRC NRO NEW 03/SRC`. Branch cả hai: `feat/world-chat-p3`. Nền trước đợt này: client `0934c02`, server `a5d7a99`.
 
 ## 1. Commit và phạm vi
