@@ -30,7 +30,7 @@ public class TField {
     public void clearAll(){} public void clearKb(){if(kb!=null)kb.text="";}
     public void insertText(string t){text+=t;} public int getMaxTextLenght()=>limit;
     public void setMaxTextLenght(int n){limit=n;} public void setFocusWithKb(bool f){isFocus=f;}
-    public void keyPressed(int k){if(k>0)text+=(char)k;} public void update(){} public void paint(mGraphics g){}
+    public void keyPressed(int k){if(k==204)clear();else if(k>0)text+=(char)k;} public void update(){} public void paint(mGraphics g){}
 }
 public static class Main { public static bool isPC=true,isWindowsPhone,isIPhone; }
 public static class mScreen { public static int ITEM_HEIGHT=20,cmdH=26; public static bool getCmdPointerLast(Command c)=>false; }
@@ -124,6 +124,11 @@ public static class ChatFormTests {
         GameCanvas.currentScreen=GameScr.instance;f.OpenWorldChat();
         f.InsertDesktopText("Tiếng Việt, Ì ạch /admin");
         Check(f.tfChat.getText()=="Tiếng Việt, Ì ạch /admin","Unicode/slash input dropped characters");
+        f.tfChat.setText("");f.tfChat.setMaxTextLenght(5);f.InsertDesktopText("\nabc/def");
+        Check(f.tfChat.getText()=="abc/d","paste bypassed limit/control filtering");
+        f.tfChat.setText("abcd");f.InsertDesktopText("😀");
+        Check(f.tfChat.getText()=="abcd","paste split a surrogate at character limit");f.tfChat.setMaxTextLenght(200);
+
         GameCanvas.px=0;GameCanvas.py=0;GameCanvas.isPointerClick=GameCanvas.isPointerJustRelease=true;GameCanvas.keyPressed[1]=true;
         f.UpdateModalInput();
         Check(!GameCanvas.isPointerClick&&!GameCanvas.keyPressed[1]&&f.isShow,"chat click/key escaped to gameplay");
