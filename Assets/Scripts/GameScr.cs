@@ -667,20 +667,21 @@ public class GameScr : mScreen, IChatable
                 new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);
         Hud.HudLayout.Register("legacy.target-menu", () => Char.myCharz().cmdMenu == null ? new Rect() :
             new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34), Hud.HudLayout.MenuOrder);
-        Hud.HudLayout.Register("legacy.screen-menu", () => instance?.cmdMenu == null ? new Rect() :
+        Hud.HudLayout.Register("legacy.screen-menu", () => Hud.HudLayout.IsMobileLayout || instance?.cmdMenu == null ? new Rect() :
             new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h), Hud.HudLayout.MenuOrder);
-        // Existing keySkill/onScreenSkill arrays have ten slots. Each adapter is registered once.
+        Hud.CombatMobileHud.Register();
+        // PC adapters remain until cluster 5b. Mobile controls own their individual entries.
         for (int slot = 0; slot < 10; slot++) {
             int index = slot;
-            Hud.HudLayout.Register("legacy.skill." + index, () => LegacySkillBounds(index), Hud.HudLayout.ControlsOrder);
+            Hud.HudLayout.Register("legacy.skill." + index, () => Hud.HudLayout.IsMobileLayout ? new Rect() : LegacySkillBounds(index), Hud.HudLayout.ControlsOrder);
         }
-        Hud.HudLayout.Register("legacy.potion", () => GameCanvas.isTouch ? new Rect(xHP, yHP + 10, 40, 40) :
+        Hud.HudLayout.Register("legacy.potion", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP, yHP + 10, 40, 40) :
             new Rect(xSkill + xHP - 1, yHP - 1, 30, 30), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.potion-alt", () => GameCanvas.isTouch ? new Rect(xHP - 1, yHP - 6, 42, 50) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.context-item", () => GameCanvas.isTouch ? new Rect(xHP + 5, yHP - 36, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.attack", () => GameCanvas.isTouch && isAnalog != 0 ? new Rect(xF, yF, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.focus", () => GameCanvas.isTouch && isAnalog != 0 ? new Rect(xTG, yTG, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.joystick", () => GameCanvas.isTouch && isAnalog != 0 && gamePad != null
+        Hud.HudLayout.Register("legacy.potion-alt", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP - 1, yHP - 6, 42, 50) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.context-item", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP + 5, yHP - 36, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.attack", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 ? new Rect(xF, yF, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.focus", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 ? new Rect(xTG, yTG, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.joystick", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
             ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
@@ -1934,7 +1935,7 @@ public class GameScr : mScreen, IChatable
         ChatTextField.gI().parentScreen = instance;
         ChatTextField.gI().tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
         ChatTextField.gI().initChatTextField();
-        if (GameCanvas.isTouch)
+        if (GameCanvas.isTouch && !Hud.HudLayout.IsMobileLayout)
         {
             yTouchBar = gH - 88;
             xF = gW - 55;
@@ -1964,6 +1965,7 @@ public class GameScr : mScreen, IChatable
 
    public static void setSkillBarPosition()
 	{
+        if (Hud.HudLayout.IsMobileLayout) return; // Rect providers replace mobile coordinates entirely.
 		Skill[] array = (!GameCanvas.isTouch) ? GameScr.keySkill : GameScr.onScreenSkill;
 		GameScr.xS = new int[array.Length];
 		GameScr.yS = new int[array.Length];
@@ -3823,6 +3825,13 @@ public class GameScr : mScreen, IChatable
         }
     }
 
+    // Mobile quick items share the existing pea timer without changing the PC/key action.
+    internal long MobilePotionRemaining(long now) => System.Math.Max(0L,10000L-now+lastUsePotion);
+    internal void MarkMobilePotionUse(long now)
+    {
+        if (Hud.HudLayout.IsMobileLayout) lastUsePotion = now;
+    }
+
     public void doUseHP()
     {
         if (Char.myCharz().stone || Char.myCharz().blindEff || Char.myCharz().holdEffID > 0)
@@ -4247,6 +4256,11 @@ public class GameScr : mScreen, IChatable
     private void updateKeyTouchControl()
     {
         MainMod.updateTouch();
+        if (Hud.HudLayout.IsMobileLayout) {
+            if (mobCapcha != null) updateKeyTouchCapcha();
+            Hud.MobileCombatPointers.Dispatch();
+            return;
+        }
         if (isNotPaintTouchControl())
         {
             return;
@@ -5216,7 +5230,7 @@ public class GameScr : mScreen, IChatable
             if (!GameCanvas.panel.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null && GameCanvas.currentScreen.Equals(instance))
             {
                 base.paint(g);
-                if (mScreen.keyMouse == 1 && cmdMenu != null)
+                if (!Hud.HudLayout.IsMobileLayout && mScreen.keyMouse == 1 && cmdMenu != null)
                 {
                     g.drawImage(ItemMap.imageFlare, cmdMenu.x + 7, cmdMenu.y + 15, 3);
                 }
@@ -5258,7 +5272,7 @@ public class GameScr : mScreen, IChatable
                 }
             }
             ChatTextField.gI().paint(g);
-            if (isNewClanMessage && !GameCanvas.panel.isShow && GameCanvas.gameTick % 4 == 0)
+            if (!Hud.HudLayout.IsMobileLayout && isNewClanMessage && !GameCanvas.panel.isShow && GameCanvas.gameTick % 4 == 0)
             {
                 g.drawImage(ItemMap.imageFlare, cmdMenu.x + 15, cmdMenu.y + 30, mGraphics.BOTTOM | mGraphics.HCENTER);
             }
@@ -5738,6 +5752,7 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
+        if (Hud.HudLayout.IsMobileLayout) { Hud.CombatMobileHud.Paint(g); return; }
         long num = mSystem.currentTimeMillis();
         long num2 = num - this.lastUsePotion;
         int num3 = 0;
@@ -6678,6 +6693,62 @@ public class GameScr : mScreen, IChatable
             yF = GameCanvas.h - 45;
             yTG = yF - 45;
         }
+    }
+
+    internal void UseMobileHudContext()
+    {
+        if (isPickNgocRong)
+        {
+            GameCanvas.keyPressed[14] = true;
+            isPickNgocRong = false;
+            Service.gI().useItem(-1, -1, -1, -1);
+        }
+        else if (isudungCapsun4)
+        {
+            GameCanvas.keyPressed[14] = true;
+            for (int i = 0; i < Char.myCharz().arrItemBag.Length; i++)
+            {
+                Item item = Char.myCharz().arrItemBag[i];
+                if (item == null)
+                {
+                    continue;
+                }
+                Res.err("find " + item.template.id);
+                if (item.template.id == 194)
+                {
+                    isudungCapsun4 = item.quantity > 0;
+                    if (isudungCapsun4)
+                    {
+                        Service.gI().useItem(0, 1, (sbyte)i, -1);
+                        break;
+                    }
+                }
+            }
+        }
+        else if (isudungCapsun3)
+        {
+            GameCanvas.keyPressed[14] = true;
+            for (int j = 0; j < Char.myCharz().arrItemBag.Length; j++)
+            {
+                Item item2 = Char.myCharz().arrItemBag[j];
+                if (item2 != null && item2.template.id == 193)
+                {
+                    isudungCapsun3 = item2.quantity > 0;
+                    if (isudungCapsun3)
+                    {
+                        Service.gI().useItem(0, 1, (sbyte)j, -1);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    internal void SelectMobileHudSkill(int slot, Skill skill)
+    {
+        selectedIndexSkill = slot;
+        if (indexSelect < 0) indexSelect = 0;
+        doSelectSkill(skill, isShortcut: true);
     }
 
     private void updateGamePad()

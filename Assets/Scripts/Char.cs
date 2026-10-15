@@ -1055,7 +1055,7 @@ public class Char : IMapObject
         if (task.taskId >= 1)
         {
             GameScr.gI().right = GameScr.gI().cmdFocus;
-            GameScr.gI().left = GameScr.gI().cmdMenu;
+            GameScr.gI().left = Hud.HudLayout.IsMobileLayout ? null : GameScr.gI().cmdMenu;
         }
         if (task.taskId < 0)
         {

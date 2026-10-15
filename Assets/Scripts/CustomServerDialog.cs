@@ -5,9 +5,11 @@ public sealed class CustomServerDialog : Dialog, IActionListener
     private readonly bool previousAutoConnect;
     private readonly int x, y, width;
     private string error;
+    private readonly string connectionError;
 
-    public CustomServerDialog()
+    public CustomServerDialog(string connectionError = null)
     {
+        this.connectionError = connectionError;
         previousAutoConnect = ServerListScreen.isAutoConect;
         ServerListScreen.isAutoConect = false;
         ServerListScreen.flagServer = 0;
@@ -106,5 +108,6 @@ public sealed class CustomServerDialog : Dialog, IActionListener
         else if (action == 3) CustomServerAddress.Reset();
         Close();
         if (action == 1 || action == 3) CustomServerAddress.Reconnect();
+        else if (action == 2 && connectionError != null) CustomServerAddress.ShowConnectionError(connectionError);
     }
 }

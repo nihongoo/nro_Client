@@ -7563,6 +7563,7 @@ public class Panel : IActionListener, IChatable
                 else
                 {
                     myVector.addElement(new Command(mResources.USE, this, 2001, currItem));
+                    Hud.MobileQuickItems.AddAssignmentCommands(myVector, currItem);
                 }
                 if (currItem.isTypeBody() && Equals(GameCanvas.panel))
                 {
@@ -8749,6 +8750,7 @@ public class Panel : IActionListener, IChatable
                     else
                     {
                         myVector.addElement(new Command(mResources.USE, this, 2001, item2));
+                        Hud.MobileQuickItems.AddAssignmentCommands(myVector, item2);
                     }
                     currItem = item2;
                 }

@@ -116,9 +116,15 @@ namespace Hud
         {
             if (box.Count == 0) return new Rect();
             Rect top = HudLayout.GetRect("top-info.bounds"), chat = HudLayout.GetRect(HudLayout.ChatButton);
-            int width = Mathf.Max(Unit(box.Items ? 190 : 130),
+            float width = Mathf.Max(Unit(box.Items ? 190 : 130),
                 mFont.tahoma_7b_white.getWidth((box.Items ? "Vật phẩm" : "Người") + Separator + "999") + Gap * 2 + 7);
-            width = Mathf.Min(width, Mathf.Max(0, GameCanvas.w / 2 - Gap * 2));
+            if (HudLayout.IsMobileLayout) {
+                // Match the visible HUD spans, excluding FPS from the left power bar.
+                Rect start = HudLayout.GetRect(box.Items ? "top-info.avatar" : TopActionsHud.Hub);
+                Rect end = box.Items ? HudLayout.GetRect("top-info.exp") : chat;
+                width = Mathf.Max(0,end.xMax-start.xMin);
+            }
+            else width = Mathf.Min(width, Mathf.Max(0, GameCanvas.w / 2 - Gap * 2));
             float margin = box.Items ? top.xMin : GameCanvas.w - chat.xMax;
             float minTop = (box.Items ? top.yMax : chat.yMax) + Gap;
             Rect anchored = HudLayout.Anchor(box.Items ? HorizontalAnchor.Left : HorizontalAnchor.Right,
@@ -184,7 +190,8 @@ namespace Hud
                 people.Add(person);
             }
             for (int i = 0; i < GameScr.vItemMap.size(); i++)
-                if (GameScr.vItemMap.elementAt(i) is ItemMap item && item.template != null && item.status != 2 && InRange(item)) drops.Add(item);
+                if (GameScr.vItemMap.elementAt(i) is ItemMap item && item.template != null && item.status != 2
+                    && (!HudLayout.IsMobileLayout || item.template.type != 22) && InRange(item)) drops.Add(item);
             HudLayout.Invalidate();
             ClampScroll(persons); ClampScroll(items);
         }

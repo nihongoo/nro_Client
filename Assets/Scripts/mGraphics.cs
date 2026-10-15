@@ -5,6 +5,13 @@ using UnityEngine;
 
 public class mGraphics
 {
+	// Mobile icon scope only; the default/PC draw calls keep their original path.
+	internal Hud.CircularCombatIcon HudIconPainter;
+	private void DrawRegionTexture(Rect destination, Texture2D texture, Rect source)
+	{
+		if (HudIconPainter != null) { HudIconPainter.DrawRegion(texture,source); return; }
+		Graphics.DrawTexture(destination,texture,source,0,0,0,0);
+	}
 	public static int HCENTER = 1;
 
 	public static int VCENTER = 2;
@@ -298,6 +305,7 @@ public class mGraphics
 
 	public void fillRect(int x, int y, int w, int h)
 	{
+		if (HudIconPainter != null) { HudIconPainter.DrawCooldown(new Rect(x,y,w,h),new Color(r,g,b,a)); return; }
 		x *= zoomLevel;
 		y *= zoomLevel;
 		w *= zoomLevel;
@@ -680,7 +688,7 @@ public class mGraphics
 				break;
 			}
 		}
-		Graphics.DrawTexture(new Rect(x + num3 + num14 + (float)num16, y + num4 + (float)num17 + num15, num * num7, num2 * (float)num9), image.texture, new Rect(((float)x0 + num3 + num8) / (float)image.texture.width, ((float)image.texture.height - num2 - ((float)y0 + num4)) / (float)image.texture.height, num / (float)image.texture.width, num2 / (float)image.texture.height), 0, 0, 0, 0);
+		DrawRegionTexture(new Rect(x + num3 + num14 + (float)num16, y + num4 + (float)num17 + num15, num * num7, num2 * (float)num9), image.texture, new Rect(((float)x0 + num3 + num8) / (float)image.texture.width, ((float)image.texture.height - num2 - ((float)y0 + num4)) / (float)image.texture.height, num / (float)image.texture.width, num2 / (float)image.texture.height));
 		if (transform == 5 || transform == 6 || transform == 4 || transform == 7)
 		{
 			GUI.matrix = matrixBackup;
@@ -830,7 +838,7 @@ public class mGraphics
 				break;
 			}
 		}
-		Graphics.DrawTexture(new Rect((float)x + num3 + num14 + (float)num16, (float)y + num4 + (float)num17 + num15, num * num7, num2 * (float)num9), image.texture, new Rect((x0 + num3 + num8) / (float)image.texture.width, ((float)image.texture.height - num2 - (y0 + num4)) / (float)image.texture.height, num / (float)image.texture.width, num2 / (float)image.texture.height), 0, 0, 0, 0);
+		DrawRegionTexture(new Rect((float)x + num3 + num14 + (float)num16, (float)y + num4 + (float)num17 + num15, num * num7, num2 * (float)num9), image.texture, new Rect((x0 + num3 + num8) / (float)image.texture.width, ((float)image.texture.height - num2 - (y0 + num4)) / (float)image.texture.height, num / (float)image.texture.width, num2 / (float)image.texture.height));
 		if (transform == 5 || transform == 6 || transform == 4 || transform == 7)
 		{
 			GUI.matrix = matrixBackup;

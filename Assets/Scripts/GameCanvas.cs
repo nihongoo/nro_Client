@@ -591,6 +591,7 @@ public class GameCanvas : IActionListener
                 gameTick = 0;
 			}
             Hud.HudLayout.BeginFrame();
+            Hud.MobileCombatPointers.UpdateJoystick();
             Notifications.NotificationStore.UpdateInvitations();
             if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
             Hud.TopActionsHud.UpdateInput();
