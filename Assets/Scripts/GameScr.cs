@@ -650,31 +650,19 @@ public class GameScr : mScreen, IChatable
 
     private static int yTouchBar;
 
-    // Preserve cluster-2 positions: original panel widths are 155/309/464/618 physical pixels.
-    internal static int LegacyInfoPanelWidth => (mGraphics.zoomLevel == 4 ? 618 : mGraphics.zoomLevel == 3 ? 464
-        : mGraphics.zoomLevel == 2 ? 309 : 155) / Mathf.Max(1, mGraphics.zoomLevel);
-    internal const int LegacyInfoPanelHeight = 41;
-
-    internal static Rect ChatButtonBounds => Hud.HudLayout.GetRect(Hud.HudLayout.ChatButton);
-    internal static int ChatButtonCenterX => (int)ChatButtonBounds.center.x;
-    internal static int ChatButtonBottom => (int)ChatButtonBounds.yMax;
-    internal static bool IsChatButtonVisible => instance != null && GameCanvas.currentScreen == instance && isPaint && !isPaintOther
-        && GameCanvas.isTouch && GameCanvas.isTouchControl && !instance.isNotPaintTouchControl() && !TileMap.isOfflineMap() && !instance.isVS();
+    internal static bool IsChatButtonVisible => Hud.TopActionsHud.IsRowVisible
+        && !TileMap.isOfflineMap() && !instance.isVS();
 
     // One-time named adapters for the bounds previously built by CollectChatObstacles.
     // Gameplay handlers are not rewritten here; later HUD clusters migrate them individually.
     internal static void RegisterHudRects()
     {
         Hud.TopInfoHud.Register();
-        Hud.HudLayout.Register(Hud.HudLayout.Bell, Notifications.NotificationHudLayout.BellBounds, Hud.HudLayout.BellOrder,
-            () => Notifications.NotificationCenter.IsBellVisible);
+        Hud.TopActionsHud.Register();
+        PopUpYesNo.RegisterHudRects();
         Hud.HudLayout.Register(Hud.HudLayout.WorldBar,
             () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Left, Hud.VerticalAnchor.Bottom,
                 new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);
-        Hud.HudLayout.Register(Hud.HudLayout.ChatButton,
-            () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Right, Hud.VerticalAnchor.Top, new Vector2(34, 34),
-                new Vector2(GameCanvas.w <= 240 ? 1 : 6, (GameCanvas.w <= 240 ? 5 : 2) + mGraphics.addYWhenOpenKeyBoard)),
-            Hud.HudLayout.ChatOrder, () => IsChatButtonVisible);
         Hud.HudLayout.Register("legacy.target-menu", () => Char.myCharz().cmdMenu == null ? new Rect() :
             new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34), Hud.HudLayout.MenuOrder);
         Hud.HudLayout.Register("legacy.screen-menu", () => instance?.cmdMenu == null ? new Rect() :
@@ -696,7 +684,8 @@ public class GameScr : mScreen, IChatable
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
             () => GameCanvas.currentScreen == instance && (GameCanvas.currentDialog != null || GameCanvas.panel.isShow
                 || GameCanvas.menu.showMenu || ChatTextField.gI().isShow || ChatPopup.currChatPopup != null
-                || ChatPopup.serverChatPopUp != null || Notifications.NotificationCenter.IsOpen || Mod.CuongLe.DoHoa.isShowMenuVIP));
+                || ChatPopup.serverChatPopUp != null || Notifications.NotificationCenter.IsOpen || Mod.CuongLe.DoHoa.isShowMenuVIP
+                || instance.isPaintPopup()));
     }
     private static Rect LegacySkillBounds(int index)
     {
@@ -2660,7 +2649,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
-        if (Notifications.NotificationCenter.ConsumesInput || ChatTextField.gI().isShow) return;
+        if (Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -4211,16 +4200,9 @@ public class GameScr : mScreen, IChatable
         return GameCanvas.isPointerHoldIn(x, y, w, h);
     }
 
-    public void checkMouseChat()
+    public void checkMouseControls()
     {
-        if (Hud.HudLayout.IsTopmost(Hud.HudLayout.ChatButton, new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse)))
-        {
-            if (!TileMap.isOfflineMap())
-            {
-                mScreen.keyMouse = 15;
-            }
-        }
-        else if (GameCanvas.isMouseFocus(xHP, yHP, 40, 40))
+        if (GameCanvas.isMouseFocus(xHP, yHP, 40, 40))
         {
             if (Char.myCharz().statusMe != 14)
             {
@@ -4256,22 +4238,7 @@ public class GameScr : mScreen, IChatable
         {
             if (Main.isPC)
             {
-                checkMouseChat();
-            }
-            if (!TileMap.isOfflineMap() && (GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease)
-                && Hud.HudLayout.IsTopmost(Hud.HudLayout.ChatButton, new Vector2(GameCanvas.px, GameCanvas.py)))
-            {
-                mScreen.keyTouch = 15;
-                GameCanvas.isPointerJustDown = false;
-                isPointerDowning = false;
-                if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                {
-                    ChatTextField.gI().startChat(this, string.Empty);
-                    SoundMn.gI().buttonClick();
-                    Char.myCharz().currentMovePoint = null;
-                    GameCanvas.clearAllPointerEvent();
-                    return;
-                }
+                checkMouseControls();
             }
             if (Char.myCharz().cmdMenu != null && GameCanvas.isPointerHoldIn(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34))
             {
@@ -5225,10 +5192,7 @@ public class GameScr : mScreen, IChatable
             paintSelectedSkill(g);
             GameCanvas.debug("PA22", 1);
             resetTranslate(g);
-            if (GameCanvas.isTouch && GameCanvas.isTouchControl)
-            {
-                paintTouchControl(g);
-            }
+            Hud.TopActionsHud.PaintControls(g);
             resetTranslate(g);
             if (!GameCanvas.panel.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null && GameCanvas.currentScreen.Equals(instance))
             {
@@ -5666,28 +5630,6 @@ public class GameScr : mScreen, IChatable
     {
         g.translate(-g.getTranslateX(), -g.getTranslateY());
         g.setClip(0, -200, GameCanvas.w, 200 + GameCanvas.h);
-    }
-
-    private void paintTouchControl(mGraphics g)
-    {
-        if (isNotPaintTouchControl())
-        {
-            return;
-        }
-        resetTranslate(g);
-        if (!TileMap.isOfflineMap() && !isVS())
-        {
-            Rect chat = ChatButtonBounds;
-            if (mScreen.keyTouch == 15 || mScreen.keyMouse == 15)
-            {
-                g.drawImage((!Main.isPC) ? imgChat2 : imgChatsPC2, (int)chat.center.x, (int)chat.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
-            }
-            else
-            {
-                g.drawImage((!Main.isPC) ? imgChat : imgChatPC, (int)chat.center.x, (int)chat.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
-            }
-        }
-        _ = isUseTouch;
     }
 
     public void starVS()

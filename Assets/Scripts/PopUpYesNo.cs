@@ -7,9 +7,44 @@ public class PopUpYesNo : IActionListener
     public readonly long InvitationId;
     public readonly Command cmdYes, cmdNo;
     private readonly string text;
-    private int X, Y;
+    private int X, Y, bodyWidth;
     private const int W = 120, H = 29, ButtonSize = 32;
     private int remaining;
+    private const string Bounds = "invitation.quick", Body = "invitation.quick.body",
+        Yes = "invitation.quick.yes", No = "invitation.quick.no";
+    private const int Gap = 3, RowGap = Hud.TopActionsHud.ButtonGap, MinimumTextWidth = 20;
+
+    internal static void RegisterHudRects()
+    {
+        const int order = Hud.HudLayout.OverlayOrder + 1;
+        System.Func<bool> visible = () => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
+            && GameScr.instance.popUpYesNo != null && Hud.HudLayout.GetRect(Bounds).width > 0;
+        Hud.HudLayout.Register(Bounds, QuickBounds, order, visible);
+        Hud.HudLayout.Register(Body, () => {
+            Rect bounds = Hud.HudLayout.GetRect(Bounds);
+            if (bounds.width <= 0) return new Rect();
+            return new Rect(bounds.x, bounds.y + (ButtonSize - H) / 2, bounds.width - (ButtonSize + Gap) * 2, H);
+        }, order, visible, false);
+        Hud.HudLayout.Register(Yes, () => {
+            Rect bounds = Hud.HudLayout.GetRect(Bounds), body = Hud.HudLayout.GetRect(Body);
+            return bounds.width <= 0 ? new Rect() : new Rect(body.xMax + Gap, bounds.y, ButtonSize, ButtonSize);
+        }, order, visible);
+        Hud.HudLayout.Register(No, () => {
+            Rect bounds = Hud.HudLayout.GetRect(Bounds), yes = Hud.HudLayout.GetRect(Yes);
+            return bounds.width <= 0 ? new Rect() : new Rect(yes.xMax + Gap, yes.y, ButtonSize, ButtonSize);
+        }, order, visible);
+    }
+
+    private static Rect QuickBounds()
+    {
+        Rect hub = Hud.HudLayout.GetRect(Hud.TopActionsHud.Hub);
+        float right = hub.xMin - RowGap;
+        // The whole quick invitation, including Yes/No, stays in the right half.
+        // On narrow screens its full content remains available in the bell's Invitations tab.
+        float width = Mathf.Floor(Mathf.Min(W + (ButtonSize + Gap) * 2, right - Mathf.Ceil(GameCanvas.w / 2f)));
+        if (width < MinimumTextWidth + (ButtonSize + Gap) * 2) return new Rect();
+        return new Rect(right - width, hub.y + (hub.height - ButtonSize) / 2, width, H + 17);
+    }
 
     public PopUpYesNo(NotificationEntry entry)
     {
@@ -21,14 +56,14 @@ public class PopUpYesNo : IActionListener
 
     private void UpdatePosition()
     {
-        X = GameCanvas.w - 5 - W; Y = 45;
-        if (GameCanvas.w - 50 > 155 + W) { X = GameCanvas.w - 55 - W; Y = 5; }
-        cmdYes.x = X - ButtonSize - 3; cmdNo.x = cmdYes.x - ButtonSize - 3;
-        cmdYes.y = cmdNo.y = Y + (H - ButtonSize) / 2;
+        Rect body = Hud.HudLayout.GetRect(Body), yes = Hud.HudLayout.GetRect(Yes), no = Hud.HudLayout.GetRect(No);
+        X = (int)body.x; Y = (int)body.y; bodyWidth = (int)body.width;
+        cmdYes.x = (int)yes.x; cmdYes.y = (int)yes.y;
+        cmdNo.x = (int)no.x; cmdNo.y = (int)no.y;
     }
 
     internal Rect VisualBounds {
-        get { UpdatePosition(); return new Rect(cmdNo.x, cmdNo.y, X + W - cmdNo.x, Y + H + 17 - cmdNo.y); }
+        get { return Hud.HudLayout.GetRect(Bounds); }
     }
 
     public void update()
@@ -43,8 +78,9 @@ public class PopUpYesNo : IActionListener
     {
         if (!GameCanvas.isPointerJustRelease || !GameCanvas.isPointerClick) return false;
         Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
-        if (new Rect(cmdYes.x, cmdYes.y, ButtonSize, ButtonSize).Contains(pointer)) cmdYes.performAction();
-        else if (new Rect(cmdNo.x, cmdNo.y, ButtonSize, ButtonSize).Contains(pointer)) cmdNo.performAction();
+        string hit = Hud.HudLayout.HitTest(pointer);
+        if (hit == Yes) cmdYes.performAction();
+        else if (hit == No) cmdNo.performAction();
         else return false;
         GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyHold(); GameCanvas.clearKeyPressed();
         return true;
@@ -52,13 +88,16 @@ public class PopUpYesNo : IActionListener
 
     public void paint(mGraphics g)
     {
+        if (Hud.HudLayout.GetRect(Bounds).width <= 0) return;
         UpdatePosition();
-        g.translate(-g.getTranslateX(), -g.getTranslateY()); g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-        PopUp.paintPopUp(g, X, Y, W, H, 16777215, false);
-        TextInfo.paint(g, text, X + 5, Y + H / 2 - 4, W - 10, H, mFont.tahoma_7);
-        PaintAction(g, new Rect(cmdYes.x, cmdYes.y, ButtonSize, ButtonSize), true);
-        PaintAction(g, new Rect(cmdNo.x, cmdNo.y, ButtonSize, ButtonSize), false);
-        mFont.tahoma_7_yellow.drawString(g, remaining + "s", X + W / 2, Y + H + 2, 2, mFont.tahoma_7_grey);
+        g.translate(-g.getTranslateX(), -(g.getTranslateY() - mGraphics.addYWhenOpenKeyBoard));
+        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+        PopUp.paintPopUp(g, X, Y, bodyWidth, H, 16777215, false);
+        TextInfo.paint(g, text, X + 5, Y + (H - mFont.tahoma_7.getHeight()) / 2,
+            bodyWidth - 10, mFont.tahoma_7.getHeight() + 2, mFont.tahoma_7);
+        PaintAction(g, Hud.HudLayout.GetRect(Yes), true);
+        PaintAction(g, Hud.HudLayout.GetRect(No), false);
+        mFont.tahoma_7_yellow.drawString(g, remaining + "s", X + bodyWidth / 2, Y + H + 2, 2, mFont.tahoma_7_grey);
     }
 
     // Sprite fonts lack Unicode check/cross glyphs. Draw the symbols in logical pixels.

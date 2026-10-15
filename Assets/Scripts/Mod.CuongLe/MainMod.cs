@@ -829,6 +829,10 @@ namespace Mod.CuongLe
     		case 34:
     			ModProCuongLe.ShowMenu();
     			break;
+            case 112:
+                DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
+                GameCanvas.clearAllPointerEvent();
+                break;
     		case 100:
     			Application.OpenURL("https://www.facebook.com/cuongle1002/");
     			break;
@@ -1108,6 +1112,7 @@ namespace Mod.CuongLe
     		myVector.addElement(new Command("Auto Pick", getInstance(), 4, null));
     		myVector.addElement(new Command("Auto Train", getInstance(), 5, null));
             myVector.addElement(new Command("Mục Tiêu", getInstance(), 24, null));
+            myVector.addElement(new Command("Auto item", getInstance(), 112, null));
             myVector.addElement(new Command("More", getInstance(), 8, null));
     		GameCanvas.menu.startAt(myVector, 3);
     	}
@@ -1356,22 +1361,6 @@ namespace Mod.CuongLe
             {
                 MainMod.controlTeleChar();
             }
-            if (GameCanvas.isPointerHoldIn(GameScr.LegacyInfoPanelWidth + 5, 3, DoHoa.imgSetting.getWidth() + 5, DoHoa.imgSetting.getHeight())
-                && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-            {
-                MainMod.ShowMenu();
-                GameCanvas.clearAllPointerEvent();
-                return;
-            }
-            // Khi click nút mở menu VIP
-            if (GameCanvas.isPointerHoldIn(GameScr.LegacyInfoPanelWidth + 5 + DoHoa.imgSetting.getWidth() + 5, 3, DoHoa.imgBoxOpenItem.getWidth() + 5, DoHoa.imgBoxOpenItem.getHeight())
-                && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-            {
-                DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
-                GameCanvas.clearAllPointerEvent();
-                return;
-            }
-
             // Nếu menu đang bật
             if (DoHoa.isShowMenuVIP)
             {

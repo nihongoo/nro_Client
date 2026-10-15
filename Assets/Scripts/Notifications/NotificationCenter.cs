@@ -25,7 +25,7 @@ namespace Notifications
             ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null &&
             !ChatTextField.gI().isShow && !Char.ischangingMap;
 
-        internal static bool IsBellVisible => CanUse && !IsOpen && !NotificationHudLayout.IsBellObscured;
+        internal static bool IsBellVisible => Hud.TopActionsHud.IsRowVisible && !NotificationHudLayout.IsBellObscured;
 
         public static void Close()
         {
@@ -49,6 +49,16 @@ namespace Notifications
             return true;
         }
 
+        internal static bool TryOpenBell()
+        {
+            if (!CanUse || IsOpen || !Hud.HudLayout.IsTopmost(Hud.HudLayout.Bell, new Vector2(GameCanvas.px, GameCanvas.py))) return false;
+            bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
+            IsOpen = true; tab = 0; scroll = 0; dragging = false;
+            UpdateLayout();
+            Consume();
+            return true;
+        }
+
         public static void UpdateInput()
         {
             bool escape = Input.GetKey(KeyCode.Escape);
@@ -58,13 +68,6 @@ namespace Notifications
             UpdateLayout();
             if (!IsOpen)
             {
-                if (bell.width > 0 && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick &&
-                    Hud.HudLayout.IsTopmost(Hud.HudLayout.Bell, new Vector2(GameCanvas.px, GameCanvas.py)))
-                {
-                    IsOpen = true; tab = 0; scroll = 0; dragging = false;
-                    UpdateLayout();
-                    Consume();
-                }
                 backDown = escape;
                 return;
             }
@@ -109,15 +112,21 @@ namespace Notifications
             bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
             if (!IsBellVisible || bell.width <= 0) return;
             int x = (int)bell.x, y = (int)bell.y, size = (int)bell.width;
-            int centerX = NotificationHudLayout.BellCenterX;
-            g.drawImage(NotificationSkin.BellIcon, centerX, y + size / 2, 3);
-            if (NotificationStore.UnreadCount > 0)
-            {
-                int badgeX = System.Math.Min(x + size - 12, centerX + 10);
-                g.drawImage(NotificationSkin.BadgeIcon, badgeX, y + 9, 3);
-                mFont.tahoma_7b_white.drawString(g, NotificationStore.UnreadCount.ToString(),
-                    badgeX, y + (18 - mFont.tahoma_7b_white.getHeight()) / 2, 2);
+            int centerX = (int)bell.center.x;
+            int tx = g.getTranslateX(), ty = g.getTranslateY() - mGraphics.addYWhenOpenKeyBoard;
+            g.translate(-tx, -ty);
+            try {
+                Hud.HudButtonSkin.PaintNativeBackground(g, bell, Hud.TopActionsHud.IsHovered(Hud.HudLayout.Bell));
+                g.drawImage(NotificationSkin.BellGlyph, centerX, y + size / 2, 3);
+                if (NotificationStore.UnreadCount > 0)
+                {
+                    int badgeX = System.Math.Min(x + size - 12, centerX + 10);
+                    g.drawImage(NotificationSkin.BadgeIcon, badgeX, y + 9, 3);
+                    mFont.tahoma_7b_white.drawString(g, NotificationStore.UnreadCount.ToString(),
+                        badgeX, y + (18 - mFont.tahoma_7b_white.getHeight()) / 2, 2);
+                }
             }
+            finally { g.translate(tx, ty); }
         }
 
         private static void UpdateLayout()

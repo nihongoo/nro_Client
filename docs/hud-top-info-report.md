@@ -2,6 +2,12 @@
 
 Branch `feat/hud-top-info`, nền `d18198c`. Cập nhật 15/10/2026 theo ảnh S22: **user xác nhận layout đã chuẩn**; lượt này giữ nguyên provider/layout/input/font và thanh HP đã được duyệt; chỉnh nền avatar và độ mượt KI/EXP.
 
+## Sửa viền avatar sau ảnh test mới
+
+- Nguyên nhân nền avatar còn vẽ từng scanline từ texture Point của nút R ở một đường kính khác ảnh gốc, nên cạnh tròn bị lấy mẫu thành bậc. Thay bằng một lần vẽ toàn nền đã bỏ glyph, dùng bản sao Bilinear riêng cho avatar tại `Hud/HudButtonSkin.cs` (`PaintBackgroundPixels`).
+- Giữ nguyên rect/đường kính/căn tâm, sprite đầu và cách vẽ đầu scale nguyên; không sửa HP/KI/EXP, nền Point của ba nút bên phải hoặc filter toàn game. Bản sao nền avatar được cache theo texture nguồn và normal/hover, hủy bản cũ khi nguồn thay đổi. Không thêm asset.
+- User tự build kiểm tra lại cạnh ngoài avatar trên S22, PC, resize/đổi zoom, cả normal và hover. **Chưa compile/chạy sau chỉnh này; không push/merge/stash.**
+
 ## Hiện trạng sau chỉnh đồ họa
 
 - `Assets/Scripts/Hud/TopInfoHud.cs:40`: một provider `ResolveBounds` cho toàn cụm. HP/KI cùng W; EXP + khoảng cách + vùng `FPS: 999` = W, FPS căn phải. Giữ giới hạn trước bánh răng/R, không di chuyển bánh răng/rương.
