@@ -855,6 +855,7 @@ public class Service
 	public void login(string username, string pass, string version, sbyte type)
 	{
 		Notifications.NotificationCenter.BeginSession();
+        Hud.MapListsHud.BeginSession();
         WorldChat.WorldChatHud.BeginSession();
 		try
 		{

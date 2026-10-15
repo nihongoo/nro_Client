@@ -300,7 +300,7 @@ namespace Mod.CuongLe
     			}
     			return;
     		}
-    		if (DoHoa.isShowCharsInMap)
+            if (listCharsInMap != null)
     		{
     			listCharsInMap.Clear();
     			for (int num = 0; num < GameScr.vCharInMap.size(); num++)
@@ -1356,10 +1356,6 @@ namespace Mod.CuongLe
 
                 }
     			stopMap = 0;
-            }
-            if (DoHoa.isShowCharsInMap)
-            {
-                MainMod.controlTeleChar();
             }
             // Nếu menu đang bật
             if (DoHoa.isShowMenuVIP)

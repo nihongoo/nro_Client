@@ -661,6 +661,7 @@ public class GameScr : mScreen, IChatable
         Hud.TopActionsHud.Register();
         PopUpYesNo.RegisterHudRects();
         Notifications.NotificationCenter.RegisterHudRects();
+        Hud.MapListsHud.Register();
         Hud.HudLayout.Register(Hud.HudLayout.WorldBar,
             () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Left, Hud.VerticalAnchor.Bottom,
                 new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);
@@ -2650,7 +2651,7 @@ public class GameScr : mScreen, IChatable
 
     public override void updateKey()
     {
-        if (Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || ChatTextField.gI().isShow) return;
+        if (Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || Hud.MapListsHud.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -3980,6 +3981,22 @@ public class GameScr : mScreen, IChatable
         ChatPopup.addChatPopupWithIcon(nhatvatpham, 100000, npc, 5820);
     }
 
+    internal bool CanPickHudItem(ItemMap item)
+    {
+        return item != null && item.template != null && vItemMap.contains(item) && item.status != 2
+            && Mod.CuongLe.AutoPick.IsOwnerOrFree(item)
+            && (auto == 0 || !isBagFull() || item.template.type == 9)
+            && Char.myCharz().statusMe != 5 && Char.myCharz().statusMe != 14 && !Char.isLockKey;
+    }
+
+    internal bool PickHudItem(ItemMap item)
+    {
+        if (!CanPickHudItem(item)) return false;
+        Char.myCharz().focusManualTo(item);
+        pickItem(); // Includes MovePoint/8002 completion and the existing item-673 prompt.
+        return true;
+    }
+
     private void pickItem()
     {
         if (Char.myCharz().itemFocus == null)
@@ -5131,6 +5148,7 @@ public class GameScr : mScreen, IChatable
         resetTranslate(g);
         if (!isPaintOther)
         {
+            Hud.MapListsHud.Paint(g);
             MainMod.Paint(g);
             Notifications.NotificationCenter.PaintBell(g);
             GameCanvas.debug("PA21", 1);

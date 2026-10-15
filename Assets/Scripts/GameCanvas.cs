@@ -595,6 +595,7 @@ public class GameCanvas : IActionListener
             if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
             Hud.TopActionsHud.UpdateInput();
 			Notifications.NotificationCenter.UpdateInput();
+            Hud.MapListsHud.UpdateInput();
             WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)
 			{
