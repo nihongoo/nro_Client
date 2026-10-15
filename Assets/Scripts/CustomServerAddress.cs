@@ -24,6 +24,12 @@ public static class CustomServerAddress
     {
         public void perform(int action, object unused)
         {
+            if (action == 3)
+            {
+                CloseConnection();
+                new CustomServerDialog(unused as string).show();
+                return;
+            }
             if (action == 2) Reset();
             Reconnect();
         }
@@ -91,7 +97,6 @@ public static class CustomServerAddress
 
     public static void ConnectionStarted()
     {
-        if (!Enabled && !connectionPending) return;
         // Repeated connect requests must not extend an already running deadline.
         if (connectionPending && attemptedEndpoint == Label) return;
         attemptedEndpoint = Label;
@@ -130,6 +135,8 @@ public static class CustomServerAddress
         LoginScr.finishLoginAttempt();
         LoginScr.timeLogin = 0;
         Char.isLoadingMap = false;
+        GameCanvas.isLoading = false;
+        Controller.isLoadingData = false;
         ServerListScreen.isAutoConect = false;
         ServerListScreen.flagServer = 0;
         ServerListScreen.waitToLogin = ServerListScreen.isWait = false;
@@ -150,7 +157,7 @@ public static class CustomServerAddress
 
     public static bool HandleConnectionFailure(string message)
     {
-        if ((!Enabled && !connectionPending) || !Controller.isMain
+        if (!Controller.isMain
             || GameCanvas.currentScreen is GameScr || GameCanvas.currentScreen is CreateCharScr) return false;
         bool editing = GameCanvas.currentDialog is CustomServerDialog;
         CloseConnection();
@@ -161,17 +168,32 @@ public static class CustomServerAddress
 
     public static void ShowConnectionError(string message)
     {
-        connectionPending = false;
-        Char.isLoadingMap = false;
-        ServerListScreen.isAutoConect = false;
-        ServerListScreen.flagServer = 0;
+        CloseConnection();
         if (GameCanvas.currentScreen is SplashScr) GameCanvas.serverScreen.switchToMe();
         GameCanvas.closeKeyBoard();
         string fallback = Session_ME.FallbackAttempted ? " Đã thử thêm 127.0.0.1:" + Port + "." : string.Empty;
         GameCanvas.msgdlg.setInfo(message + " Server: " + (attemptedEndpoint ?? Label) + "." + fallback
             + " Kiểm tra địa chỉ/cổng, cùng Wi-Fi với máy chủ và firewall.",
-            new Command("Thử lại", connectionActions, 1, null), null,
+            new Command("Thử lại", connectionActions, 1, null),
+            new Command("Đổi IP", connectionActions, 3, message),
             new Command("Về mặc định", connectionActions, 2, null));
+        // Command.paint draws 76 logical pixels, wider than the default hitbox.
+        // MsgDlg's default placement only has room for two touch buttons.
+        if (GameCanvas.isTouch)
+        {
+            Command[] buttons = { GameCanvas.msgdlg.left, GameCanvas.msgdlg.center, GameCanvas.msgdlg.right };
+            const int width = 76;
+            const int gap = 6;
+            bool oneRow = GameCanvas.w >= width * 3 + gap * 4;
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                buttons[i].w = width;
+                buttons[i].x = oneRow
+                    ? (GameCanvas.w - (width * 3 + gap * 2)) / 2 + i * (width + gap)
+                    : (GameCanvas.w - width) / 2;
+                buttons[i].y = GameCanvas.h - 50 - (oneRow ? 0 : (2 - i) * (buttons[i].h + gap));
+            }
+        }
         GameCanvas.msgdlg.show();
     }
 

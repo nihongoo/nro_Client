@@ -75,3 +75,9 @@ Branch `feat/hud-lists` từ origin/develop **97468bd** (PR17); tree nền khớ
 | Đổi map / relog | Không đăng ký trùng; đổi map reset scroll/capture; relog mặc định mở, nhưng rỗng vẫn ẩn |
 
 **Chưa compile/chạy/build; tất cả test tay đang chờ user tự build kiểm tra.**
+
+## Bổ sung trên feat/hud-combat-mobile — 15/10/2026
+
+Theo ảnh user, chỉ mobile: `MapListsHud.HeaderBounds` lấy rộng item từ avatar.xMin đến top-info.exp.xMax (bỏ phần FPS), rộng người từ TopActionsHud.Hub.xMin đến ChatButton.xMax. Thay mốc 190/130 px cho mobile; PC giữ nguyên. Mọi body/row/hitbox đi theo header registry, giữ chiều cao/range/cuộn/callback.
+
+`MapListsHud.Refresh` lọc item.template.type==22 khỏi danh sách/count mobile: đây là nhóm vệ tinh (client ItemMap.cs:204; đối chiếu read-only server Trade.java:244), bao gồm mọi loại, không hardcode từng template ID. Không sửa AutoPick/vItemMap/buff/logic nhặt/server. Chưa compile/chạy/build. Chi tiết và test tay trong hud-combat-mobile-report.md, mục Badge/menu/danh sách.

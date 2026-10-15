@@ -330,18 +330,19 @@ public class Main : MonoBehaviour
 		Vector2 guiPoint = ScaleGUI.ToGuiPoint(rawPoint);
 		int pointerX = (int)(guiPoint.x / mGraphics.zoomLevel);
 		int pointerY = (int)(guiPoint.y / mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard;
-		if (Input.GetMouseButtonDown(0))
+		bool mobileInput = Hud.MobileCombatPointers.Poll();
+		if (!mobileInput && Input.GetMouseButtonDown(0))
 		{
 			pointerInViewport = ScaleGUI.Viewport.Contains(rawPoint);
 			if (pointerInViewport) GameMidlet.gameCanvas.pointerPressed(pointerX, pointerY);
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButton(0) && pointerInViewport)
+		if (!mobileInput && Input.GetMouseButton(0) && pointerInViewport)
 		{
 			GameMidlet.gameCanvas.pointerDragged(pointerX, pointerY);
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButtonUp(0) && pointerInViewport)
+		if (!mobileInput && Input.GetMouseButtonUp(0) && pointerInViewport)
 		{
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
@@ -418,6 +419,7 @@ public class Main : MonoBehaviour
 
 	private void OnApplicationPause(bool paused)
 	{
+		if (paused && Hud.HudLayout.IsMobileLayout) Hud.MobileCombatPointers.Cancel();
 		isResume = false;
 		if (paused)
 		{
