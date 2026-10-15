@@ -660,42 +660,59 @@ public class GameScr : mScreen, IChatable
 
     private static int yTouchBar;
 
-    private static int xC;
+    internal static Rect ChatButtonBounds => Hud.HudLayout.GetRect(Hud.HudLayout.ChatButton);
+    internal static int ChatButtonCenterX => (int)ChatButtonBounds.center.x;
+    internal static int ChatButtonBottom => (int)ChatButtonBounds.yMax;
+    internal static bool IsChatButtonVisible => instance != null && GameCanvas.currentScreen == instance && isPaint && !isPaintOther
+        && GameCanvas.isTouch && GameCanvas.isTouchControl && !instance.isNotPaintTouchControl() && !TileMap.isOfflineMap() && !instance.isVS();
 
-    private static int yC;
-
-    internal static int ChatButtonCenterX => xC + 17;
-    internal static int ChatButtonBottom => yC + 34;
-
-    // The chat strip must yield to the existing controls, including their larger touch targets.
+    // One-time named adapters for the bounds previously built by CollectChatObstacles.
+    // Gameplay handlers are not rewritten here; later HUD clusters migrate them individually.
+    internal static void RegisterHudRects()
+    {
+        Hud.HudLayout.Register(Hud.HudLayout.Bell, Notifications.NotificationHudLayout.BellBounds, Hud.HudLayout.BellOrder,
+            () => Notifications.NotificationCenter.IsBellVisible);
+        Hud.HudLayout.Register(Hud.HudLayout.WorldBar,
+            () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Left, Hud.VerticalAnchor.Bottom,
+                new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);
+        Hud.HudLayout.Register(Hud.HudLayout.ChatButton,
+            () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Right, Hud.VerticalAnchor.Top, new Vector2(34, 34),
+                new Vector2(GameCanvas.w <= 240 ? 1 : 6, (GameCanvas.w <= 240 ? 5 : 2) + mGraphics.addYWhenOpenKeyBoard)),
+            Hud.HudLayout.ChatOrder, () => IsChatButtonVisible);
+        Hud.HudLayout.Register("legacy.target-menu", () => Char.myCharz().cmdMenu == null ? new Rect() :
+            new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34), Hud.HudLayout.MenuOrder);
+        Hud.HudLayout.Register("legacy.screen-menu", () => instance?.cmdMenu == null ? new Rect() :
+            new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h), Hud.HudLayout.MenuOrder);
+        // Existing keySkill/onScreenSkill arrays have ten slots. Each adapter is registered once.
+        for (int slot = 0; slot < 10; slot++) {
+            int index = slot;
+            Hud.HudLayout.Register("legacy.skill." + index, () => LegacySkillBounds(index), Hud.HudLayout.ControlsOrder);
+        }
+        Hud.HudLayout.Register("legacy.potion", () => GameCanvas.isTouch ? new Rect(xHP, yHP + 10, 40, 40) :
+            new Rect(xSkill + xHP - 1, yHP - 1, 30, 30), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.potion-alt", () => GameCanvas.isTouch ? new Rect(xHP - 1, yHP - 6, 42, 50) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.context-item", () => GameCanvas.isTouch ? new Rect(xHP + 5, yHP - 36, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.attack", () => GameCanvas.isTouch && isAnalog != 0 ? new Rect(xF, yF, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.focus", () => GameCanvas.isTouch && isAnalog != 0 ? new Rect(xTG, yTG, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("legacy.joystick", () => GameCanvas.isTouch && isAnalog != 0 && gamePad != null
+            ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
+        // Preserve existing modal capture, including clicks outside the visible dialog/panel.
+        Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
+            () => GameCanvas.currentScreen == instance && (GameCanvas.currentDialog != null || GameCanvas.panel.isShow
+                || GameCanvas.menu.showMenu || ChatTextField.gI().isShow || ChatPopup.currChatPopup != null
+                || ChatPopup.serverChatPopUp != null || Notifications.NotificationCenter.IsOpen || Mod.CuongLe.DoHoa.isShowMenuVIP));
+    }
+    private static Rect LegacySkillBounds(int index)
+    {
+        if (xS == null || yS == null || index >= xS.Length || index >= yS.Length) return new Rect();
+        Rect image = new Rect(xSkill + xS[index] - 1, yS[index] - 1, 30, 30);
+        Rect touch = new Rect(xSkill + xS[index] - wSkill / 2 + 12, yS[index] - wSkill / 2 + 12, wSkill, wSkill);
+        return Rect.MinMaxRect(Mathf.Min(image.xMin, touch.xMin), Mathf.Min(image.yMin, touch.yMin),
+            Mathf.Max(image.xMax, touch.xMax), Mathf.Max(image.yMax, touch.yMax));
+    }
     internal static void CollectChatObstacles(System.Collections.Generic.List<Rect> bounds)
     {
-        bounds.Clear();
-        bounds.Add(new Rect(xC, yC, 34, 34));
-        bounds.Add(Notifications.NotificationHudLayout.BellBounds());
-        if (Char.myCharz().cmdMenu != null)
-            bounds.Add(new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34));
-        if (instance != null && instance.cmdMenu != null)
-            bounds.Add(new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h));
-        if (xS != null && yS != null)
-            for (int i = 0; i < xS.Length; i++)
-            {
-                bounds.Add(new Rect(xSkill + xS[i] - 1, yS[i] - 1, 30, 30));
-                bounds.Add(new Rect(xSkill + xS[i] - wSkill / 2 + 12, yS[i] - wSkill / 2 + 12, wSkill, wSkill));
-            }
-        if (GameCanvas.isTouch)
-        {
-            bounds.Add(new Rect(xHP, yHP + 10, 40, 40));
-            bounds.Add(new Rect(xHP - 1, yHP - 6, 42, 50));
-            bounds.Add(new Rect(xHP + 5, yHP - 36, 40, 40));
-            if (isAnalog != 0)
-            {
-                bounds.Add(new Rect(xF, yF, 40, 40));
-                bounds.Add(new Rect(xTG, yTG, 40, 40));
-                if (gamePad != null) bounds.Add(Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone));
-            }
-        }
-        else bounds.Add(new Rect(xSkill + xHP - 1, yHP - 1, 30, 30));
+        Hud.HudLayout.CopyObstaclesAbove(Hud.HudLayout.WorldBar, bounds);
     }
 
     private static int xL;
@@ -1957,13 +1974,6 @@ public class GameScr : mScreen, IChatable
         if (GameCanvas.isTouch)
         {
             yTouchBar = gH - 88;
-            xC = gW - 40;
-            yC = 2;
-            if (GameCanvas.w <= 240)
-            {
-                xC = gW - 35;
-                yC = 5;
-            }
             xF = gW - 55;
             yF = yTouchBar + 35;
             xTG = gW - 37;
@@ -4230,7 +4240,7 @@ public class GameScr : mScreen, IChatable
 
     public void checkMouseChat()
     {
-        if (GameCanvas.isMouseFocus(xC, yC, 34, 34))
+        if (Hud.HudLayout.IsTopmost(Hud.HudLayout.ChatButton, new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse)))
         {
             if (!TileMap.isOfflineMap())
             {
@@ -4287,7 +4297,8 @@ public class GameScr : mScreen, IChatable
             {
                 checkMouseChat();
             }
-            if (!TileMap.isOfflineMap() && GameCanvas.isPointerHoldIn(xC, yC, 34, 34))
+            if (!TileMap.isOfflineMap() && (GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease)
+                && Hud.HudLayout.IsTopmost(Hud.HudLayout.ChatButton, new Vector2(GameCanvas.px, GameCanvas.py)))
             {
                 mScreen.keyTouch = 15;
                 GameCanvas.isPointerJustDown = false;
@@ -5713,13 +5724,14 @@ public class GameScr : mScreen, IChatable
         resetTranslate(g);
         if (!TileMap.isOfflineMap() && !isVS())
         {
+            Rect chat = ChatButtonBounds;
             if (mScreen.keyTouch == 15 || mScreen.keyMouse == 15)
             {
-                g.drawImage((!Main.isPC) ? imgChat2 : imgChatsPC2, xC + 17, yC + 17 + mGraphics.addYWhenOpenKeyBoard, mGraphics.HCENTER | mGraphics.VCENTER);
+                g.drawImage((!Main.isPC) ? imgChat2 : imgChatsPC2, (int)chat.center.x, (int)chat.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
             }
             else
             {
-                g.drawImage((!Main.isPC) ? imgChat : imgChatPC, xC + 17, yC + 17 + mGraphics.addYWhenOpenKeyBoard, mGraphics.HCENTER | mGraphics.VCENTER);
+                g.drawImage((!Main.isPC) ? imgChat : imgChatPC, (int)chat.center.x, (int)chat.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
             }
         }
         _ = isUseTouch;

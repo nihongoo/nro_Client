@@ -9,7 +9,12 @@ namespace Notifications
         private static int cachedKey;
         private static bool hasLayout;
         // Match the chat icon even when a larger mobile hitbox has to be clamped to the screen edge.
-        public static int BellCenterX => Mathf.Clamp(GameScr.ChatButtonCenterX, (int)cachedBell.x + 16, (int)cachedBell.xMax - 16);
+        public static int BellCenterX {
+            get {
+                Rect bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
+                return Mathf.Clamp(GameScr.ChatButtonCenterX, (int)bell.x + 16, (int)bell.xMax - 16);
+            }
+        }
 
         // Convert physical dp into the game's scaled logical coordinates.
         public static int TouchSize
@@ -52,11 +57,12 @@ namespace Notifications
         {
             get
             {
+                Rect bell = Hud.HudLayout.GetRect(Hud.HudLayout.Bell);
                 PopUpYesNo popup = GameScr.gI().popUpYesNo;
-                if (popup != null) return popup.VisualBounds.Overlaps(cachedBell);
+                if (popup != null) return popup.VisualBounds.Overlaps(bell);
                 InfoMe info = GameScr.info2;
                 return info.isUpdate && !GameScr.gI().isVS() && info.info.info != null && info.info.info.charInfo != null &&
-                    cachedBell.Overlaps(new Rect(info.cmx - info.info.W / 2 - 20,
+                    bell.Overlaps(new Rect(info.cmx - info.info.W / 2 - 20,
                         info.cmy - info.info.H - 10, info.info.W + 40, info.info.H + 30));
             }
         }

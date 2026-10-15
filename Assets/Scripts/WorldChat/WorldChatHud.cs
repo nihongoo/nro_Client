@@ -34,16 +34,19 @@ namespace WorldChat
             if (WorldChatStore.Ticker.Current != null && GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick
                 && WorldChatLayout.CanTapBar(new Vector2(GameCanvas.px, GameCanvas.py))) Open();
         }
+        internal static bool IsVisible => CanShow && WorldChatStore.Ticker.Current != null && !GameCanvas.panel.isShow
+            && !Notifications.NotificationCenter.IsOpen && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null
+            && ChatPopup.serverChatPopUp == null && !ChatTextField.gI().isShow;
         public static void Paint(mGraphics g)
         {
-            if (!CanShow || WorldChatStore.Ticker.Current == null || GameCanvas.panel.isShow || Notifications.NotificationCenter.IsOpen || GameCanvas.currentDialog != null
-                || ChatPopup.currChatPopup != null || ChatPopup.serverChatPopUp != null || ChatTextField.gI().isShow) return;
+            if (!IsVisible) return;
+            Rect bar = WorldChatLayout.BarBounds;
             g.translate(-g.getTranslateX(), -g.getTranslateY());
-            // Match origin/develop's paintChatVip exactly (the last two pixels are off-screen).
-            g.setClip(0, GameCanvas.h - 13, GameCanvas.w, 15);
-            g.fillRect(0, GameCanvas.h - 13, GameCanvas.w, 15, 0, 90);
+            // The stock 15px rectangle extended 2px off-screen. Its visible 13px area is unchanged.
+            g.setClip((int)bar.x, (int)bar.y, (int)bar.width, (int)bar.height);
+            g.fillRect((int)bar.x, (int)bar.y, (int)bar.width, (int)bar.height, 0, 90);
             string text = WorldChatStore.Ticker.Current;
-            mFont.tahoma_7b_yellow.drawString(g, text, WorldChatStore.Ticker.X, GameCanvas.h - 13, 0, mFont.tahoma_7b_dark);
+            mFont.tahoma_7b_yellow.drawString(g, text, WorldChatStore.Ticker.X, (int)bar.y, 0, mFont.tahoma_7b_dark);
             g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
         }
     }
