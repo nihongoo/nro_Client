@@ -660,6 +660,7 @@ public class GameScr : mScreen, IChatable
         Hud.TopInfoHud.Register();
         Hud.TopActionsHud.Register();
         PopUpYesNo.RegisterHudRects();
+        Notifications.NotificationCenter.RegisterHudRects();
         Hud.HudLayout.Register(Hud.HudLayout.WorldBar,
             () => Hud.HudLayout.Anchor(Hud.HorizontalAnchor.Left, Hud.VerticalAnchor.Bottom,
                 new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);

@@ -6,12 +6,16 @@ namespace Notifications
     // Accessed only by the main-thread message dispatcher and UI.
     public static class NotificationStore
     {
+        // Client presentation history only. Wire snapshot limits remain unchanged.
+        public const int BossHistoryLimit = 20;
         private static readonly List<NotificationEntry> bosses = new List<NotificationEntry>();
+        private static readonly List<NotificationEntry> bossHistory = new List<NotificationEntry>();
         private static readonly List<NotificationEntry> server = new List<NotificationEntry>();
         private static readonly List<NotificationEntry> invitations = new List<NotificationEntry>();
         private static readonly HashSet<long> unread = new HashSet<long>();
         private static long sequence, serverClock, clockAnchor;
         public static IReadOnlyList<NotificationEntry> Bosses => bosses;
+        public static IReadOnlyList<NotificationEntry> BossHistory => bossHistory;
         public static IReadOnlyList<NotificationEntry> Server => server;
         public static IReadOnlyList<NotificationEntry> Invitations => invitations;
         public static int UnreadCount => unread.Count;
@@ -26,7 +30,7 @@ namespace Notifications
 
         public static void BeginSession()
         {
-            bosses.Clear(); server.Clear(); invitations.Clear(); unread.Clear();
+            bosses.Clear(); bossHistory.Clear(); server.Clear(); invitations.Clear(); unread.Clear();
             sequence = 0; HasSnapshot = false; ReadingServer = false; ReadingInvitations = false; PopupId = 0;
             if (GameScr.instance != null) GameScr.instance.popUpYesNo = null;
             Revision++;
@@ -48,7 +52,7 @@ namespace Notifications
             bosses.Clear(); server.Clear(); invitations.Clear(); unread.Clear();
             foreach (NotificationEntry entry in entries)
             {
-                if (entry.Kind == NotificationKind.Boss) bosses.Insert(0, entry);
+                if (entry.Kind == NotificationKind.Boss) { bosses.Insert(0, entry); RememberBoss(entry); }
                 else if (entry.Kind == NotificationKind.Server) { server.Insert(0, entry); if (!ReadingServer) unread.Add(entry.Id); }
                 else if (entry.ExpiresAt > time) { invitations.Insert(0, entry); if (!ReadingInvitations) unread.Add(entry.Id); }
             }
@@ -67,7 +71,10 @@ namespace Notifications
             if (entry.Kind == NotificationKind.Server && index < 0 && target.Count >= 50) return false;
             if (index >= 0) target.RemoveAt(index);
             target.Insert(0, entry);
-            if (entry.Kind == NotificationKind.Boss && target.Count > 6) target.RemoveAt(target.Count - 1);
+            if (entry.Kind == NotificationKind.Boss) {
+                if (target.Count > 6) target.RemoveAt(target.Count - 1);
+                RememberBoss(entry);
+            }
             if (entry.Kind == NotificationKind.Server && !ReadingServer) unread.Add(entry.Id);
             if (entry.Kind == NotificationKind.Invitation) {
                 if (!ReadingInvitations) unread.Add(entry.Id);
@@ -86,6 +93,21 @@ namespace Notifications
 
         private static List<NotificationEntry> Target(NotificationKind kind) =>
             kind == NotificationKind.Boss ? bosses : kind == NotificationKind.Server ? server : invitations;
+
+        private static void RememberBoss(NotificationEntry entry)
+        {
+            // Presentation history survives server retention REMOVE/resync within this session.
+            // The server's grouping key is bossName + mapId: reuse that key even when a later
+            // spawn receives a new ID after eviction. History never offers a travel action.
+            int index = bossHistory.FindIndex(n => n.BossName == entry.BossName && n.MapId == entry.MapId);
+            if (index >= 0) {
+                if (bossHistory[index].UpdatedAt > entry.UpdatedAt) return;
+                bossHistory.RemoveAt(index);
+            }
+            int position = bossHistory.FindIndex(n => n.UpdatedAt < entry.UpdatedAt);
+            bossHistory.Insert(position < 0 ? bossHistory.Count : position, entry);
+            if (bossHistory.Count > BossHistoryLimit) bossHistory.RemoveAt(bossHistory.Count - 1);
+        }
 
         public static void MarkServerRead() { foreach (var n in server) unread.Remove(n.Id); }
         public static void MarkInvitationsRead() { foreach (var n in invitations) unread.Remove(n.Id); }
@@ -113,6 +135,10 @@ namespace Notifications
             }
             if (GameCanvas.currentScreen != GameScr.instance || GameScr.instance == null) return;
             NotificationEntry newest = FindInvitation(PopupId);
+            // The latest item may have expired/been answered while its popup was hidden.
+            // Fall back to the most recent still-valid invitation without changing responses.
+            if (newest == null || newest.Responding)
+                newest = invitations.Find(n => !n.Responding && n.ExpiresAt > now);
             if (newest == null || newest.Responding) GameScr.instance.popUpYesNo = null;
             else if (GameScr.instance.popUpYesNo == null || GameScr.instance.popUpYesNo.InvitationId != newest.Id)
                 GameScr.instance.popUpYesNo = new PopUpYesNo(newest);

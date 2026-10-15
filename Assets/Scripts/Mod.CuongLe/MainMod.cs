@@ -993,7 +993,7 @@ namespace Mod.CuongLe
     			{
     				GameScr.info1.addInfo("Đã tắt tối ưu cpu", 0);
     				QualitySettings.vSyncCount = 0;
-    				Application.targetFrameRate = 90;
+                Application.targetFrameRate = Main.NormalTargetFrameRate;
     			}
     			return true;
     		}

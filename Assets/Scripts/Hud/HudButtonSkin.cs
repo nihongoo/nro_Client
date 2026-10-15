@@ -9,7 +9,7 @@ namespace Hud
         private static Texture2D avatarNormal, avatarHover, avatarNormalSource, avatarHoverSource;
 
         // Imported textures need not be CPU-readable. Copy once without altering the shared asset.
-        internal static Image CopyNative(Image source, System.Action<Color32[], int, int> edit)
+        internal static Image CopyNative(Image source, System.Action<Color32[], int, int> edit = null, FilterMode filter = FilterMode.Point)
         {
             Texture2D original = source.texture;
             RenderTexture previous = RenderTexture.active;
@@ -20,10 +20,12 @@ namespace Hud
                 RenderTexture.active = temporary;
                 copy = new Texture2D(original.width, original.height, TextureFormat.RGBA32, false);
                 copy.ReadPixels(new Rect(0, 0, original.width, original.height), 0, 0);
-                Color32[] pixels = copy.GetPixels32();
-                edit(pixels, original.width, original.height);
-                copy.SetPixels32(pixels);
-                copy.filterMode = FilterMode.Point;
+                if (edit != null) {
+                    Color32[] pixels = copy.GetPixels32();
+                    edit(pixels, original.width, original.height);
+                    copy.SetPixels32(pixels);
+                }
+                copy.filterMode = filter;
                 copy.wrapMode = TextureWrapMode.Clamp;
                 copy.hideFlags = HideFlags.DontSave;
                 copy.Apply(false, true);
@@ -79,7 +81,9 @@ namespace Hud
             Texture2D previous = hover ? avatarHoverSource : avatarNormalSource;
             if (cached == null || previous != source) {
                 if (cached != null) UnityEngine.Object.Destroy(cached);
-                cached = UnityEngine.Object.Instantiate(source);
+                // Explicit RGBA upload also works for the generated non-readable background.
+                // Do not clone the platform-dependent GPU texture through Instantiate.
+                cached = CopyNative(background, filter: FilterMode.Bilinear).texture;
                 cached.name = source.name + " (avatar background)";
                 cached.filterMode = FilterMode.Bilinear;
                 cached.wrapMode = TextureWrapMode.Clamp;
