@@ -593,6 +593,7 @@ public class GameCanvas : IActionListener
             Hud.HudLayout.BeginFrame();
             Notifications.NotificationStore.UpdateInvitations();
             if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
+            Hud.TopActionsHud.UpdateInput();
 			Notifications.NotificationCenter.UpdateInput();
             WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)

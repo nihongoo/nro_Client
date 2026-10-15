@@ -45,10 +45,9 @@ namespace Hud
             avatar = HudLayout.Anchor(HorizontalAnchor.Left, VerticalAnchor.Top, new Vector2(diameter, diameter),
                 new Vector2(DesignUnit(HudLayout.IsMobileLayout ? 6 : 12), DesignUnit(6)));
             float left = avatar.xMax + gap;
-            // Gear/chest keep their existing placement. Reserve the earliest fixed button edge.
-            float right = Mathf.Min(GameCanvas.w - gap, GameScr.LegacyInfoPanelWidth + 5 - gap);
-            Rect chat = GameScr.ChatButtonBounds;
-            if (chat.yMin < avatar.yMax && chat.yMax > avatar.yMin) right = Mathf.Min(right, chat.xMin - gap);
+            // Reserve the complete right-hand row through its leftmost registered button.
+            Rect hub = HudLayout.GetRect(TopActionsHud.Hub);
+            float right = Mathf.Min(GameCanvas.w - gap, hub.xMin - gap);
             int width = Mathf.FloorToInt(Mathf.Min(DesignUnit(HudLayout.IsMobileLayout ? 210 : 250), right - left));
             int fpsWidth = mFont.tahoma_7_white.getWidth("FPS: 999") + 2;
             if (width < fpsWidth + gap + 3) {
@@ -77,7 +76,7 @@ namespace Hud
         // Called before movement/touch dispatch, independently of legacy isPC/isTouch flags.
         internal static bool UpdateInput()
         {
-            if (!Visible || GameScr.instance.popUpYesNo != null || GameScr.instance.isPaintPopup()) {
+            if (!Visible || GameScr.instance.isPaintPopup()) {
                 pressed = captured = false;
                 return false;
             }
@@ -141,15 +140,6 @@ namespace Hud
 
         private static float Fraction(long value, long max) => max <= 0 ? 0 : Mathf.Clamp01((float)((double)value / max));
 
-        // Convert the registry rect through the active safe-area matrix, then snap its actual screen edges.
-        // This is rendering conversion only; no second layout or pointer bounds are constructed here.
-        private static Rect ScreenPixels(Rect rect)
-        {
-            Vector3 min = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.x * mGraphics.zoomLevel, rect.y * mGraphics.zoomLevel, 0));
-            Vector3 max = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.xMax * mGraphics.zoomLevel, rect.yMax * mGraphics.zoomLevel, 0));
-            return Rect.MinMaxRect(Mathf.Round(min.x), Mathf.Round(min.y), Mathf.Round(max.x), Mathf.Round(max.y));
-        }
-
         private static void Solid(Rect pixels, Color color)
         {
             if (pixels.width <= 0 || pixels.height <= 0) return;
@@ -192,7 +182,7 @@ namespace Hud
 
         private static void PaintBar(mGraphics g, Rect rect, Texture2D skin, float fraction, string text)
         {
-            Rect pixels = ScreenPixels(rect);
+            Rect pixels = HudButtonSkin.ScreenPixels(rect);
             Matrix4x4 matrix = GUI.matrix;
             Color color = GUI.color;
             try {
@@ -235,32 +225,9 @@ namespace Hud
             return source.width > 1 && source.height > 1;
         }
 
-        // Sample the R button's original border/background, excluding its central chat glyph.
-        private static void ChatBackground(Rect pixels, bool hover)
-        {
-            Texture2D texture = (hover ? GameScr.imgChatsPC2 : GameScr.imgChatPC)?.texture;
-            if (texture == null) return;
-            GUI.color = Color.white;
-            for (int row = 0; row < (int)pixels.height; row++) {
-                float v = 1 - (row + 1f) / pixels.height;
-                float heightUv = 1f / pixels.height;
-                Rect line = new Rect(pixels.x, pixels.y + row, pixels.width, 1);
-                float sourceY = (row + 0.5f) / pixels.height;
-                if (sourceY < 0.28f || sourceY > 0.82f) {
-                    GUI.DrawTextureWithTexCoords(line, texture, new Rect(0, v, 1, heightUv));
-                    continue;
-                }
-                float edge = Mathf.Round(pixels.width * 0.23f);
-                GUI.DrawTextureWithTexCoords(new Rect(line.x, line.y, edge, 1), texture, new Rect(0, v, 0.23f, heightUv));
-                GUI.DrawTextureWithTexCoords(new Rect(line.x + edge, line.y, line.width - edge * 2, 1), texture,
-                    new Rect(0.19f, v, 1f / texture.width, heightUv));
-                GUI.DrawTextureWithTexCoords(new Rect(line.xMax - edge, line.y, edge, 1), texture, new Rect(0.77f, v, 0.23f, heightUv));
-            }
-        }
-
         private static void PaintAvatar(Rect rect, Char c)
         {
-            Rect pixels = ScreenPixels(rect);
+            Rect pixels = HudButtonSkin.ScreenPixels(rect);
             int diameter = (int)Mathf.Min(pixels.width, pixels.height);
             pixels = new Rect(Mathf.Round(pixels.center.x - diameter / 2f), Mathf.Round(pixels.center.y - diameter / 2f), diameter, diameter);
             Part head = GameScr.parts[c.head];
@@ -274,7 +241,7 @@ namespace Hud
             Color color = GUI.color;
             try {
                 GUI.matrix = Matrix4x4.identity;
-                ChatBackground(pixels, hover);
+                HudButtonSkin.PaintBackgroundPixels(pixels, hover);
                 for (int row = 0; row < diameter; row++) {
                     float dy = row + 0.5f - radius;
                     float half = Mathf.Sqrt(Mathf.Max(0, radius * radius - dy * dy));
