@@ -148,6 +148,17 @@ namespace Hud
             return null;
         }
         public static bool IsTopmost(string name, Vector2 point) => HitTest(point) == name;
+        // Read existing combat-control adapters without resolving the lists that are currently
+        // computing their own bounds (and without constructing another set of hitboxes).
+        public static void CopyObstaclesAtOrder(int order, List<Rect> output)
+        {
+            EnsureViewport(); output.Clear();
+            foreach (Entry entry in backToFront) {
+                if (entry.Order != order || !entry.BlocksPointer || !IsVisible(entry)) continue;
+                Rect bounds = Resolve(entry);
+                if (bounds.width > 0 && bounds.height > 0) output.Add(bounds);
+            }
+        }
         // This is the source behind GameScr.CollectChatObstacles, not a second obstacle system.
         public static void CopyObstaclesAbove(string name, List<Rect> output)
         {

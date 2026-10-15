@@ -409,6 +409,42 @@ public class mFont
 		return setColor(colorJava[id]);
 	}
 
+	// Draw the existing glyphs in a local HUD color, including the zoom-1 bitmap font.
+	// No font replacement, resize, shared texture edit, or persistent palette mutation.
+	internal void drawTintedString(mGraphics g, string st, int x, int y, Color tint)
+	{
+		Color previous = GUI.color, previousFont = color1;
+		try {
+			if (mGraphics.zoomLevel != 1) {
+				color1 = new Color(tint.r, tint.g, tint.b, 1);
+				GUI.color = new Color(1, 1, 1, tint.a);
+				// setTypePaint resets the palette; use the same glyph renderer/offsets directly.
+				_drawString(g, st, x - 1, y - yAdd, LEFT);
+				return;
+			}
+			GUI.color = tint;
+			// getClipX/Y expose the world camera, not the active graphics clip.
+			Rect clip = new Rect(g.clipX + g.getTranslateX(), g.clipY + g.getTranslateY(), g.clipW, g.clipH);
+			GUI.BeginGroup(clip);
+			try {
+				int cursor = x + g.getTranslateX();
+				foreach (char letter in st) {
+					int index = strFont.IndexOf(letter);
+					if (index < 0) index = 0;
+					int[] glyph = fImages[index];
+					int sx = glyph[0], sy = glyph[1], width = glyph[2], height = glyph[3];
+					if (sy + height > imgFont.texture.height) { sy -= imgFont.texture.height; sx = imgFont.texture.width / 2; }
+					GUI.DrawTextureWithTexCoords(new Rect(cursor - clip.x, y + g.getTranslateY() - clip.y, width, height), imgFont.texture,
+						new Rect((float)sx / imgFont.texture.width, 1f - (float)(sy + height) / imgFont.texture.height,
+							(float)width / imgFont.texture.width, (float)height / imgFont.texture.height));
+					cursor += width + space;
+				}
+			}
+			finally { GUI.EndGroup(); }
+		}
+		finally { GUI.color = previous; color1 = previousFont; }
+	}
+
 	public void drawString(mGraphics g, string st, int x, int y, int align)
 	{
 		if (mGraphics.zoomLevel == 1)
