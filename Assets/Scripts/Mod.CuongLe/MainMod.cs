@@ -368,14 +368,6 @@ namespace Mod.CuongLe
             }
             int num2 = 8;
             int num = GameCanvas.h - 170;
-            DoHoa.DrawFont.drawString(g, TileMap.mapNames[TileMap.mapID] + " [" + TileMap.mapID + "] Zone: " + TileMap.zoneID, 10, num, 0);
-            num += num2;
-            DoHoa.DrawFont.drawString(g, "x: " + Char.myCharz().cx + " y: " + Char.myCharz().cy, 10, num, 0);
-            num += num2;
-
-            // Vẽ FPS
-            string fpsText = "FPS: " + CalculateFPS().ToString(); // Làm tròn FPS
-            DoHoa.DrawFont.drawString(g, fpsText, GameScr.imgPanel.getWidth()/2 + GameScr.imgPanel.getWidth() *10 /100, GameScr.imgPanel.getHeight()- GameScr.imgPanel.getHeight()* 30/100, 0); 
             if (ModProCuongLe.DoBoss)
     		{
     			DoHoa.DrawFont.drawString(g, "Bắt đầu tìm khu boss từ " + TileMap.zoneID + "-> 14", 10, num, 0);
@@ -1016,11 +1008,6 @@ namespace Mod.CuongLe
     			ChatPopup.addChatPopupMultiLineGameline(s, 0, null, 10);
                 return true;
             }
-            if (GameCanvas.keyAsciiPress == Hotkeys.G)
-    		{
-    			DoHoa.ShowMenuDoHoa();
-    			return true;
-    		}
             if (GameCanvas.keyAsciiPress == Hotkeys.X)
     		{
     			ShowMenu();
@@ -1345,14 +1332,6 @@ namespace Mod.CuongLe
     		}
     	}
 
-    	public static void smethod_7()
-    	{
-    	}
-
-    	public static void smethod_8()
-    	{
-    	}
-
     	public static int MyHPPercent()
     	{
     		return (int)(Char.myCharz().cHP * 100 / Char.myCharz().cHPFull);
@@ -1377,7 +1356,7 @@ namespace Mod.CuongLe
             {
                 MainMod.controlTeleChar();
             }
-            if (GameCanvas.isPointerHoldIn(GameScr.imgPanel.getWidth() + 5, 3, DoHoa.imgSetting.getWidth() + 5, DoHoa.imgSetting.getHeight())
+            if (GameCanvas.isPointerHoldIn(GameScr.LegacyInfoPanelWidth + 5, 3, DoHoa.imgSetting.getWidth() + 5, DoHoa.imgSetting.getHeight())
                 && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
             {
                 MainMod.ShowMenu();
@@ -1385,7 +1364,7 @@ namespace Mod.CuongLe
                 return;
             }
             // Khi click nút mở menu VIP
-            if (GameCanvas.isPointerHoldIn(GameScr.imgPanel.getWidth() + 5 + DoHoa.imgSetting.getWidth() + 5, 3, DoHoa.imgBoxOpenItem.getWidth() + 5, DoHoa.imgBoxOpenItem.getHeight())
+            if (GameCanvas.isPointerHoldIn(GameScr.LegacyInfoPanelWidth + 5 + DoHoa.imgSetting.getWidth() + 5, 3, DoHoa.imgBoxOpenItem.getWidth() + 5, DoHoa.imgBoxOpenItem.getHeight())
                 && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
             {
                 DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;

@@ -436,15 +436,9 @@ public class GameScr : mScreen, IChatable
 
     public static InfoMe info2;
 
-    public static Image imgPanel;
-
-    public static Image imgPanel2;
-
     public static Image imgHP;
 
     public static Image imgMP;
-
-    public static Image imgSP;
 
     public static Image imgHPLost;
 
@@ -610,10 +604,6 @@ public class GameScr : mScreen, IChatable
 
     private int move;
 
-    public bool flareFindFocus;
-
-    private int flareTime;
-
     public int keyTouchSkill = -1;
 
     private long lastSendUpdatePostion;
@@ -660,6 +650,11 @@ public class GameScr : mScreen, IChatable
 
     private static int yTouchBar;
 
+    // Preserve cluster-2 positions: original panel widths are 155/309/464/618 physical pixels.
+    internal static int LegacyInfoPanelWidth => (mGraphics.zoomLevel == 4 ? 618 : mGraphics.zoomLevel == 3 ? 464
+        : mGraphics.zoomLevel == 2 ? 309 : 155) / Mathf.Max(1, mGraphics.zoomLevel);
+    internal const int LegacyInfoPanelHeight = 41;
+
     internal static Rect ChatButtonBounds => Hud.HudLayout.GetRect(Hud.HudLayout.ChatButton);
     internal static int ChatButtonCenterX => (int)ChatButtonBounds.center.x;
     internal static int ChatButtonBottom => (int)ChatButtonBounds.yMax;
@@ -670,6 +665,7 @@ public class GameScr : mScreen, IChatable
     // Gameplay handlers are not rewritten here; later HUD clusters migrate them individually.
     internal static void RegisterHudRects()
     {
+        Hud.TopInfoHud.Register();
         Hud.HudLayout.Register(Hud.HudLayout.Bell, Notifications.NotificationHudLayout.BellBounds, Hud.HudLayout.BellOrder,
             () => Notifications.NotificationCenter.IsBellVisible);
         Hud.HudLayout.Register(Hud.HudLayout.WorldBar,
@@ -811,16 +807,6 @@ public class GameScr : mScreen, IChatable
 
     public static int cmdBarCenterW;
 
-    public static int hpBarX;
-
-    public static int hpBarY;
-
-    public static int spBarW;
-
-    public static int mpBarW;
-
-    public static int expBarW;
-
     public static int lvPosX;
 
     public static int moneyPosX;
@@ -829,11 +815,7 @@ public class GameScr : mScreen, IChatable
 
     public static int girlHPBarY;
 
-    public static long hpBarW;
-
     public static Image[] imgCmdBar;
-
-    private int imgScrW;
 
     public static int popupY;
 
@@ -979,8 +961,6 @@ public class GameScr : mScreen, IChatable
 
     private string[] strPaint;
 
-    public static Image imgHP_NEW;
-
     public static InfoPhuBan phuban_Info;
 
     public static FrameImage fra_PVE_Bar_0;
@@ -990,8 +970,6 @@ public class GameScr : mScreen, IChatable
     public static Image imgVS;
 
     public static Image imgBall;
-
-    public static Image imgKhung;
 
     public int countFrameSkill;
 
@@ -1098,16 +1076,11 @@ public class GameScr : mScreen, IChatable
         fra_PVE_Bar_1 = new FrameImage(mSystem.loadImage("/mainImage/i_pve_bar_1.png"), 38, 21);
         imgVS = mSystem.loadImage("/mainImage/i_vs.png");
         imgBall = mSystem.loadImage("/mainImage/i_charlife.png");
-        imgHP_NEW = mSystem.loadImage("/mainImage/i_hp.png");
-        imgKhung = mSystem.loadImage("/mainImage/i_khung.png");
         imgLbtn = GameCanvas.loadImage("/mainImage/myTexture2dbtnl.png");
         imgLbtnFocus = GameCanvas.loadImage("/mainImage/myTexture2dbtnlf.png");
         imgLbtn2 = GameCanvas.loadImage("/mainImage/myTexture2dbtnl2.png");
         imgLbtnFocus2 = GameCanvas.loadImage("/mainImage/myTexture2dbtnlf2.png");
-        imgPanel = GameCanvas.loadImage("/mainImage/myTexture2dpanel.png");
-        imgPanel2 = GameCanvas.loadImage("/mainImage/panel2.png");
         imgHP = GameCanvas.loadImage("/mainImage/myTexture2dHP.png");
-        imgSP = GameCanvas.loadImage("/mainImage/SP.png");
         imgHPLost = GameCanvas.loadImage("/mainImage/myTexture2dhpLost.png");
         imgMPLost = GameCanvas.loadImage("/mainImage/myTexture2dmpLost.png");
         imgMP = GameCanvas.loadImage("/mainImage/myTexture2dMP.png");
@@ -1832,7 +1805,6 @@ public class GameScr : mScreen, IChatable
     {
         loadSplash();
         Res.init();
-        loadInforBar();
     }
 
     public void doMenuInforMe()
@@ -2693,6 +2665,7 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
+        if (Hud.TopInfoHud.UpdateInput()) return;
         if (GameCanvas.isTouch && !ChatTextField.gI().isShow && !GameCanvas.menu.showMenu)
         {
             updateKeyTouchControl();
@@ -4281,18 +4254,6 @@ public class GameScr : mScreen, IChatable
         mScreen.keyTouch = -1;
         if (GameCanvas.isTouchControl)
         {
-            if (GameCanvas.isPointerHoldIn(0, 0, 60, 50) && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-            {
-                if (Char.myCharz().cmdMenu != null)
-                {
-                    Char.myCharz().cmdMenu.performAction();
-                }
-                Char.myCharz().currentMovePoint = null;
-                GameCanvas.clearAllPointerEvent();
-                flareFindFocus = true;
-                flareTime = 5;
-                return;
-            }
             if (Main.isPC)
             {
                 checkMouseChat();
@@ -5353,14 +5314,6 @@ public class GameScr : mScreen, IChatable
                     tPower = -1;
                 }
             }
-            for (int num19 = 0; num19 < Char.vItemTime.size(); num19++)
-            {
-                ((ItemTime)Char.vItemTime.elementAt(num19)).paint(g, cmdMenu.x + 32 + num19 * 24, 55);
-            }
-            for (int num20 = 0; num20 < textTime.size(); num20++)
-            {
-                ((ItemTime)textTime.elementAt(num20)).paintText(g, cmdMenu.x + ((Char.vItemTime.size() == 0) ? 25 : 5), ((Char.vItemTime.size() == 0) ? 45 : 90) + num20 * 12);
-            }
             paintXoSo(g);
             if (mResources.language == 1)
             {
@@ -5737,132 +5690,6 @@ public class GameScr : mScreen, IChatable
         _ = isUseTouch;
     }
 
-    public void paintImageBarRight(mGraphics g, Char c)
-    {
-        int num = (int)(c.cHP * hpBarW / c.cHPFull);
-        int num2 = (int)(c.cMP * mpBarW / c.cMPFull);
-        int num3 = (int)(dHP * hpBarW / c.cHPFull);
-        int num4 = (int)(dMP * mpBarW / c.cMPFull);
-        g.setClip(GameCanvas.w / 2 + 58 - mGraphics.getImageWidth(imgPanel), 0, 95, 100);
-        g.drawRegion(imgPanel, 0, 0, mGraphics.getImageWidth(imgPanel), mGraphics.getImageHeight(imgPanel), 2, GameCanvas.w / 2 + 60, 0, mGraphics.RIGHT | mGraphics.TOP);
-        g.setClip((int)(GameCanvas.w / 2 + 60 - 83 - hpBarW + hpBarW - num3), 5, num3, 10);
-        g.drawImage(imgHPLost, GameCanvas.w / 2 + 60 - 83, 5, mGraphics.RIGHT | mGraphics.TOP);
-        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-        g.setClip((int)(GameCanvas.w / 2 + 60 - 83 - hpBarW + hpBarW - num), 5, num, 10);
-        g.drawImage(imgHP, GameCanvas.w / 2 + 60 - 83, 5, mGraphics.RIGHT | mGraphics.TOP);
-        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-        g.setClip((int)(GameCanvas.w / 2 + 60 - 83 - mpBarW + hpBarW - num4), 20, num4, 6);
-        g.drawImage(imgMPLost, GameCanvas.w / 2 + 60 - 83, 20, mGraphics.RIGHT | mGraphics.TOP);
-        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-        g.setClip((int)(GameCanvas.w / 2 + 60 - 83 - mpBarW + hpBarW - num2), 20, num2, 6);
-        g.drawImage(imgMP, GameCanvas.w / 2 + 60 - 83, 20, mGraphics.RIGHT | mGraphics.TOP);
-        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-    }
-
-    private void paintImageBar(mGraphics g, bool isLeft, Char c)
-    {
-        if (c != null)
-        {
-            int num;
-            int num2;
-            int num3;
-            int num4;
-            if (c.charID == Char.myCharz().charID)
-            {
-                num = (int)(dHP * hpBarW / c.cHPFull);
-                num2 = (int)(dMP * mpBarW / c.cMPFull);
-                num3 = (int)(c.cHP * hpBarW / c.cHPFull);
-                num4 = (int)(c.cMP * mpBarW / c.cMPFull);
-            }
-            else
-            {
-                num = (int)(c.dHP * hpBarW / c.cHPFull);
-                num2 = c.perCentMp * mpBarW / 100;
-                num3 = (int)(c.cHP * hpBarW / c.cHPFull);
-                num4 = c.perCentMp * mpBarW / 100;
-            }
-            if (Char.myCharz().secondPower > 0)
-            {
-                int w = Char.myCharz().powerPoint * spBarW / Char.myCharz().maxPowerPoint;
-                g.drawImage(imgPanel2, 58, 29, 0);
-                g.setClip(83, 31, w, 10);
-                g.drawImage(imgSP, 83, 31, 0);
-                g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-                mFont.tahoma_7_white.drawString(g, Char.myCharz().strInfo + ":" + Char.myCharz().powerPoint + "/" + Char.myCharz().maxPowerPoint, 115, 29, 2);
-            }
-            if (c.charID != Char.myCharz().charID)
-            {
-                g.setClip(mGraphics.getImageWidth(imgPanel) - 95, 0, 95, 100);
-            }
-            g.drawImage(imgPanel, 0, 0, 0);
-            if (isLeft)
-            {
-                g.setClip(83, 5, num, 10);
-            }
-            else
-            {
-                g.setClip((int)(83 + hpBarW - num), 5, num, 10);
-            }
-            g.drawImage(imgHPLost, 83, 5, 0);
-            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            if (isLeft)
-            {
-                g.setClip(83, 5, num3, 10);
-            }
-            else
-            {
-                g.setClip((int)(83 + hpBarW - num3), 5, num3, 10);
-            }
-            g.drawImage(imgHP, 83, 5, 0);
-            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            if (isLeft)
-            {
-                g.setClip(83, 20, num2, 6);
-            }
-            else
-            {
-                g.setClip(83 + mpBarW - num2, 20, num2, 6);
-            }
-            g.drawImage(imgMPLost, 83, 20, 0);
-            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            if (isLeft)
-            {
-                g.setClip(83, 20, num2, 6);
-            }
-            else
-            {
-                g.setClip(83 + mpBarW - num4, 20, num4, 6);
-            }
-            g.drawImage(imgMP, 83, 20, 0);
-            g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            if (Char.myCharz().cMP == 0L && GameCanvas.gameTick % 10 > 5)
-            {
-                g.setClip(83, 20, 2, 6);
-                g.drawImage(imgMPLost, 83, 20, 0);
-                g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-            }
-            if (mGraphics.zoomLevel > 1)
-            {
-                GUIStyle gUIStyle = new GUIStyle(GUI.skin.label);
-                gUIStyle.normal.textColor = Color.yellow;
-                gUIStyle.fontSize = 17;
-                g.drawString(NinjaUtil.getMoneys(c.cHP), 85, 4, gUIStyle);
-                gUIStyle.fontSize = 10;
-                g.drawString(NinjaUtil.getMoneys(c.cMP), 85, 19, gUIStyle);
-            }
-            if (GameCanvas.isPointerHoldIn(0, 0, imgPanel2.getWidth(), imgPanel2.getHeight()) && GameCanvas.isPointerClick)
-            {
-                MainMod.ShowMenu();
-                SoundMn.gI().buttonClick();
-                GameCanvas.clearAllPointerEvent();
-            }
-        }
-    }
-
-    public void getInjure()
-    {
-    }
-
     public void starVS()
     {
         curr = (last = mSystem.currentTimeMillis());
@@ -5900,64 +5727,16 @@ public class GameScr : mScreen, IChatable
         resetTranslate(g);
         if (TileMap.mapID == 130 && findCharVS1() != null && findCharVS2() != null)
         {
-            g.translate(GameCanvas.w / 2 - 62, 0);
-            paintImageBar(g, isLeft: true, findCharVS1());
-            g.translate(-(GameCanvas.w / 2 - 65), 0);
-            paintImageBarRight(g, findCharVS2());
             findCharVS1().paintHeadWithXY(g, 137, 25, 0);
             findCharVS2().paintHeadWithXY(g, GameCanvas.w - 15 - 122, 25, 2);
         }
         else if (isVS() && Char.myCharz().charFocus != null)
         {
-            g.translate(GameCanvas.w / 2 - 62, 0);
-            paintImageBar(g, isLeft: true, Char.myCharz().charFocus);
-            g.translate(-(GameCanvas.w / 2 - 65), 0);
-            paintImageBarRight(g, Char.myCharz());
             Char.myCharz().paintHeadWithXY(g, 137, 25, 0);
             Char.myCharz().charFocus.paintHeadWithXY(g, GameCanvas.w - 15 - 122, 25, 2);
         }
-        else if (ispaintPhubangBar() && isSmallScr())
-        {
-            paintHPBar_NEW(g, 1, 1, Char.myCharz());
-        }
-        else
-        {
-            paintImageBar(g, isLeft: true, Char.myCharz());
-            if (Char.myCharz().isInEnterOfflinePoint() != null || Char.myCharz().isInEnterOnlinePoint() != null)
-            {
-                mFont.tahoma_7_green2.drawString(g, mResources.enter, imgScrW / 2, 8 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-            }
-            else if (Char.myCharz().mobFocus != null)
-            {
-                if (Char.myCharz().mobFocus.getTemplate() != null)
-                {
-                    mFont.tahoma_7b_green2.drawString(g, Char.myCharz().mobFocus.getTemplate().name, imgScrW / 2, 9 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                }
-                if (Char.myCharz().mobFocus.templateId != 0)
-                {
-                    mFont.tahoma_7b_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().mobFocus.hp) + string.Empty, imgScrW / 2, 22 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                }
-            }
-            else if (Char.myCharz().npcFocus != null)
-            {
-                mFont.tahoma_7b_green2.drawString(g, Char.myCharz().npcFocus.template.name, imgScrW / 2, 9 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                if (Char.myCharz().npcFocus.template.npcTemplateId == 4)
-                {
-                    mFont.tahoma_7b_green2.drawString(g, gI().magicTree.currPeas + "/" + gI().magicTree.maxPeas, imgScrW / 2, 22 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                }
-            }
-            else if (Char.myCharz().charFocus != null)
-            {
-                mFont.tahoma_7b_green2.drawString(g, Char.myCharz().charFocus.cName, imgScrW / 2, 9 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                mFont.tahoma_7b_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().charFocus.cHP) + string.Empty, imgScrW / 2, 22 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-            }
-            else
-            {
-                mFont.tahoma_7b_green2.drawString(g, Char.myCharz().cName, imgScrW / 2, 9 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-                mFont.tahoma_7b_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().cPower) + string.Empty, imgScrW / 2, 22 + mGraphics.addYWhenOpenKeyBoard, mFont.CENTER);
-            }
-        }
         g.translate(-g.getTranslateX(), -g.getTranslateY());
+        Hud.TopInfoHud.Paint(g);
         if (isVS() && secondVS > 0)
         {
             curr = mSystem.currentTimeMillis();
@@ -5967,16 +5746,6 @@ public class GameScr : mScreen, IChatable
                 secondVS--;
             }
             mFont.tahoma_7b_white.drawString(g, secondVS + string.Empty, GameCanvas.w / 2, 13, 2, mFont.tahoma_7b_dark);
-        }
-        if (flareFindFocus)
-        {
-            g.drawImage(ItemMap.imageFlare, 40, 35, mGraphics.BOTTOM | mGraphics.HCENTER);
-            flareTime--;
-            if (flareTime < 0)
-            {
-                flareTime = 0;
-                flareFindFocus = false;
-            }
         }
     }
 
@@ -6313,17 +6082,6 @@ public class GameScr : mScreen, IChatable
                 }
             }
         }
-    }
-
-    private void loadInforBar()
-    {
-        imgScrW = 84;
-        hpBarW = 66L;
-        mpBarW = 59;
-        hpBarX = 52;
-        hpBarY = 10;
-        spBarW = 61;
-        expBarW = gW - 61;
     }
 
     public void updateSS()
@@ -7073,9 +6831,9 @@ public class GameScr : mScreen, IChatable
         {
             x = GameCanvas.w - w / 2;
         }
-        if (x < mGraphics.getImageWidth(imgKhung) + w / 2 + 10)
+        if (x < 86 + w / 2 + 10)
         {
-            x = mGraphics.getImageWidth(imgKhung) + w / 2 + 10;
+            x = 86 + w / 2 + 10;
         }
         int frameHeight = fra_PVE_Bar_0.frameHeight;
         int num = y + frameHeight + mGraphics.getImageHeight(imgBall) / 2 + 2;
@@ -7222,53 +6980,6 @@ public class GameScr : mScreen, IChatable
         }
     }
 
-    public static void paintHPBar_NEW(mGraphics g, int x, int y, Char c)
-    {
-        g.drawImage(imgKhung, x, y, 0);
-        int x2 = x + 3;
-        int num = y + 19;
-        int width = imgHP_NEW.getWidth();
-        int num2 = imgHP_NEW.getHeight() / 2;
-        int num3 = (int)(c.cHP * width / c.cHPFull);
-        if (num3 <= 0)
-        {
-            num3 = 1;
-        }
-        else if (num3 > width)
-        {
-            num3 = width;
-        }
-        g.drawRegion(imgHP_NEW, 0, num2, num3, num2, 0, x2, num, 0);
-        int num4 = (int)(c.cMP * width / c.cMPFull);
-        if (num4 <= 0)
-        {
-            num4 = 1;
-        }
-        else if (num4 > width)
-        {
-            num4 = width;
-        }
-        g.drawRegion(imgHP_NEW, 0, 0, num4, num2, 0, x2, num + 6, 0);
-        int x3 = x + imgKhung.getWidth() / 2 + 1;
-        int y2 = num + 13;
-        mFont.tahoma_7_green2.drawString(g, c.cName, x3, y + 4, 2);
-        if (c.mobFocus != null)
-        {
-            if (c.mobFocus.getTemplate() != null)
-            {
-                mFont.tahoma_7_green2.drawString(g, c.mobFocus.getTemplate().name, x3, y2, 2);
-            }
-        }
-        else if (c.npcFocus != null)
-        {
-            mFont.tahoma_7_green2.drawString(g, c.npcFocus.template.name, x3, y2, 2);
-        }
-        else if (c.charFocus != null)
-        {
-            mFont.tahoma_7_green2.drawString(g, c.charFocus.cName, x3, y2, 2);
-        }
-    }
-
     public static void addEffectEnd(int type, int subtype, int typePaint, int x, int y, int levelPaint, int dir, short timeRemove, Point[] listObj)
     {
         addEffect2Vector(new Effect_End(type, subtype, typePaint, x, y, levelPaint, dir, timeRemove, listObj));
@@ -7308,11 +7019,6 @@ public class GameScr : mScreen, IChatable
         return false;
     }
 
-    public static bool isSmallScr()
-    {
-        return GameCanvas.w <= 320;
-    }
-
     private void paint_ios_bg(mGraphics g)
     {
         if (mSystem.clientType == 5)
@@ -7341,9 +7047,9 @@ public class GameScr : mScreen, IChatable
         {
             x = GameCanvas.w - w / 2;
         }
-        if (x < mGraphics.getImageWidth(imgKhung) + w / 2 + 10)
+        if (x < 86 + w / 2 + 10)
         {
-            x = mGraphics.getImageWidth(imgKhung) + w / 2 + 10;
+            x = 86 + w / 2 + 10;
         }
         _ = fra_PVE_Bar_0.frameHeight;
         _ = mGraphics.getImageHeight(imgBall) / 2;
@@ -7518,19 +7224,6 @@ public class GameScr : mScreen, IChatable
             hRect = mFont.tahoma_7b_dark.getHeight() * 6;
         }
         GameCanvas.resetTrans(g);
-    }
-
-    private void paintHPCT(mGraphics g, int x, int y, Char c)
-    {
-        g.drawImage(imgKhung, x, y, 0);
-        int x2 = x + 3;
-        int num = y + 19;
-        int width = imgHP_NEW.getWidth();
-        int num2 = imgHP_NEW.getHeight() / 2;
-        _ = c.cHP * width / c.cHPFull;
-        g.drawRegion(imgHP_NEW, 0, num2, 80, num2, 0, x2, num, 0);
-        _ = c.cMP * width / c.cMPFull;
-        g.drawRegion(imgHP_NEW, 0, 0, 80, num2, 0, x2, num + 6, 0);
     }
 
     static GameScr()
