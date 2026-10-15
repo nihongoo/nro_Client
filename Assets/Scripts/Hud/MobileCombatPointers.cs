@@ -12,6 +12,7 @@ namespace Hud
             public Skill Skill;
             public int ItemId = -1;
             public bool Cancelled;
+            public float Started;
         }
         private sealed class Click { public Capture Capture; public Vector2 Point; }
         private static readonly Dictionary<int,Capture> pointers = new Dictionary<int,Capture>();
@@ -80,7 +81,7 @@ namespace Hud
         {
             if (began) {
                 string target = inside ? HudLayout.HitTest(point) : null;
-                var capture = new Capture { Target = target, First = point, Point = point, Cancelled = !inside };
+                var capture = new Capture { Target = target, First = point, Point = point, Cancelled = !inside, Started = Time.realtimeSinceStartup };
                 if (CombatMobileHud.Owns(target)) {
                     if (!CombatMobileHud.CanInput) capture.Cancelled = true;
                     if (target.StartsWith("combat.skill.")) capture.Skill = CombatMobileHud.SlotSkill(int.Parse(target.Substring("combat.skill.".Length)));
@@ -101,6 +102,16 @@ namespace Hud
             current.Point = point;
             if (cancelled) current.Cancelled = true;
             if (CombatMobileHud.Owns(current.Target) && !CombatMobileHud.CanInput) current.Cancelled = true;
+            if (!ended && !current.Cancelled && current.Target != null && current.Target.StartsWith("combat.item.")
+                && Time.realtimeSinceStartup-current.Started >= .6f
+                && (point-current.First).sqrMagnitude <= Mathf.Pow(CombatMobileHud.DesignUnit(8),2)
+                && HudLayout.HitTest(point) == current.Target) {
+                int slot = int.Parse(current.Target.Substring("combat.item.".Length));
+                if (current.ItemId >= 0 && MobileQuickItems.Template(slot) == current.ItemId) {
+                    Cancel(); // Release after the long press cannot also use the item.
+                    MobileQuickItems.ShowSlotMenu(slot);
+                }
+            }
             if (worldPointer == id) {
                 // Do not let a world drag enter a combat button or acquire a modal that opened mid-gesture.
                 string now = HudLayout.HitTest(point);

@@ -10062,6 +10062,13 @@ public class Panel : IActionListener, IChatable
         {
             return;
         }
+        // This PC-only row is appended after all original options; their indices stay intact.
+        if (!Hud.HudLayout.IsMobileLayout && selected == strCauhinh.Length-1)
+        {
+            Hud.CombatPcHud.ToggleKeyLabels();
+            SoundMn.gI().getStrOption();
+            return;
+        }
         switch (selected)
         {
             case 0:
