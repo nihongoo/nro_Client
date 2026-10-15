@@ -237,6 +237,7 @@ public class SoundMn
 				(!GameCanvas.isPlaySound) ? (text2 + mResources.turnOffSound.Trim()) : (text + mResources.turnOffSound.Trim()),
 				(mGraphics.zoomLevel <= 1) ? (text2 + mResources.x2Screen) : (text + mResources.x1Screen)
 			};
+			AddPcHudLabelOption();
 			return;
 		}
 		string text3 = ((GameScr.isAnalog != 0) ? (text + mResources.turnOffAnalog) : (text2 + mResources.turnOnAnalog));
@@ -252,6 +253,15 @@ public class SoundMn
 			(!GameCanvas.lowGraphic) ? (text2 + mResources.cauhinhthap.Trim()) : (text + mResources.cauhinhthap.Trim()),
 			text3
 		};
+		AddPcHudLabelOption();
+	}
+
+	private static void AddPcHudLabelOption()
+	{
+		if (Hud.HudLayout.IsMobileLayout) return;
+		int index = Panel.strCauhinh.Length;
+		System.Array.Resize(ref Panel.strCauhinh,index+1);
+		Panel.strCauhinh[index] = (Hud.CombatPcHud.ShowKeyLabels ? "[x]   " : "[  ]   ") + "Nhãn phím HUD PC";
 	}
 
 	public void HP_MPup()

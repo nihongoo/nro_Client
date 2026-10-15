@@ -101,7 +101,8 @@ namespace Hud
                 Skill skill = SlotSkill(i);
                 bool selected = skill != null && skill == Char.myCharz().myskill;
                 Button(rect, MobileCombatPointers.Held(SkillName(i)));
-                if (skill == null || !GameScr.isHaveSelectSkill) continue;
+                if (skill == null) { PaintEmptySlot(g,rect,i); continue; }
+                if (!GameScr.isHaveSelectSkill) continue;
                 CircularCombatIcon.PaintSkill(g,rect,skill);
                 if (selected) PaintSelectedSkill(rect);
                 long remaining = skill.coolDown - mSystem.currentTimeMillis() + skill.lastTimeUseThisSkill;
@@ -112,7 +113,7 @@ namespace Hud
                 Rect rect = HudLayout.GetRect(ItemName(i));
                 Button(rect, MobileCombatPointers.Held(ItemName(i)));
                 Item item = MobileQuickItems.Get(i);
-                if (item == null) continue;
+                if (item == null) { PaintEmptySlot(g,rect,i); continue; }
                 CircularCombatIcon.PaintFloatingItem(g,rect,item.template.iconID);
                 long remaining = MobileQuickItems.Remaining(item);
                 if (remaining > 0) {
@@ -131,6 +132,11 @@ namespace Hud
                     else CircularCombatIcon.PaintFloatingItem(g,rect,Context == "combat.context.capsule4" ? 1088 : 1087);
                 }
             }
+        }
+        private static void PaintEmptySlot(mGraphics g, Rect rect, int slot)
+        {
+            mFont.tahoma_7b_white.drawString(g,(slot+1).ToString(),(int)rect.center.x,
+                (int)rect.center.y-mFont.tahoma_7b_white.getHeight()/2,mFont.CENTER,mFont.tahoma_7b_dark);
         }
         private static void Button(Rect rect, bool held) => Circle(rect, new Color32(40,24,12,158),
             held ? new Color32(255,226,168,255) : new Color32(242,180,90,255), 2);
@@ -164,7 +170,7 @@ namespace Hud
         }
 
         private static GUIStyle badgeText;
-        private static void PaintItemBadge(mGraphics g, Rect slot, int quantity)
+        internal static void PaintItemBadge(mGraphics g, Rect slot, int quantity, Vector2? outsideLogical = null)
         {
             string text = quantity > 99 ? "99+" : string.Concat(quantity);
             mFont font = mFont.tahoma_7_white;
@@ -187,7 +193,7 @@ namespace Hud
             int height = Mathf.CeilToInt(textSize.y)+2*padding;
             int width = Mathf.Max(height,Mathf.CeilToInt(textSize.x)+2*padding);
             // The same base-pixel rect positions skin and text under the safe-area matrix.
-            float outsideX = DesignUnit(6)*zoom, outsideY = DesignUnit(4)*zoom;
+            float outsideX = (outsideLogical?.x ?? DesignUnit(6))*zoom, outsideY = (outsideLogical?.y ?? DesignUnit(4))*zoom;
             Rect badge = new Rect(Mathf.Round(slot.xMax*zoom+outsideX)-width,
                 Mathf.Round(slot.yMax*zoom+outsideY)-height,width,height);
             Image skin = Notifications.NotificationSkin.BadgeIcon;

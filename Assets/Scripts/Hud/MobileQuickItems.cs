@@ -12,6 +12,23 @@ namespace Hud
         private static readonly Dictionary<int,long> readyAt = new Dictionary<int,long>();
         private static readonly List<int> expired = new List<int>();
         private static string owner;
+        private sealed class RemoveSlot
+        {
+            public int Slot, Template;
+            public string Owner;
+        }
+        private static string SlotPosition(int slot) => slot == 0 ? "trái" : slot == 1 ? "giữa" : "phải";
+        internal static void ShowSlotMenu(int slot)
+        {
+            Load();
+            if (slot < 0 || slot >= templates.Length || templates[slot] < 0) return;
+            var request = new RemoveSlot { Slot = slot, Template = templates[slot], Owner = owner };
+            MyVector menu = new MyVector();
+            menu.addElement(new Command("Gỡ ô nhanh " + (slot+1) + "\n(" + SlotPosition(slot) + ")",listener,5,request));
+            menu.addElement(new Command("Hủy",listener,6,null));
+            GameCanvas.clearAllPointerEvent();
+            GameCanvas.menu.startAt(menu,3);
+        }
         private static void Load()
         {
             string host = BitConverter.ToString(System.Text.Encoding.UTF8.GetBytes(GameMidlet.IP)).Replace("-","");
@@ -71,16 +88,36 @@ namespace Hud
         }
         internal static void AddAssignmentCommands(MyVector menu, Item item)
         {
-            if (!HudLayout.IsMobileLayout || item == null || item.isTypeBody()) return;
-            for (int i=0;i<3;i++) menu.addElement(new Command("Gắn ô nhanh " + (i+1),listener,i+1,item));
-            menu.addElement(new Command("Bỏ gán ô nhanh",listener,4,item));
+            if (item == null || item.isTypeBody()) return;
+            Load();
+            if (Array.IndexOf(templates,(int)item.template.id) >= 0) {
+                menu.addElement(new Command("Bỏ gán ô nhanh",listener,4,item));
+                return;
+            }
+            for (int i=0;i<3;i++) menu.addElement(new Command("Gắn ô nhanh " + (i+1) + "\n(" + SlotPosition(i) + ")",listener,i+1,item));
         }
         public void perform(int action, object parameter)
         {
-            if (!HudLayout.IsMobileLayout || !(parameter is Item item)) return;
+            if (action == 5 && parameter is RemoveSlot request) {
+                Load();
+                // A stale menu cannot clear a reassigned slot or another character's layout.
+                if (owner != request.Owner || templates[request.Slot] != request.Template) return;
+                templates[request.Slot] = -1;
+                Persist();
+                return;
+            }
+            if (!(parameter is Item item)) return;
             Load();
-            if (action >= 1 && action <= 3) templates[action-1] = item.template.id;
+            if (action >= 1 && action <= 3) {
+                // Enforce removal before reassignment, including commands from stale menus.
+                if (Array.IndexOf(templates,(int)item.template.id) >= 0) return;
+                templates[action-1] = item.template.id;
+            }
             else if (action == 4) for(int i=0;i<3;i++) if(templates[i] == item.template.id) templates[i] = -1;
+            Persist();
+        }
+        private static void Persist()
+        {
             HudLayout.Invalidate();
             Rms.saveRMSString(owner,string.Join(",",Array.ConvertAll(templates,id => id.ToString())));
         }

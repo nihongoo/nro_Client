@@ -6,7 +6,6 @@ namespace Mod.CuongLe
     {
     	private static AutoSkill _Instance;
 
-    	public static bool isLoadKeySkill;
 
     	public static bool isAutoSendAttack;
 
@@ -66,11 +65,6 @@ namespace Mod.CuongLe
     					AutoUseSkill(i);
     				}
     			}
-    		}
-    		if (isLoadKeySkill && GameCanvas.gameTick % 20 == 0)
-    		{
-    			isLoadKeySkill = false;
-    			LoadKeySkills();
     		}
     		if (isAutoChangeFocus)
     		{
@@ -246,19 +240,7 @@ namespace Mod.CuongLe
     	{
     	}
 
-    	private static void LoadKeySkills()
-    	{
-    		for (int i = 0; i < Char.myCharz().nClass.skillTemplates.Length; i++)
-    		{
-    			SkillTemplate skillTemplate = Char.myCharz().nClass.skillTemplates[i];
-    			Skill skill = Char.myCharz().getSkill(skillTemplate);
-    			if (skill != null)
-    			{
-    				GameScr.keySkill[i] = skill;
-    			}
-    			GameScr.gI().saveKeySkillToRMS();
-    		}
-    	}
+
 
     	public static void AutoSendAttack()
     	{
@@ -469,7 +451,6 @@ namespace Mod.CuongLe
 
     	static AutoSkill()
     	{
-    		isLoadKeySkill = true;
     		lastTimeSendAttack = new long[10];
     		isAutoUseSkills = new bool[10];
     		lastTimeUseSkill = new long[10];

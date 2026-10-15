@@ -492,7 +492,6 @@ public class GameScr : mScreen, IChatable
 
     public static int firstY;
 
-    public static int wSkill;
 
     public static long deltaTime;
 
@@ -604,7 +603,6 @@ public class GameScr : mScreen, IChatable
 
     private int move;
 
-    public int keyTouchSkill = -1;
 
     private long lastSendUpdatePostion;
 
@@ -648,7 +646,6 @@ public class GameScr : mScreen, IChatable
 
     public static Image arrow;
 
-    private static int yTouchBar;
 
     internal static bool IsChatButtonVisible => Hud.TopActionsHud.IsRowVisible
         && !TileMap.isOfflineMap() && !instance.isVS();
@@ -667,22 +664,11 @@ public class GameScr : mScreen, IChatable
                 new Vector2(GameCanvas.w, 13), Vector2.zero), Hud.HudLayout.WorldBarOrder, () => WorldChat.WorldChatHud.IsVisible);
         Hud.HudLayout.Register("legacy.target-menu", () => Char.myCharz().cmdMenu == null ? new Rect() :
             new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34), Hud.HudLayout.MenuOrder);
-        Hud.HudLayout.Register("legacy.screen-menu", () => Hud.HudLayout.IsMobileLayout || instance?.cmdMenu == null ? new Rect() :
-            new Rect(instance.cmdMenu.x, instance.cmdMenu.y, instance.cmdMenu.w, instance.cmdMenu.h), Hud.HudLayout.MenuOrder);
         Hud.CombatMobileHud.Register();
-        // PC adapters remain until cluster 5b. Mobile controls own their individual entries.
-        for (int slot = 0; slot < 10; slot++) {
-            int index = slot;
-            Hud.HudLayout.Register("legacy.skill." + index, () => Hud.HudLayout.IsMobileLayout ? new Rect() : LegacySkillBounds(index), Hud.HudLayout.ControlsOrder);
-        }
-        Hud.HudLayout.Register("legacy.potion", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP, yHP + 10, 40, 40) :
-            new Rect(xSkill + xHP - 1, yHP - 1, 30, 30), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.potion-alt", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP - 1, yHP - 6, 42, 50) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.context-item", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch ? new Rect(xHP + 5, yHP - 36, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.attack", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 ? new Rect(xF, yF, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.focus", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 ? new Rect(xTG, yTG, 40, 40) : new Rect(), Hud.HudLayout.ControlsOrder);
-        Hud.HudLayout.Register("legacy.joystick", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
+        // The broad optional analog zone goes before the individual PC controls.
+        Hud.HudLayout.Register("pc-analog.touch", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
             ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.CombatPcHud.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
             () => GameCanvas.currentScreen == instance && (GameCanvas.currentDialog != null || GameCanvas.panel.isShow
@@ -690,14 +676,7 @@ public class GameScr : mScreen, IChatable
                 || ChatPopup.serverChatPopUp != null || Notifications.NotificationCenter.IsOpen || Mod.CuongLe.DoHoa.isShowMenuVIP
                 || instance.isPaintPopup()));
     }
-    private static Rect LegacySkillBounds(int index)
-    {
-        if (xS == null || yS == null || index >= xS.Length || index >= yS.Length) return new Rect();
-        Rect image = new Rect(xSkill + xS[index] - 1, yS[index] - 1, 30, 30);
-        Rect touch = new Rect(xSkill + xS[index] - wSkill / 2 + 12, yS[index] - wSkill / 2 + 12, wSkill, wSkill);
-        return Rect.MinMaxRect(Mathf.Min(image.xMin, touch.xMin), Mathf.Min(image.yMin, touch.yMin),
-            Mathf.Max(image.xMax, touch.xMax), Mathf.Max(image.yMax, touch.yMax));
-    }
+
     internal static void CollectChatObstacles(System.Collections.Generic.List<Rect> bounds)
     {
         Hud.HudLayout.CopyObstaclesAbove(Hud.HudLayout.WorldBar, bounds);
@@ -715,27 +694,10 @@ public class GameScr : mScreen, IChatable
 
     private static int yU;
 
-    private static int xF;
-
-    private static int yF;
-
+    // Compatibility for tutorial arrows; PC painter derives these from the item registry.
     public static int xHP;
 
     public static int yHP;
-
-    private static int xTG;
-
-    private static int yTG;
-
-    public static int[] xS;
-
-    public static int[] yS;
-
-    public static int xSkill;
-
-    public static int ySkill;
-
-    public static int padSkill;
 
     public long dMP;
 
@@ -1036,9 +998,12 @@ public class GameScr : mScreen, IChatable
         {
             cmdMenu.x = 0;
             cmdMenu.y = gH - 30;
-            cmdFocus.x = gW - 32;
-            cmdFocus.y = gH - 32;
+            if (Hud.HudLayout.IsMobileLayout) {
+                cmdFocus.x = gW - 32;
+                cmdFocus.y = gH - 32;
+            }
         }
+        if (!Hud.HudLayout.IsMobileLayout) cmdFocus = null;
         right = cmdFocus;
         isPaintRada = 1;
         if (GameCanvas.isTouch)
@@ -1935,22 +1900,7 @@ public class GameScr : mScreen, IChatable
         ChatTextField.gI().parentScreen = instance;
         ChatTextField.gI().tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
         ChatTextField.gI().initChatTextField();
-        if (GameCanvas.isTouch && !Hud.HudLayout.IsMobileLayout)
-        {
-            yTouchBar = gH - 88;
-            xF = gW - 55;
-            yF = yTouchBar + 35;
-            xTG = gW - 37;
-            yTG = yTouchBar - 1;
-            if (GameCanvas.w >= 450)
-            {
-                yTG -= 12;
-                yHP -= 7;
-                xF -= 10;
-                yF -= 5;
-                xTG -= 10;
-            }
-        }
+
         setSkillBarPosition();
         disXC = ((GameCanvas.w <= 200) ? 30 : 40);
         if (Rms.loadRMSInt("viewchat") == -1)
@@ -1963,84 +1913,12 @@ public class GameScr : mScreen, IChatable
         }
     }
 
-   public static void setSkillBarPosition()
-	{
-        if (Hud.HudLayout.IsMobileLayout) return; // Rect providers replace mobile coordinates entirely.
-		Skill[] array = (!GameCanvas.isTouch) ? GameScr.keySkill : GameScr.onScreenSkill;
-		GameScr.xS = new int[array.Length];
-		GameScr.yS = new int[array.Length];
-		if (GameCanvas.isTouchControlSmallScreen && GameScr.isUseTouch)
-		{
-			GameScr.xSkill = 23;
-			GameScr.ySkill = 52;
-			GameScr.padSkill = 5;
-			for (int i = 0; i < GameScr.xS.Length; i++)
-			{
-				GameScr.xS[i] = i * (25 + GameScr.padSkill);
-				GameScr.yS[i] = GameScr.ySkill;
-				if (GameScr.xS.Length > 5 && i >= GameScr.xS.Length / 2)
-				{
-					GameScr.xS[i] = (i - GameScr.xS.Length / 2) * (25 + GameScr.padSkill);
-					GameScr.yS[i] = GameScr.ySkill - 32;
-				}
-			}
-			GameScr.xHP = array.Length * (25 + GameScr.padSkill);
-			GameScr.yHP = GameScr.ySkill;
-		}
-		else
-		{
-			GameScr.wSkill = 30;
-			if (GameCanvas.w <= 320)
-			{
-				GameScr.ySkill = GameScr.gH - GameScr.wSkill - 6;
-				GameScr.xSkill = GameScr.gW2 - array.Length * GameScr.wSkill / 2 - 25;
-			}
-			else
-			{
-				GameScr.wSkill = 40;
-				GameScr.xSkill = 10;
-				GameScr.ySkill = GameCanvas.h - GameScr.wSkill + 7;
-			}
-			for (int j = 0; j < GameScr.xS.Length; j++)
-			{
-				GameScr.xS[j] = j * GameScr.wSkill;
-				GameScr.yS[j] = GameScr.ySkill;
-				if (GameScr.xS.Length > 5 && j >= GameScr.xS.Length / 2)
-				{
-					GameScr.xS[j] = (j - GameScr.xS.Length / 2) * GameScr.wSkill;
-					GameScr.yS[j] = GameScr.ySkill - 32;
-				}
-			}
-			GameScr.xHP = array.Length * GameScr.wSkill;
-			GameScr.yHP = GameScr.ySkill;
-		}
-		if (GameCanvas.isTouch)
-		{
-			GameScr.xSkill = 17;
-			GameScr.ySkill = GameCanvas.h - 40;
-			if (GameScr.gamePad.isSmallGamePad && GameScr.isAnalog == 1)
-			{
-				GameScr.xHP = array.Length * GameScr.wSkill;
-				GameScr.yHP = GameScr.ySkill;
-			}
-			else
-			{
-				GameScr.xHP = GameCanvas.w - 45;
-				GameScr.yHP = GameCanvas.h - 45;
-			}
-			GameScr.setTouchBtn();
-			for (int k = 0; k < GameScr.xS.Length; k++)
-			{
-				GameScr.xS[k] = k * GameScr.wSkill;
-				GameScr.yS[k] = GameScr.ySkill;
-				if (GameScr.xS.Length > 5 && k >= GameScr.xS.Length / 2)
-				{
-					GameScr.xS[k] = (k - GameScr.xS.Length / 2) * GameScr.wSkill;
-					GameScr.yS[k] = GameScr.ySkill - 32;
-				}
-			}
-		}
-	}
+    public static void setSkillBarPosition()
+    {
+        if (Hud.HudLayout.IsMobileLayout) return;
+        // SoundMn still invokes this API; PC positions now come only from registry providers.
+        Hud.HudLayout.Invalidate();
+    }
 
     private static void updateCamera()
     {
@@ -2659,6 +2537,9 @@ public class GameScr : mScreen, IChatable
             return;
         }
         if (Hud.TopInfoHud.UpdateInput()) return;
+        if (!Hud.HudLayout.IsMobileLayout) {
+            Hud.CombatPcPointer.Dispatch();
+        }
         if (GameCanvas.isTouch && !ChatTextField.gI().isShow && !GameCanvas.menu.showMenu)
         {
             updateKeyTouchControl();
@@ -3829,7 +3710,7 @@ public class GameScr : mScreen, IChatable
     internal long MobilePotionRemaining(long now) => System.Math.Max(0L,10000L-now+lastUsePotion);
     internal void MarkMobilePotionUse(long now)
     {
-        if (Hud.HudLayout.IsMobileLayout) lastUsePotion = now;
+        lastUsePotion = now; // Called only by the shared quick-item use path.
     }
 
     public void doUseHP()
@@ -4227,31 +4108,7 @@ public class GameScr : mScreen, IChatable
         return GameCanvas.isPointerHoldIn(x, y, w, h);
     }
 
-    public void checkMouseControls()
-    {
-        if (GameCanvas.isMouseFocus(xHP, yHP, 40, 40))
-        {
-            if (Char.myCharz().statusMe != 14)
-            {
-                mScreen.keyMouse = 10;
-            }
-        }
-        else if (GameCanvas.isMouseFocus(xF, yF, 40, 40))
-        {
-            if (Char.myCharz().statusMe != 14)
-            {
-                mScreen.keyMouse = 5;
-            }
-        }
-        else if (cmdMenu != null && GameCanvas.isMouseFocus(cmdMenu.x, cmdMenu.y, cmdMenu.w / 2, cmdMenu.h))
-        {
-            mScreen.keyMouse = 1;
-        }
-        else
-        {
-            mScreen.keyMouse = -1;
-        }
-    }
+
 
     private void updateKeyTouchControl()
     {
@@ -4261,17 +4118,10 @@ public class GameScr : mScreen, IChatable
             Hud.MobileCombatPointers.Dispatch();
             return;
         }
-        if (isNotPaintTouchControl())
-        {
-            return;
-        }
+        if (isNotPaintTouchControl()) return;
         mScreen.keyTouch = -1;
         if (GameCanvas.isTouchControl)
         {
-            if (Main.isPC)
-            {
-                checkMouseControls();
-            }
             if (Char.myCharz().cmdMenu != null && GameCanvas.isPointerHoldIn(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34))
             {
                 mScreen.keyTouch = 20;
@@ -4284,141 +4134,10 @@ public class GameScr : mScreen, IChatable
                     return;
                 }
             }
-            updateGamePad();
-            if (((isAnalog != 0) ? GameCanvas.isPointerHoldIn(xHP, yHP + 10, 34, 34) : GameCanvas.isPointerHoldIn(xHP, yHP + 10, 40, 40)) && Char.myCharz().statusMe != 14 && mobCapcha == null)
-            {
-                mScreen.keyTouch = 10;
-                GameCanvas.isPointerJustDown = false;
-                isPointerDowning = false;
-                if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                {
-                    GameCanvas.keyPressed[10] = true;
-                    GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-                }
-            }
-            if (((isAnalog != 0) ? GameCanvas.isPointerHoldIn(xHP + 5, yHP - 6 - 34 + 10, 34, 34) : GameCanvas.isPointerHoldIn(xHP + 5, yHP - 6 - 40 + 10, 40, 40)) && Char.myCharz().statusMe != 14 && mobCapcha == null)
-            {
-                if (isPickNgocRong)
-                {
-                    mScreen.keyTouch = 14;
-                    GameCanvas.isPointerJustDown = false;
-                    isPointerDowning = false;
-                    if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                    {
-                        GameCanvas.keyPressed[14] = true;
-                        GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-                        isPickNgocRong = false;
-                        Service.gI().useItem(-1, -1, -1, -1);
-                    }
-                }
-                else if (isudungCapsun4)
-                {
-                    mScreen.keyTouch = 14;
-                    GameCanvas.isPointerJustDown = false;
-                    isPointerDowning = false;
-                    if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                    {
-                        GameCanvas.keyPressed[14] = true;
-                        GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-                        for (int i = 0; i < Char.myCharz().arrItemBag.Length; i++)
-                        {
-                            Item item = Char.myCharz().arrItemBag[i];
-                            if (item == null)
-                            {
-                                continue;
-                            }
-                            Res.err("find " + item.template.id);
-                            if (item.template.id == 194)
-                            {
-                                isudungCapsun4 = item.quantity > 0;
-                                if (isudungCapsun4)
-                                {
-                                    Service.gI().useItem(0, 1, (sbyte)i, -1);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                else if (isudungCapsun3)
-                {
-                    mScreen.keyTouch = 14;
-                    GameCanvas.isPointerJustDown = false;
-                    isPointerDowning = false;
-                    if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                    {
-                        GameCanvas.keyPressed[14] = true;
-                        GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-                        for (int j = 0; j < Char.myCharz().arrItemBag.Length; j++)
-                        {
-                            Item item2 = Char.myCharz().arrItemBag[j];
-                            if (item2 != null && item2.template.id == 193)
-                            {
-                                isudungCapsun3 = item2.quantity > 0;
-                                if (isudungCapsun3)
-                                {
-                                    Service.gI().useItem(0, 1, (sbyte)j, -1);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            // Keep the existing optional PC analog movement; combat clicks never enter it.
+            gamePad.update();
         }
-        if (mobCapcha != null)
-        {
-            updateKeyTouchCapcha();
-        }
-        else if (isHaveSelectSkill)
-        {
-            if (isCharging())
-            {
-                return;
-            }
-            keyTouchSkill = -1;
-            bool flag = false;
-            if (onScreenSkill.Length > 5 && (GameCanvas.isPointerHoldIn(xSkill + xS[0] - wSkill / 2 + 12, yS[0] - wSkill / 2 + 12, 5 * wSkill, wSkill) || GameCanvas.isPointerHoldIn(xSkill + xS[5] - wSkill / 2 + 12, yS[5] - wSkill / 2 + 12, 5 * wSkill, wSkill)))
-            {
-                flag = true;
-            }
-            if (flag || GameCanvas.isPointerHoldIn(xSkill + xS[0] - wSkill / 2 + 12, yS[0] - wSkill / 2 + 12, 5 * wSkill, wSkill) || (!GameCanvas.isTouchControl && GameCanvas.isPointerHoldIn(xSkill + xS[0] - wSkill / 2 + 12, yS[0] - wSkill / 2 + 12, wSkill, onScreenSkill.Length * wSkill)))
-            {
-                GameCanvas.isPointerJustDown = false;
-                isPointerDowning = false;
-                int num = (GameCanvas.pxLast - (xSkill + xS[0] - wSkill / 2 + 12)) / wSkill;
-                if (flag && GameCanvas.pyLast < yS[0])
-                {
-                    num += 5;
-                }
-                keyTouchSkill = num;
-                if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-                {
-                    GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-                    selectedIndexSkill = num;
-                    if (indexSelect < 0)
-                    {
-                        indexSelect = 0;
-                    }
-                    if (!Main.isPC)
-                    {
-                        if (selectedIndexSkill > onScreenSkill.Length - 1)
-                        {
-                            selectedIndexSkill = onScreenSkill.Length - 1;
-                        }
-                    }
-                    else if (selectedIndexSkill > keySkill.Length - 1)
-                    {
-                        selectedIndexSkill = keySkill.Length - 1;
-                    }
-                    Skill skill = (Main.isPC ? keySkill[selectedIndexSkill] : onScreenSkill[selectedIndexSkill]);
-                    if (skill != null)
-                    {
-                        doSelectSkill(skill, isShortcut: true);
-                    }
-                }
-            }
-        }
+        if (mobCapcha != null) updateKeyTouchCapcha();
         if (GameCanvas.isPointerJustRelease)
         {
             if (GameCanvas.keyHold[1] || GameCanvas.keyHold[(!Main.isPC) ? 2 : 21] || GameCanvas.keyHold[3] || GameCanvas.keyHold[(!Main.isPC) ? 4 : 23] || GameCanvas.keyHold[(!Main.isPC) ? 6 : 24])
@@ -5230,10 +4949,7 @@ public class GameScr : mScreen, IChatable
             if (!GameCanvas.panel.isShow && GameCanvas.currentDialog == null && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null && GameCanvas.currentScreen.Equals(instance))
             {
                 base.paint(g);
-                if (!Hud.HudLayout.IsMobileLayout && mScreen.keyMouse == 1 && cmdMenu != null)
-                {
-                    g.drawImage(ItemMap.imageFlare, cmdMenu.x + 7, cmdMenu.y + 15, 3);
-                }
+
             }
             resetTranslate(g);
             int num13 = 100 + ((Char.vItemTime.size() != 0) ? (textTime.size() * 12) : 0);
@@ -5272,10 +4988,7 @@ public class GameScr : mScreen, IChatable
                 }
             }
             ChatTextField.gI().paint(g);
-            if (!Hud.HudLayout.IsMobileLayout && isNewClanMessage && !GameCanvas.panel.isShow && GameCanvas.gameTick % 4 == 0)
-            {
-                g.drawImage(ItemMap.imageFlare, cmdMenu.x + 15, cmdMenu.y + 30, mGraphics.BOTTOM | mGraphics.HCENTER);
-            }
+
             if (isSuperPower)
             {
                 dxPower += 5;
@@ -5753,166 +5466,7 @@ public class GameScr : mScreen, IChatable
             return;
         }
         if (Hud.HudLayout.IsMobileLayout) { Hud.CombatMobileHud.Paint(g); return; }
-        long num = mSystem.currentTimeMillis();
-        long num2 = num - this.lastUsePotion;
-        int num3 = 0;
-        if (num2 < 10000L)
-        {
-            num3 = (int)(num2 * 20L / 10000L);
-        }
-        if (!GameCanvas.isTouch)
-        {
-            g.drawImage((mScreen.keyTouch != 10) ? GameScr.imgSkill : GameScr.imgSkill2, GameScr.xSkill + GameScr.xHP - 1, GameScr.yHP - 1, 0);
-            SmallImage.drawSmallImage(g, 542, GameScr.xSkill + GameScr.xHP + 3, GameScr.yHP + 3, 0, 0);
-            mFont.number_gray.drawString(g, string.Empty + GameScr.hpPotion, GameScr.xSkill + GameScr.xHP + 22, GameScr.yHP + 15, 1);
-            if (num2 < 10000L)
-            {
-                g.setColor(2721889);
-                num3 = (int)(num2 * 20L / 10000L);
-                g.fillRect(GameScr.xSkill + GameScr.xHP + 3, GameScr.yHP + 3 + num3, 20, 20 - num3);
-            }
-        }
-        else if (global::Char.myCharz().statusMe != 14)
-        {
-            if (GameScr.gamePad.isSmallGamePad)
-            {
-                if (GameScr.isAnalog != 1)
-                {
-                    g.setColor(9670800);
-                    g.fillRect(GameScr.xHP + 9, GameScr.yHP + 10 + 10, 22, 20);
-                    g.setColor(16777215);
-                    g.fillRect(GameScr.xHP + 9, GameScr.yHP + 10 + ((num3 == 0) ? 0 : (20 - num3)) + 10, 22, (num3 == 0) ? 20 : num3);
-                    g.drawImage((mScreen.keyTouch != 10) ? GameScr.imgHP1 : GameScr.imgHP2, GameScr.xHP, GameScr.yHP + 10, 0);
-                    mFont.tahoma_7_red.drawString(g, string.Empty + GameScr.hpPotion, GameScr.xHP + 20, GameScr.yHP + 15 + 10, 2);
-                    if (GameScr.isPickNgocRong)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNR1 : GameScr.imgNR2, GameScr.xHP + 5, GameScr.yHP - 6 - 40 + 10, 0);
-                    }
-                    else if (GameScr.isudungCapsun4)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNutF : GameScr.imgNut, GameScr.xHP + 5, GameScr.yHP - 6 - 40 + 10, 0);
-                        SmallImage.drawSmallImage(g, 1088, GameScr.xHP - 7 + 5, GameScr.yHP - 6 - 40 - 7 + 10, 0, 0);
-                    }
-                    else if (GameScr.isudungCapsun3)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNutF : GameScr.imgNut, GameScr.xHP + 5, GameScr.yHP - 6 - 40 + 10, 0);
-                        SmallImage.drawSmallImage(g, 1087, GameScr.xHP - 7 + 5, GameScr.yHP - 6 - 40 - 7 + 10, 0, 0);
-                    }
-                }
-                else if (GameScr.isAnalog == 1)
-                {
-                    int num4 = 10;
-                    g.drawImage((mScreen.keyTouch != 10) ? GameScr.imgSkill : GameScr.imgSkill2, GameScr.xSkill + GameScr.xHP - 1, GameScr.yHP - 1 + num4, 0);
-                    SmallImage.drawSmallImage(g, 542, GameScr.xSkill + GameScr.xHP + 3, GameScr.yHP + 3 + num4, 0, 0);
-                    mFont.number_gray.drawString(g, string.Empty + GameScr.hpPotion, GameScr.xSkill + GameScr.xHP + 22, GameScr.yHP + 13 + num4, 1);
-                    if (num2 < 10000L)
-                    {
-                        g.setColor(2721889);
-                        num3 = (int)(num2 * 20L / 10000L);
-                        g.fillRect(GameScr.xSkill + GameScr.xHP + 3, GameScr.yHP + 3 + num3 + num4, 20, 20 - num3);
-                    }
-                    if (GameScr.isPickNgocRong)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNR3 : GameScr.imgNR4, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                    }
-                    else if (GameScr.isudungCapsun4)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                        SmallImage.drawSmallImage(g, 1088, GameScr.xHP + 20 - 7 + 5, GameScr.yHP + 20 - 6 - 40 - 7 + 10, 0, 0);
-                    }
-                    else if (GameScr.isudungCapsun3)
-                    {
-                        g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                        SmallImage.drawSmallImage(g, 1087, GameScr.xHP + 20 - 7 + 5, GameScr.yHP + 20 - 6 - 40 - 7 + 10, 0, 0);
-                    }
-                }
-            }
-            else if (GameScr.isAnalog != 1)
-            {
-                g.setColor(9670800);
-                g.fillRect(GameScr.xHP + 9, GameScr.yHP + 10 - 6, 22, 20);
-                g.setColor(16777215);
-                g.fillRect(GameScr.xHP + 9, GameScr.yHP + 10 + ((num3 == 0) ? 0 : (20 - num3)) - 6, 22, (num3 == 0) ? 20 : num3);
-                g.drawImage((mScreen.keyTouch != 10) ? GameScr.imgHP1 : GameScr.imgHP2, GameScr.xHP, GameScr.yHP - 6, 0);
-                mFont.tahoma_7_red.drawString(g, string.Empty + GameScr.hpPotion, GameScr.xHP + 20, GameScr.yHP + 15 - 6, 2);
-                if (GameScr.isPickNgocRong)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNR1 : GameScr.imgNR2, GameScr.xHP, GameScr.yHP - 6 - 40, 0);
-                }
-                else if (GameScr.isudungCapsun4)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20, GameScr.yHP + 20 - 6 - 40, mGraphics.HCENTER | mGraphics.VCENTER);
-                    SmallImage.drawSmallImage(g, 1088, GameScr.xHP + 20 - 7, GameScr.yHP + 20 - 6 - 40 - 7, 0, 0);
-                }
-                else if (GameScr.isudungCapsun3)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20, GameScr.yHP + 20 - 6 - 40, mGraphics.HCENTER | mGraphics.VCENTER);
-                    SmallImage.drawSmallImage(g, 1087, GameScr.xHP + 20 - 7, GameScr.yHP + 20 - 6 - 40 - 7, 0, 0);
-                }
-            }
-            else
-            {
-                g.setColor(9670800);
-                g.fillRect(GameScr.xHP + 10, GameScr.yHP + 10 - 6 + 10, 20, 18);
-                g.setColor(16777215);
-                g.fillRect(GameScr.xHP + 10, GameScr.yHP + 10 + ((num3 == 0) ? 0 : (20 - num3)) - 6 + 10, 20, (num3 == 0) ? 18 : num3);
-                g.drawImage((mScreen.keyTouch != 10) ? GameScr.imgHP3 : GameScr.imgHP4, GameScr.xHP + 20, GameScr.yHP + 20 - 6 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                mFont.tahoma_7_red.drawString(g, string.Empty + GameScr.hpPotion, GameScr.xHP + 20, GameScr.yHP + 15 - 6 + 10, 2);
-                if (GameScr.isPickNgocRong)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNR3 : GameScr.imgNR4, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                }
-                else if (GameScr.isudungCapsun4)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                    SmallImage.drawSmallImage(g, 1088, GameScr.xHP + 20 - 7 + 5, GameScr.yHP + 20 - 6 - 40 - 7 + 10, 0, 0);
-                }
-                else if (GameScr.isudungCapsun3)
-                {
-                    g.drawImage((mScreen.keyTouch != 14) ? GameScr.imgNut : GameScr.imgNutF, GameScr.xHP + 20 + 5, GameScr.yHP + 20 - 6 - 40 + 10, mGraphics.HCENTER | mGraphics.VCENTER);
-                    SmallImage.drawSmallImage(g, 1087, GameScr.xHP + 20 - 7 + 5, GameScr.yHP + 20 - 6 - 40 - 7 + 10, 0, 0);
-                }
-            }
-        }
-        if (GameScr.isHaveSelectSkill)
-        {
-            Skill[] array = Main.isPC ? GameScr.keySkill : ((!GameCanvas.isTouch) ? GameScr.keySkill : GameScr.onScreenSkill);
-            if (!GameCanvas.isTouch)
-            {
-                g.setColor(11152401);
-                g.fillRect(GameScr.xSkill + GameScr.xHP + 2, GameScr.yHP - 10 + 6, 20, 10);
-                mFont.tahoma_7_white.drawString(g, "*", GameScr.xSkill + GameScr.xHP + 12, GameScr.yHP - 8 + 6, mFont.CENTER);
-            }
-            int num5 = (!Main.isPC) ? ((!GameCanvas.isTouch) ? array.Length : this.nSkill) : array.Length;
-            for (int i = 0; i < num5; i++)
-            {
-                Skill skill = array[i];
-                if (skill != global::Char.myCharz().myskill)
-                {
-                    g.drawImage(GameScr.imgSkill, GameScr.xSkill + GameScr.xS[i] - 1, GameScr.yS[i] - 1, 0);
-                }
-                if (skill != null)
-                {
-                    if (skill == global::Char.myCharz().myskill)
-                    {
-                        g.drawImage(GameScr.imgSkill2, GameScr.xSkill + GameScr.xS[i] - 1, GameScr.yS[i] - 1, 0);
-                        if (GameCanvas.isTouch && !Main.isPC)
-                        {
-                            g.drawRegion(Mob.imgHP, 0, 12, 9, 6, 0, GameScr.xSkill + GameScr.xS[i] + 8, GameScr.yS[i] - 7, 0);
-                        }
-                    }
-                    skill.paint(GameScr.xSkill + GameScr.xS[i] + 13, GameScr.yS[i] + 13, g);
-                    if ((i == this.selectedIndexSkill && !this.isPaintUI() && GameCanvas.gameTick % 10 > 5) || i == this.keyTouchSkill)
-                    {
-                        g.drawImage(ItemMap.imageFlare, GameScr.xSkill + GameScr.xS[i] + 13, GameScr.yS[i] + 14, 3);
-                    }
-                    long num6 = skill.coolDown - mSystem.currentTimeMillis() + skill.lastTimeUseThisSkill;
-                    mFont.tahoma_7b_yellow.drawString(g, (num6 > 0) ? string.Concat(num6 / 1000) : string.Empty, xSkill + xS[i] + 14, yS[i] + 8, mFont.CENTER, mFont.tahoma_7_red);
-
-                }
-            }
-        }
-        this.paintGamePad(g);
+        Hud.CombatPcHud.Paint(g);
     }
 
     public void paintOpen(mGraphics g)
@@ -6675,25 +6229,7 @@ public class GameScr : mScreen, IChatable
         }
     }
 
-    private static void setTouchBtn()
-    {
-        if (isAnalog != 0)
-        {
-            xTG = (xF = GameCanvas.w - 45);
-            if (gamePad.isLargeGamePad)
-            {
-                xSkill = gamePad.wZone + 20;
-                wSkill = 35;
-                xHP = xF - 45;
-            }
-            else if (gamePad.isMediumGamePad)
-            {
-                xHP = xF - 45;
-            }
-            yF = GameCanvas.h - 45;
-            yTG = yF - 45;
-        }
-    }
+
 
     internal void UseMobileHudContext()
     {
@@ -6751,44 +6287,9 @@ public class GameScr : mScreen, IChatable
         doSelectSkill(skill, isShortcut: true);
     }
 
-    private void updateGamePad()
-    {
-        if (isAnalog == 0 || Char.myCharz().statusMe == 14)
-        {
-            return;
-        }
-        if (GameCanvas.isPointerHoldIn(xF, yF, 40, 40))
-        {
-            mScreen.keyTouch = 5;
-            if (GameCanvas.isPointerJustRelease)
-            {
-                GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = true;
-                GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-            }
-        }
-        gamePad.update();
-        if (GameCanvas.isPointerHoldIn(xTG, yTG, 34, 34))
-        {
-            mScreen.keyTouch = 13;
-            GameCanvas.isPointerJustDown = false;
-            isPointerDowning = false;
-            if (GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
-            {
-                Char.myCharz().findNextFocusByKey();
-                GameCanvas.isPointerClick = (GameCanvas.isPointerJustDown = (GameCanvas.isPointerJustRelease = false));
-            }
-        }
-    }
 
-    private void paintGamePad(mGraphics g)
-    {
-        if (isAnalog != 0 && Char.myCharz().statusMe != 14)
-        {
-            g.drawImage((mScreen.keyTouch != 5 && mScreen.keyMouse != 5) ? imgFire0 : imgFire1, xF + 20, yF + 20, mGraphics.HCENTER | mGraphics.VCENTER);
-            gamePad.paint(g);
-            g.drawImage((mScreen.keyTouch != 13) ? imgFocus : imgFocus2, xTG + 20, yTG + 20, mGraphics.HCENTER | mGraphics.VCENTER);
-        }
-    }
+
+
 
     public void showWinNumber(string num, string finish)
     {

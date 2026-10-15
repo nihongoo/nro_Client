@@ -9,14 +9,14 @@ namespace Hud
     {
         private struct Key : System.IEquatable<Key>
         {
-            public int Source, X, Y, Width, Height, Diameter;
+            public int Source, X, Y, Width, Height, Diameter, Corner;
             public bool Equals(Key other) => Source == other.Source && X == other.X && Y == other.Y
-                && Width == other.Width && Height == other.Height && Diameter == other.Diameter;
+                && Width == other.Width && Height == other.Height && Diameter == other.Diameter && Corner == other.Corner;
             public override bool Equals(object other) => other is Key key && Equals(key);
             public override int GetHashCode()
             {
                 unchecked { int hash = Source; hash = hash*31+X; hash = hash*31+Y;
-                    hash = hash*31+Width; hash = hash*31+Height; return hash*31+Diameter; }
+                    hash = hash*31+Width; hash = hash*31+Height; return (hash*31+Diameter)*31+Corner; }
             }
         }
         private sealed class Cached
@@ -26,12 +26,48 @@ namespace Hud
         }
         private const int Capacity = 32;
         private static readonly Dictionary<Key,Cached> icons = new Dictionary<Key,Cached>();
-        private static readonly Dictionary<int,Texture2D> masks = new Dictionary<int,Texture2D>();
+        private static readonly Dictionary<long,Texture2D> masks = new Dictionary<long,Texture2D>();
         private static readonly CircularCombatIcon painter = new CircularCombatIcon();
         private static long useSerial;
         private Rect target;
         private int centerY;
         private bool floatingItem;
+        private int corner;
+
+        // PC opts into rounded squares. The mobile entry points retain the circle path.
+        internal static void PaintPcSkill(mGraphics graphics, Rect rect, Skill skill)
+        {
+            BeginPc(rect);
+            CircularCombatIcon previous = graphics.HudIconPainter;
+            graphics.HudIconPainter = painter;
+            try { skill.paint((int)rect.center.x,(int)rect.center.y,graphics); }
+            finally { graphics.HudIconPainter = previous; }
+        }
+        internal static void PaintPcItem(mGraphics graphics, Rect rect, int iconId)
+        {
+            BeginPc(rect);
+            CircularCombatIcon previous = graphics.HudIconPainter;
+            graphics.HudIconPainter = painter;
+            try { SmallImage.drawSmallImage(graphics,iconId,(int)rect.center.x,(int)rect.center.y,0,StaticObj.VCENTER_HCENTER); }
+            finally { graphics.HudIconPainter = previous; }
+        }
+        internal static void PaintPcImage(Rect rect, Image image)
+        {
+            if (image?.texture == null) return;
+            BeginPc(rect);
+            painter.DrawRegion(image.texture,new Rect(0,0,1,1));
+        }
+        private static void BeginPc(Rect rect)
+        {
+            Rect outer = HudButtonSkin.ScreenPixels(rect);
+            int size = Mathf.Max(1,Mathf.RoundToInt(Mathf.Min(outer.width,outer.height)));
+            int border = CombatPcHud.PhysicalUnit(2);
+            painter.target = new Rect(Mathf.Round(outer.center.x-size/2f)+border,
+                Mathf.Round(outer.center.y-size/2f)+border,Mathf.Max(1,size-border*2),Mathf.Max(1,size-border*2));
+            painter.corner = Mathf.Max(1,CombatPcHud.PhysicalUnit(12)-border);
+            painter.floatingItem = false;
+            painter.centerY = (int)rect.center.y;
+        }
 
         internal static void PaintSkill(mGraphics graphics, Rect rect, Skill skill)
         {
@@ -60,6 +96,7 @@ namespace Hud
             Rect outer = CombatMobileHud.CirclePixels(rect);
             int border = CombatMobileHud.BorderWidth(2);
             painter.floatingItem = floating;
+            painter.corner = 0;
             painter.target = floating ? outer : new Rect(outer.x+border,outer.y+border,
                 Mathf.Max(1,outer.width-2*border),Mathf.Max(1,outer.height-2*border));
             painter.centerY = (int)rect.center.y;
@@ -81,7 +118,7 @@ namespace Hud
             Key key = new Key {
                 Source = source.GetInstanceID(), X = Mathf.RoundToInt(uv.x*source.width),
                 Y = Mathf.RoundToInt(uv.y*source.height), Width = Mathf.RoundToInt(uv.width*source.width),
-                Height = Mathf.RoundToInt(uv.height*source.height), Diameter = (int)target.width
+                Height = Mathf.RoundToInt(uv.height*source.height), Diameter = (int)target.width, Corner = corner
             };
             if (key.Width <= 0 || key.Height <= 0 || key.X < 0 || key.Y < 0
                 || key.X+key.Width > source.width || key.Y+key.Height > source.height) return;
@@ -114,7 +151,7 @@ namespace Hud
                 float radius = diameter/2f;
                 for (int y=0;y<diameter;y++) for(int x=0;x<diameter;x++) {
                     float dx = x+.5f-radius, dy = y+.5f-radius;
-                    if (dx*dx+dy*dy > radius*radius) continue;
+                    if (key.Corner == 0 ? dx*dx+dy*dy > radius*radius : !InsideRounded(x+.5f,y+.5f,diameter,key.Corner)) continue;
                     float sx = Mathf.Clamp(key.Width/2f+dx/scale-.5f,0,key.Width-1);
                     float sy = Mathf.Clamp(key.Height/2f+dy/scale-.5f,0,key.Height-1);
                     int x0 = Mathf.FloorToInt(sx), y0 = Mathf.FloorToInt(sy);
@@ -148,11 +185,25 @@ namespace Hud
             Begin(rect);
             painter.DrawCooldownMask(1-Mathf.Clamp01((float)remaining/duration),1,new Color(0,0,0,.65f));
         }
+        internal static void PaintPcItemCooldown(Rect rect, long remaining, long duration)
+        {
+            if (remaining <= 0 || duration <= 0) return;
+            BeginPc(rect);
+            painter.DrawCooldownMask(1-Mathf.Clamp01((float)remaining/duration),1,new Color(0,0,0,.65f));
+        }
+        internal static bool InsideRounded(float x, float y, int size, int radius)
+        {
+            float r = Mathf.Min(radius,size/2f);
+            float dx = Mathf.Max(Mathf.Abs(x-size/2f)-(size/2f-r),0);
+            float dy = Mathf.Max(Mathf.Abs(y-size/2f)-(size/2f-r),0);
+            return dx*dx+dy*dy <= r*r;
+        }
         private void DrawCooldownMask(float top, float bottom, Color tint)
         {
             if (bottom <= top) return;
             int diameter = (int)target.width;
-            if (!masks.TryGetValue(diameter,out Texture2D mask)) {
+            long maskKey = ((long)diameter << 32) | (uint)corner;
+            if (!masks.TryGetValue(maskKey,out Texture2D mask)) {
                 if (masks.Count >= 8) { foreach(Texture2D old in masks.Values) Object.Destroy(old); masks.Clear(); }
                 mask = new Texture2D(diameter,diameter,TextureFormat.RGBA32,false);
                 mask.filterMode = FilterMode.Point; mask.wrapMode = TextureWrapMode.Clamp; mask.hideFlags = HideFlags.DontSave;
@@ -160,9 +211,10 @@ namespace Hud
                 float radius = diameter/2f;
                 for(int y=0;y<diameter;y++) for(int x=0;x<diameter;x++) {
                     float dx=x+.5f-radius,dy=y+.5f-radius;
-                    if(dx*dx+dy*dy<=radius*radius) data[y*diameter+x]=new Color32(255,255,255,255);
+                    if(corner == 0 ? dx*dx+dy*dy<=radius*radius : InsideRounded(x+.5f,y+.5f,diameter,corner))
+                        data[y*diameter+x]=new Color32(255,255,255,255);
                 }
-                mask.SetPixels32(data); mask.Apply(false,true); masks.Add(diameter,mask);
+                mask.SetPixels32(data); mask.Apply(false,true); masks.Add(maskKey,mask);
             }
             Draw(new Rect(target.x,target.y+top*diameter,diameter,(bottom-top)*diameter),mask,
                 new Rect(0,1-bottom,1,bottom-top),tint);

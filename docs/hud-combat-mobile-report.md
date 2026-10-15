@@ -169,3 +169,23 @@ Theo yêu cầu mới, thêm gate **10 giây** cho mọi item dùng từ ba ô n
 - Thời gian giữ trong RAM, tách theo host/port/charID, xóa trạng thái khi owner đổi; không ghi timer vào RMS. Deadline hết được dọn ở lần dùng tiếp. Relog cùng nhân vật trong cùng tiến trình không reset dictionary; restart app không giữ timer client.
 
 Test tay bổ sung, **đều CHƯA CHẠY**: spam một ô chỉ gửi một request mỗi 10 giây; cùng item gán ô 1/2/3 dùng chung timer; hai cấp đậu cũng chung timer; AutoPean/phím dùng đậu trước/sau ô nhanh tôn trọng cùng lastUsePotion; item khác có timer riêng; số đếm 10→1 rồi hết lớp tối; quantity/badge đúng và hết item thì trống; đổi gán/map/modal không reset/bấm xuyên; joystick+item vẫn hoạt động. **Chưa compile/chạy/build**, không push/merge/stash, không sửa server.
+
+## Gỡ menu gốc PC, giữ thứ tự mobile và gỡ item từng ô — 15/10/2026
+
+Theo yêu cầu mở rộng mới, bỏ nút menu gốc cả PC/mobile: Char.task gán left=null; xóa legacy.screen-menu, hover và flare menu cũ trong GameScr. Giữ cmdMenu/command11000 và đường mở menu bằng avatar (TopInfoHud), không gỡ menu ngữ cảnh Char.cmdMenu khác.
+
+Lỗi tự xếp thứ tự chiêu cũng có trên mobile: xóa hoàn toàn cờ isLoadKeySkill, bước Update và hàm LoadKeySkills tự gán theo nClass rồi gửi lưu lúc mở app. Hai HUD giữ thứ tự nhận từ KSkill/OSkill và luồng gán/lưu server hiện có; không sửa server/protocol/logic đánh/auto dùng chiêu. Phần này thay giới hạn chỉ sửa PC ở cập nhật trước theo yêu cầu mới của user. Thứ tự đã bị ghi đè trước đây cần gán lại một lần.
+
+Ba ô item trống/hết hàng hiện số1/2/3 **từ trái sang phải**, bằng font game ở giữa khung, không phụ thuộc nhãn phím. Menu gán ghi thêm vị trí trái/giữa/phải. PC chuột phải vào ô đã gán; mobile giữ ô0,6s trong cùng rect, lệch không quá8designpx → mở menu game có Gỡ ô nhanh N và Hủy. Chuột trái/tap ngắn vẫn dùng item như cũ. Giữ mở menu hủy capture/queue, không dùng item khi thả và modal dừng joystick. Gỡ chỉ templates[slot]=-1 và lưu RMS/invalidate, không gọi Service/useItem, không xóa quantity/timer. Menu kiểm tra owner và template để không gỡ nhầm sau khi đổi nhân vật/gán lại; cùng item ở nhiều ô chỉ gỡ ô chọn. Menu Bỏ gán ô nhanh trong túi cũ vẫn dùng được.
+
+Nguồn sửa: Char.cs (gán left); GameScr.cs (registry/painter menu cũ); Mod.CuongLe/AutoSkill.cs (khởi tạo thứ tự); Hud/MobileQuickItems.cs (ShowSlotMenu/RemoveSlot/Persist), CombatPcPointer.cs (chuột phải), MobileCombatPointers.cs (hold), CombatPcHud.cs/CombatMobileHud.cs (số ô item).
+
+Test tay mới **chưa chạy**: avatar mở menu, không còn nút/flare/hitbox menu cũ; xếp chiêu PC/mobile rồi thoát/mở/relog giữ đúng; gỡ từng ô1/2/3, trùng item nhiều ô chỉ mất ô chọn; Hủy không thay gán; giữ/thả không gửi dùng item/trừ quantity, tap ngắn vẫn dùng; gỡ/gán lại không reset cooldown; hết hàng vẫn gỡ được; placeholder1–3 đúng trái→phải sau gỡ/mở lại; modal/joystick+tap không hồi quy. Kiểm tra tĩnh delimiter/diff và so AutoSkill chỉ bỏ bước tự xếp; chưa compile/chạy/build, chưa commit/push/merge/stash.
+
+## Menu item đã gán / placeholder chiêu mobile — 15/10/2026
+
+Menu trong túi giờ đọc templates đang lưu trước khi tạo lệnh: item đã có ở bất kỳ ô nhanh nào chỉ thêm **Bỏ gán ô nhanh**, không thêm Gắn ô1/2/3; item chưa gán chỉ có ba lệnh Gắn ô, không có lệnh bỏ gán. Handler cũng chặn gán một template đã gán, tránh menu cũ bypass; muốn đổi ô phải gỡ trước. Item trùng nhiều ô từ bản cũ vẫn được bỏ gán hết qua menu túi; thao tác gỡ riêng từng ô trên HUD giữ nguyên. Không sửa dùng item/cooldown/quantity.
+
+CombatMobileHud.PaintEmptySlot dùng chung font/căn giữa cho **chiêu trống1–8** và item trống1–3; số thứ tự độc lập tùy chọn nhãn phím PC, chỉ hiện khi ô không có skill/item. Không đổi rect, icon/cooldown hoặc input.
+
+Test tay bổ sung chưa chạy: item chưa gán → menu có ba lựa chọn; gán rồi mở lại → chỉ Bỏ gán; gỡ rồi gán ô khác được, không tạo trùng qua menu cũ; mobile mọi ô chiêu trống đúng số1–8, gán chiêu số giữa biến mất. Kiểm tra tĩnh diff/delimiter; chưa compile/chạy/build, chưa commit/push/merge/stash.

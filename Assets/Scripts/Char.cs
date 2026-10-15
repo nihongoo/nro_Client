@@ -1055,7 +1055,7 @@ public class Char : IMapObject
         if (task.taskId >= 1)
         {
             GameScr.gI().right = GameScr.gI().cmdFocus;
-            GameScr.gI().left = Hud.HudLayout.IsMobileLayout ? null : GameScr.gI().cmdMenu;
+            GameScr.gI().left = null; // Main menu opens from the HUD avatar on PC and mobile.
         }
         if (task.taskId < 0)
         {
