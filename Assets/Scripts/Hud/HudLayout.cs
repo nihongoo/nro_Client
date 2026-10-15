@@ -85,6 +85,9 @@ namespace Hud
             generation++;
             EnsureViewport();
         }
+        // State can change between input and paint (modal open/close, tabs, scrolling).
+        // Retain the same providers, but discard their pre-change cached rectangles.
+        public static void Invalidate() => generation++;
         private static void EnsureViewport()
         {
             RuntimePlatform current = UnityEngine.Device.Application.platform;

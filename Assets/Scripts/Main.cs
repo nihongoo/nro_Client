@@ -83,6 +83,10 @@ public class Main : MonoBehaviour
 
 	public static bool isCompactDevice = true;
 
+    // Mobile defaults to 30 when targetFrameRate is left unset. Keep a 60 FPS render
+    // target without changing FixedUpdate, timeScale or the existing desktop preference.
+    public static int NormalTargetFrameRate => Hud.HudLayout.IsMobileLayout ? 60 : 90;
+
 	private void Start()
     {
         Time.timeScale = 2.6f;
@@ -108,6 +112,7 @@ public class Main : MonoBehaviour
 			isPC = true;
 		}
 		started = true;
+        if (Hud.HudLayout.IsMobileLayout) Application.targetFrameRate = NormalTargetFrameRate;
 		if (isPC)
 		{
 			level = Rms.loadRMSInt("levelScreenKN");
@@ -180,7 +185,6 @@ public class Main : MonoBehaviour
 		{
 			Screen.orientation = ScreenOrientation.AutoRotation;
 			Application.runInBackground = true;
-			//Application.targetFrameRate = 60;
 			base.useGUILayout = false;
 			isCompactDevice = detectCompactDevice();
 			if (main == null)

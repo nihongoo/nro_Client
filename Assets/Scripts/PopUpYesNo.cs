@@ -18,7 +18,7 @@ public class PopUpYesNo : IActionListener
     {
         const int order = Hud.HudLayout.OverlayOrder + 1;
         System.Func<bool> visible = () => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
-            && GameScr.instance.popUpYesNo != null && Hud.HudLayout.GetRect(Bounds).width > 0;
+            && !NotificationCenter.IsOpen && GameScr.instance.popUpYesNo != null && Hud.HudLayout.GetRect(Bounds).width > 0;
         Hud.HudLayout.Register(Bounds, QuickBounds, order, visible);
         Hud.HudLayout.Register(Body, () => {
             Rect bounds = Hud.HudLayout.GetRect(Bounds);
@@ -76,7 +76,7 @@ public class PopUpYesNo : IActionListener
     // Run before panel/combat input: these two buttons are usable over other panels.
     public bool HandleInput()
     {
-        if (!GameCanvas.isPointerJustRelease || !GameCanvas.isPointerClick) return false;
+        if (NotificationCenter.ConsumesInput || !GameCanvas.isPointerJustRelease || !GameCanvas.isPointerClick) return false;
         Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
         string hit = Hud.HudLayout.HitTest(pointer);
         if (hit == Yes) cmdYes.performAction();
@@ -88,7 +88,7 @@ public class PopUpYesNo : IActionListener
 
     public void paint(mGraphics g)
     {
-        if (Hud.HudLayout.GetRect(Bounds).width <= 0) return;
+        if (NotificationCenter.IsOpen || Hud.HudLayout.GetRect(Bounds).width <= 0) return;
         UpdatePosition();
         g.translate(-g.getTranslateX(), -(g.getTranslateY() - mGraphics.addYWhenOpenKeyBoard));
         g.setClip(0, 0, GameCanvas.w, GameCanvas.h);

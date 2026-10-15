@@ -12,6 +12,7 @@ namespace Hud
         private static string lastOverflow;
         private static Image expSkin;
         private static int skinZoom;
+        private static int mobileBudgetZoom = -1, mobileTextWidth;
         private static Texture2D kiSource, kiSmooth, expSource, expSmooth;
         private static Image ExpSkin {
             get {
@@ -48,8 +49,21 @@ namespace Hud
             // Reserve the complete right-hand row through its leftmost registered button.
             Rect hub = HudLayout.GetRect(TopActionsHud.Hub);
             float right = Mathf.Min(GameCanvas.w - gap, hub.xMin - gap);
-            int width = Mathf.FloorToInt(Mathf.Min(DesignUnit(HudLayout.IsMobileLayout ? 210 : 250), right - left));
             int fpsWidth = mFont.tahoma_7_white.getWidth("FPS: 999") + 2;
+            int preferredWidth = DesignUnit(HudLayout.IsMobileLayout ? 210 : 250);
+            if (HudLayout.IsMobileLayout) {
+                // Android may use zoom 3/4 instead of Editor PC zoom 2. Keep a stable font-sized
+                // budget: the fixed design width must not leave EXP only a few characters.
+                if (mobileBudgetZoom != mGraphics.zoomLevel) {
+                    mobileBudgetZoom = mGraphics.zoomLevel;
+                    mobileTextWidth = Mathf.Max(
+                        mFont.tahoma_7_white.getWidth("HP 999.999.999") + 4,
+                        mFont.tahoma_7_white.getWidth("KI 999.999.999") + 4,
+                        mFont.tahoma_7_white.getWidth("999.999.999.999") + 4 + fpsWidth + gap);
+                }
+                preferredWidth = Mathf.Max(preferredWidth, mobileTextWidth);
+            }
+            int width = Mathf.FloorToInt(Mathf.Min(preferredWidth, right - left));
             if (width < fpsWidth + gap + 3) {
                 avatar = hp = ki = exp = fps = new Rect();
                 return new Rect(); // An unsupported tiny viewport must not draw underneath fixed buttons.
@@ -170,7 +184,9 @@ namespace Hud
             if (source == current && copy != null) return copy;
             if (copy != null) UnityEngine.Object.Destroy(copy);
             source = current;
-            copy = current == null ? null : UnityEngine.Object.Instantiate(current);
+            // Convert the platform texture to a new RGBA32 texture explicitly. Cloning the
+            // imported/compressed texture is the shared path of the reported black copies.
+            copy = current == null ? null : HudButtonSkin.CopyNative(skin, filter: FilterMode.Bilinear).texture;
             if (copy != null) {
                 copy.name = current.name + " (top-info smooth)";
                 copy.hideFlags = HideFlags.DontSave;

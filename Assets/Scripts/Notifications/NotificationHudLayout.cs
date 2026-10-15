@@ -4,18 +4,6 @@ namespace Notifications
 {
     public static class NotificationHudLayout
     {
-        // Convert physical dp into the game's scaled logical coordinates.
-        public static int TouchSize
-        {
-            get
-            {
-                float density = Screen.dpi > 0 ? Mathf.Max(1, Screen.dpi / 160f) : 1;
-                float scale = Application.platform == RuntimePlatform.Android
-                    ? ScaleGUI.WIDTH / Mathf.Max(1, ScaleGUI.Viewport.width) : 1;
-                return Mathf.Max(24, Mathf.CeilToInt(48 * density * scale / Mathf.Max(1, mGraphics.zoomLevel)));
-            }
-        }
-
         // Temporary messages never relocate the control. Hide only while their real bounds cover it.
         public static bool IsBellObscured
         {
