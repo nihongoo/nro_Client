@@ -50,13 +50,13 @@ namespace Mod.CuongLe
             }
             if (isShowMenuVIP)
     		{
-                g.drawImage(imgBoxOpenItem, GameScr.imgPanel.getWidth() + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
+                g.drawImage(imgBoxOpenItem, GameScr.LegacyInfoPanelWidth + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
             }
     		else
     		{
-                g.drawImage(imgBoxItem, GameScr.imgPanel.getWidth() + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
+                g.drawImage(imgBoxItem, GameScr.LegacyInfoPanelWidth + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
             }
-            g.drawImage(imgSetting, GameScr.imgPanel.getWidth() + 5 , 3);
+            g.drawImage(imgSetting, GameScr.LegacyInfoPanelWidth + 5 , 3);
         }
 
     	public void perform(int idAction, object p)

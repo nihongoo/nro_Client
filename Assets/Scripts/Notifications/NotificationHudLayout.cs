@@ -69,9 +69,9 @@ namespace Notifications
 
         private static bool IsFree(Rect box)
         {
-            int panel = GameScr.imgPanel.getWidth();
+            int panel = GameScr.LegacyInfoPanelWidth;
             int controls = panel + DoHoa.imgSetting.getWidth() + DoHoa.imgBoxOpenItem.getWidth() + 20;
-            if (box.Overlaps(new Rect(0, 0, controls, Mathf.Max(45, GameScr.imgPanel.getHeight() + 4)))) return false;
+            if (box.Overlaps(new Rect(0, 0, controls, Mathf.Max(45, GameScr.LegacyInfoPanelHeight + 4)))) return false;
             if (box.Overlaps(new Rect(GameCanvas.w - 155, 0, 155, 40))) return false;
             if (DoHoa.HienThiLogo && DoHoa.imgLogo != null && box.Overlaps(new Rect(
                 GameCanvas.w / 2 - DoHoa.imgLogo.getWidth() / 2 - 3, 20 - DoHoa.imgLogo.getHeight() / 2 - 3,
