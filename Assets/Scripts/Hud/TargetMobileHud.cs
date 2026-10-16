@@ -26,10 +26,14 @@ namespace Hud
         private sealed class Marquee
         {
             internal string Value;
-            internal int Available;
+            internal int Available, Width, Zoom;
+            internal mFont Font;
+            internal bool Restart;
             internal long Started, LastPaint;
         }
-        private static readonly Dictionary<string,Marquee> marquees = new Dictionary<string,Marquee>();
+        private static readonly Dictionary<string,Marquee> marquees = new Dictionary<string,Marquee> {
+            { Map,new Marquee() }, { Hp,new Marquee() }, { Name,new Marquee() }, { Power,new Marquee() }
+        };
         private static object textTarget;
         private struct Target
         {
@@ -123,14 +127,13 @@ namespace Hud
             // HP keeps its existing painter, height and preferred width. Only narrow screens shrink it.
             upperWidth = Mathf.Min(Unit(212),available-2*wing);
             if (upperWidth < Unit(180)) return new Rect(); // HP minimum 160 + two 10px margins.
-            float power = target.HasPower ? mFont.tahoma_7_white.getWidth(PowerValue(target))+Unit(8) : 0;
-            float content = mFont.tahoma_7b_white.getWidth(target.Name)+(target.HasPower ? power+Unit(4) : 0);
             float lowerLimit = Mathf.Max(upperWidth-Unit(52),Mathf.Min(Unit(140),upperWidth-Unit(40)));
-            lowerWidth = Mathf.Min(lowerLimit,Mathf.Max(Unit(140),content+Unit(20)));
+            // Fixed silhouette for this viewport: switching targets never rebuilds the background.
+            lowerWidth = lowerLimit;
             float width = upperWidth+2*wing;
             float mapHeight = Mathf.Max(Unit(12),mFont.tahoma_7_white.getHeight());
             float hpHeight = Mathf.Max(Unit(14),RowHeight);
-            float row = Mathf.Max(Unit(12),mFont.tahoma_7b_white.getHeight());
+            float row = Mathf.Max(Unit(14),mFont.tahoma_7b_white.getHeight(),mFont.tahoma_7_white.getHeight()+Unit(2));
             float hpY = Unit(1)+mapHeight+Unit(2), nameY = hpY+hpHeight+Unit(3.5f);
             // Native fonts set a hard lower bound on very low-resolution viewports.
             float height = Mathf.Max(Unit(58),nameY+row+Unit(4));
@@ -140,8 +143,8 @@ namespace Hud
             stepY = hpY+hpHeight+Unit(1.75f);
             Rect line = new Rect(center-lowerWidth/2+Unit(10),root.y+nameY,lowerWidth-Unit(20),row);
             if (target.HasPower) {
-                power = Mathf.Min(power,line.width*.55f);
-                powerRect = new Rect(line.xMax-power,line.y+Unit(1),power,line.height-Unit(2));
+                float power = line.width*.55f;
+                powerRect = new Rect(line.xMax-power,line.y,power,line.height);
                 line.width = Mathf.Max(0,line.width-power-Unit(4));
             }
             nameRect = line;
@@ -151,7 +154,8 @@ namespace Hud
         {
             if (!Active || !Read(out Target target,out object identity)) return;
             if (!ReferenceEquals(textTarget,identity)) {
-                marquees.Clear(); textTarget = identity;
+                foreach (Marquee marquee in marquees.Values) marquee.Restart = true;
+                textTarget = identity;
             }
             Rect root = HudLayout.GetRect(Root);
             if (root.width <= 0) return;
@@ -159,16 +163,15 @@ namespace Hud
             g.translate(-tx,-ty);
             try {
                 PaintPanel(root);
-                string separator = mGraphics.zoomLevel == 1 ? " - " : " · ";
-                Text(g,Map,mapRect,TileMap.mapName+separator+"Khu "+TileMap.zoneID,mFont.tahoma_7_white,new Color32(255,243,218,185),true);
+                Text(g,Map,mapRect,MapValue(),mFont.tahoma_7_white,new Color32(255,243,218,185),true);
                 Rect hp = hpRect;
                 if (target.HasHp) {
                     Rounded(hp,new Color32(80,51,28,255),hp.height/2);
                     float fraction = target.MaxHp <= 0 ? 0 : Mathf.Clamp01((float)((double)target.Hp/target.MaxHp));
                     if (fraction > 0) RoundedFill(hp,fraction,new Color32(229,70,48,255));
-                    Text(g,Hp,hp,"HP "+NinjaUtil.getMoneys(System.Math.Max(0,target.Hp)),mFont.tahoma_7_white,Cream,true);
+                    Text(g,Hp,hp,HpValue(target.Hp),mFont.tahoma_7_white,Cream,true);
                 }
-                Text(g,Name,nameRect,target.Name,mFont.tahoma_7b_white,Cream,false);
+                Text(g,Name,nameRect,target.Name,mFont.tahoma_7b_white,Cream,!target.HasPower);
                 if (target.HasPower) {
                     Rect power = powerRect;
                     Rounded(power,new Color32(242,205,74,255),power.height/2);
@@ -183,37 +186,73 @@ namespace Hud
             float padding = Unit(4);
             string value = text ?? string.Empty;
             int available = Mathf.FloorToInt(rect.width-2*padding);
-            if (available <= 0) return;
-            int width = font.getWidth(value);
-            float offset = 0;
+            // Leave one native logical pixel at both ends for glyph bearings/renderer offsets.
+            int viewport = available-2;
+            if (viewport <= 0) return;
             long now = mSystem.currentTimeMillis();
-            if (!marquees.TryGetValue(key,out Marquee marquee)) {
-                marquee = new Marquee(); marquees.Add(key,marquee);
+            Marquee marquee = marquees[key];
+            bool changed = marquee.Value != value || marquee.Font != font || marquee.Zoom != mGraphics.zoomLevel;
+            if (changed) {
+                marquee.Value = value; marquee.Font = font; marquee.Zoom = mGraphics.zoomLevel;
+                marquee.Width = font.getWidth(value);
             }
-            if (marquee.Value != value || marquee.Available != available || now-marquee.LastPaint > 250) {
-                marquee.Value = value; marquee.Available = available; marquee.Started = now;
+            if (changed || marquee.Restart || marquee.Available != available || now-marquee.LastPaint > 250) {
+                marquee.Available = available; marquee.Started = now; marquee.Restart = false;
             }
             marquee.LastPaint = now;
-            if (width > available) {
-                // Read both ends: pause, scroll left, pause, scroll back. Native font, no truncation.
-                float overflow = width-available, travel = overflow/Mathf.Max(.01f,Unit(22));
+            int width = marquee.Width, distance = 0, offset = 0;
+            if (width > viewport) {
+                // Loop left only: a second copy enters from the right after a short gap.
+                int gap = Mathf.Max(1,Mathf.Min(viewport/3,Mathf.RoundToInt(Unit(18))));
+                distance = width+gap;
+                float speed = Mathf.Max(.01f,Unit(22)), travel = distance/speed;
                 const float pause = 1f;
-                float phase = Mathf.Max(0,(now-marquee.Started)/1000f) % (2*(pause+travel));
-                if (phase < pause) offset = 0;
-                else if (phase < pause+travel) offset = (phase-pause)/travel*overflow;
-                else if (phase < 2*pause+travel) offset = overflow;
-                else offset = (1-(phase-2*pause-travel)/travel)*overflow;
+                float phase = Mathf.Max(0,(now-marquee.Started)/1000f) % (pause+travel);
+                offset = phase < pause ? 0 : Mathf.RoundToInt((phase-pause)*speed);
             }
             int clipX = Mathf.CeilToInt(rect.x+padding);
-            int x = width > available ? clipX-Mathf.RoundToInt(offset)
+            int x = distance > 0 ? clipX+1-offset
                 : Mathf.RoundToInt(center ? rect.center.x-width/2f : rect.x+padding);
             int y = Mathf.RoundToInt(rect.center.y-font.getHeight()/2f);
             g.setClip(clipX,Mathf.FloorToInt(rect.y),available,Mathf.CeilToInt(rect.height));
-            font.drawTintedString(g,value,x,y,color);
+            if (x+width > clipX) font.drawTintedString(g,value,x,y,color);
+            if (distance > 0 && x+distance < clipX+available)
+                font.drawTintedString(g,value,x+distance,y,color);
             g.setClip(0,0,GameCanvas.w,GameCanvas.h);
         }
-        private static readonly Dictionary<string,Texture2D> shapes = new Dictionary<string,Texture2D>();
-        private static string PowerValue(Target target) => target.PowerKnown ? NinjaUtil.getMoneys(target.Power) : "SM --";
+        private struct ShapeKey : System.IEquatable<ShapeKey>
+        {
+            internal int Width, Height, Radius;
+            public bool Equals(ShapeKey other) => Width == other.Width && Height == other.Height && Radius == other.Radius;
+            public override bool Equals(object value) => value is ShapeKey other && Equals(other);
+            public override int GetHashCode() { unchecked { return (Width*397 ^ Height)*397 ^ Radius; } }
+        }
+        private static readonly Dictionary<ShapeKey,Texture2D> shapes = new Dictionary<ShapeKey,Texture2D>();
+        private static long hpNumber = long.MinValue, powerNumber = long.MinValue;
+        private static string hpValue, powerValue, mapValue, mapName;
+        private static int mapZone = -1, mapZoom = -1;
+        private static string HpValue(long hp)
+        {
+            hp = System.Math.Max(0,hp);
+            if (hpValue == null || hpNumber != hp) { hpNumber = hp; hpValue = "HP "+NinjaUtil.getMoneys(hp); }
+            return hpValue;
+        }
+        private static string PowerValue(Target target)
+        {
+            if (!target.PowerKnown) return "SM --";
+            if (powerValue == null || powerNumber != target.Power) {
+                powerNumber = target.Power; powerValue = NinjaUtil.getMoneys(target.Power);
+            }
+            return powerValue;
+        }
+        private static string MapValue()
+        {
+            if (mapValue == null || mapName != TileMap.mapName || mapZone != TileMap.zoneID || mapZoom != mGraphics.zoomLevel) {
+                mapName = TileMap.mapName; mapZone = TileMap.zoneID; mapZoom = mGraphics.zoomLevel;
+                mapValue = mapName+(mapZoom == 1 ? " - " : " · ")+"Khu "+mapZone;
+            }
+            return mapValue;
+        }
         private static Texture2D panelShape;
         private static Vector4 panelSize, panelDetail;
         private static float panelStroke;
@@ -255,40 +294,68 @@ namespace Hud
         private static Texture2D BuildPanel(int width, int height, int upper, int lower, int step, int radius, int wing, float stroke)
         {
             float ul = (width-upper)/2f, ur = width-ul, ll = (width-lower)/2f, lr = width-ll;
-            // Short diagonal ledge between tiers. Round every join, keep the flared shoulders concave.
-            float ledge = Mathf.Min(radius*.45f,Mathf.Max(1,(height-step)*.2f));
+            // Reference tab: sloping upper sides, a horizontal ledge, then a second gentle slope.
+            // Both shoulders and all ledge/bottom joins are curved, never vertical box corners.
+            float slant = Mathf.Min(radius*.6f,(upper-lower)*.15f);
+            float shoulderX = wing*.55f;
+            // Match the Bezier exit tangent to the long diagonal instead of a vertical wall.
+            float shoulderControl = Mathf.Max(0,shoulderX-(ul-shoulderX)*radius/Mathf.Max(1,step-radius));
+            Vector2 rightShoulder = new Vector2(width-shoulderX,radius);
+            Vector2 leftShoulder = new Vector2(shoulderX,radius);
             Vector2[] vertices = {
-                new Vector2(ur,wing),new Vector2(ur,step-ledge),new Vector2(lr,step+ledge),
-                new Vector2(lr,height),new Vector2(ll,height),new Vector2(ll,step+ledge),
-                new Vector2(ul,step-ledge),new Vector2(ul,wing)
+                rightShoulder,new Vector2(ur,step),new Vector2(lr+slant,step),
+                new Vector2(lr,height),new Vector2(ll,height),new Vector2(ll-slant,step),
+                new Vector2(ul,step),leftShoulder
             };
             outlinePoints.Clear(); outlinePoints.Add(Vector2.zero); outlinePoints.Add(new Vector2(width,0));
-            Curve(new Vector2(ur,0),vertices[0]);
+            Curve(new Vector2(width-shoulderControl,0),rightShoulder);
             for (int i=1;i<vertices.Length-1;i++) Corner(vertices[i-1],vertices[i],vertices[i+1],radius);
-            outlinePoints.Add(vertices[vertices.Length-1]); Curve(new Vector2(ul,0),Vector2.zero);
+            outlinePoints.Add(leftShoulder); Curve(new Vector2(shoulderControl,0),Vector2.zero);
             Texture2D texture = new Texture2D(width,height,TextureFormat.RGBA32,false) {
                 filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
             };
             Color32[] data = new Color32[width*height];
-            for (int y=0;y<height;y++) for (int x=0;x<width;x++) {
-                Vector2 point = new Vector2(x+.5f,height-y-.5f);
-                bool inside = false; float distance = float.MaxValue;
-                for (int i=1;i<outlinePoints.Count;i++) {
-                    Vector2 a = outlinePoints[i-1], b = outlinePoints[i], edge = b-a;
-                    if ((a.y>point.y)!=(b.y>point.y) && point.x < (b.x-a.x)*(point.y-a.y)/(b.y-a.y)+a.x) inside = !inside;
-                    // The top edge closes the fill, but has no stroke against the screen edge.
-                    if (a.y == 0 && b.y == 0) continue;
-                    float t = edge.sqrMagnitude > 0 ? Mathf.Clamp01(Vector2.Dot(point-a,edge)/edge.sqrMagnitude) : 0;
-                    distance = Mathf.Min(distance,Vector2.Distance(point,a+t*edge));
+            // Visit only a narrow ribbon around each edge, not every edge for every pixel.
+            float reach = stroke+1, far = reach*reach;
+            float[] distances = new float[data.Length];
+            for (int i=0;i<distances.Length;i++) distances[i] = far;
+            for (int i=1;i<outlinePoints.Count;i++) {
+                Vector2 a = outlinePoints[i-1], b = outlinePoints[i], edge = b-a;
+                if (a.y == 0 && b.y == 0) continue; // No top stroke.
+                int left = Mathf.Max(0,Mathf.FloorToInt(Mathf.Min(a.x,b.x)-reach));
+                int right = Mathf.Min(width-1,Mathf.CeilToInt(Mathf.Max(a.x,b.x)+reach));
+                int top = Mathf.Max(0,Mathf.FloorToInt(Mathf.Min(a.y,b.y)-reach));
+                int bottom = Mathf.Min(height-1,Mathf.CeilToInt(Mathf.Max(a.y,b.y)+reach));
+                float length = edge.sqrMagnitude;
+                for (int py=top;py<=bottom;py++) for (int x=left;x<=right;x++) {
+                    Vector2 point = new Vector2(x+.5f,py+.5f);
+                    float t = length > 0 ? Mathf.Clamp01(Vector2.Dot(point-a,edge)/length) : 0;
+                    float squared = (point-a-t*edge).sqrMagnitude;
+                    int index = (height-1-py)*width+x;
+                    if (squared < distances[index]) distances[index] = squared;
                 }
-                float signed = inside ? distance : -distance;
-                float coverage = Mathf.Clamp01(signed+.5f);
-                float border = coverage*Mathf.Clamp01(stroke+.5f-signed);
-                float alpha = coverage*.88f+border*(1-.88f);
-                float blend = alpha > 0 ? border/alpha : 0;
-                data[y*width+x] = new Color32((byte)Mathf.RoundToInt(Mathf.Lerp(43,242,blend)),
-                    (byte)Mathf.RoundToInt(Mathf.Lerp(26,180,blend)),(byte)Mathf.RoundToInt(Mathf.Lerp(10,90,blend)),
-                    (byte)Mathf.RoundToInt(alpha*255));
+            }
+            // The symmetric tab has exactly one filled interval on each scanline.
+            for (int py=0;py<height;py++) {
+                float y = py+.5f, left = width, right = 0;
+                for (int i=1;i<outlinePoints.Count;i++) {
+                    Vector2 a = outlinePoints[i-1], b = outlinePoints[i];
+                    if ((a.y>y)==(b.y>y)) continue;
+                    float crossing = a.x+(b.x-a.x)*(y-a.y)/(b.y-a.y);
+                    left = Mathf.Min(left,crossing); right = Mathf.Max(right,crossing);
+                }
+                for (int x=0;x<width;x++) {
+                    int index = (height-1-py)*width+x;
+                    float distance = Mathf.Sqrt(distances[index]);
+                    float signed = x+.5f >= left && x+.5f <= right ? distance : -distance;
+                    float coverage = Mathf.Clamp01(signed+.5f);
+                    float border = coverage*Mathf.Clamp01(stroke+.5f-signed);
+                    float alpha = coverage*.88f+border*(1-.88f);
+                    float blend = alpha > 0 ? border/alpha : 0;
+                    data[index] = new Color32((byte)Mathf.RoundToInt(Mathf.Lerp(43,242,blend)),
+                        (byte)Mathf.RoundToInt(Mathf.Lerp(26,180,blend)),(byte)Mathf.RoundToInt(Mathf.Lerp(10,90,blend)),
+                        (byte)Mathf.RoundToInt(alpha*255));
+                }
             }
             texture.SetPixels32(data); texture.Apply(false,true);
             return texture;
@@ -297,9 +364,9 @@ namespace Hud
         {
             int width = Mathf.Max(1,(int)rect.width), height = Mathf.Max(1,(int)rect.height);
             int r = Mathf.Clamp(Mathf.RoundToInt(radius),1,Mathf.Min(width,height)/2);
-            string key = width+":"+height+":"+r;
+            ShapeKey key = new ShapeKey { Width = width, Height = height, Radius = r };
             if (shapes.TryGetValue(key,out Texture2D texture)) return texture;
-            if (shapes.Count >= 24) ClearShapes();
+            if (shapes.Count >= 24) ClearButtonShapes();
             texture = new Texture2D(width,height,TextureFormat.RGBA32,false) {
                 filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
             };
@@ -331,12 +398,17 @@ namespace Hud
             try { GUI.matrix = Matrix4x4.identity; GUI.color = color; GUI.DrawTextureWithTexCoords(rect,texture,uv); }
             finally { GUI.matrix = matrix; GUI.color = previous; }
         }
-        internal static void ClearShapes()
+        private static void ClearButtonShapes()
         {
             foreach (Texture2D texture in shapes.Values) Object.Destroy(texture);
             shapes.Clear();
+        }
+        internal static void ClearShapes()
+        {
+            ClearButtonShapes();
             if (panelShape != null) Object.Destroy(panelShape);
             panelShape = null;
+            foreach (Marquee marquee in marquees.Values) marquee.Restart = true;
         }
     }
 }

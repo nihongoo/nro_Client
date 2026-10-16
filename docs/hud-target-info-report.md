@@ -1,11 +1,11 @@
 # Cụm 6 — Thẻ mục tiêu và danh sách Người/Vật phẩm
 
-Ngày 16/10/2026. Branch giữ nguyên `feat/hud-target-mobile`, base `origin/develop` 015c672. Hai phần commit riêng; không sửa server, không push/merge/stash. Các thay đổi logo, Packages, ProjectSettings, UserSettings có sẵn được giữ ngoài commit.
+Ngày 16/10/2026. Branch giữ nguyên `feat/hud-target-mobile`, base `origin/develop` 015c672. Hai phần đầu commit riêng, các chỉnh sửa theo ảnh test được commit bổ sung. User đã duyệt commit/push/tạo PR ngày16/10/2026; không sửa server, không merge/stash. Các thay đổi logo, Packages, ProjectSettings, UserSettings có sẵn được giữ ngoài commit.
 
 ## Phần 1 — Thẻ mục tiêu mobile
 
-- `Assets/Scripts/Hud/TargetMobileHud.cs:110` Register/Bounds/PaintPanel/BuildPanel: một provider `target-mobile.bounds`, Center/Top, order10, **blocksPointer=false**. Rect con chỉ là các lát nội bộ của provider, không đăng ký thêm. Kẹp đối xứng giữa top-info và hàng nút phải, không đẩy thẻ xuống che list. HP ưu tiên192px, tối thiểu160px; không đủ khoảng trống thì chỉ còn map title.
-- Nền tab hai bậc: thân trên212px + vai cong14px mỗi bên, mép HP cách thân10px; bậc dưới theo chiều rộng tên + pill + khoảng cách + lề20px, tối thiểu140px và tối đa thân trên−52px. Tên quá dài dùng vùng hiển thị có cuộn; màn hẹp giảm bậc thụt từ26 xuống20px mỗi bên để vẫn giữ bậc dưới140px. Hàng dưới cách HP3.5px. Cao58px thiết kế khi font native cho phép; viewport rất thấp phải tăng đến chiều cao chứa đủ ba hàng font nguyên cỡ, không cắt/scale font.
+- `Assets/Scripts/Hud/TargetMobileHud.cs:114` Register/Bounds/PaintPanel/BuildPanel: một provider `target-mobile.bounds`, Center/Top, order10, **blocksPointer=false**. Rect con chỉ là các lát nội bộ của provider, không đăng ký thêm. Kẹp đối xứng giữa top-info và hàng nút phải, không đẩy thẻ xuống che list. HP ưu tiên192px, tối thiểu160px; không đủ khoảng trống thì chỉ còn map title.
+- Nền tab hai bậc: thân trên212px + vai cong14px mỗi bên, mép HP cách thân10px; bậc dưới cố định theo viewport (thân trên−52px, tối thiểu140px khi màn hẹp), tên/pill thay đổi nội dung trong khung này. Tên quá dài dùng vùng hiển thị có cuộn; màn hẹp giảm bậc thụt từ26 xuống20px mỗi bên để vẫn giữ bậc dưới140px. Hàng dưới cách HP3.5px. Cao58px thiết kế khi font native cho phép; viewport rất thấp phải tăng đến chiều cao chứa đủ ba hàng font nguyên cỡ, không cắt/scale font.
 - Đường bao polygon có vai Bezier lõm, gờ nối ngắn, tất cả góc chuyển bậc/đáy dùng đường cong quadratic bo7px; sai số lấy mẫu đường cong <=0.75 pixel thật, coverage theo signed distance khử răng cưa1px. Nền #2b1a0a alpha88%, viền #f2b45a1.5px, không kẻ ngang mép trên. Texture RGBA32 đúng pixel đích qua ScreenPixels, không scale sprite nhỏ; cache một texture theo kích thước trên/dưới, height/step/bo/zoom và kích thước pixel safe-area. Hủy texture trước khi dựng lại, dọn khi đổi map/viewport/session qua MobileCombatPointers.Cancel; không tạo texture/array/path/key-string mỗi frame.
 - Giữ nguyên painter HP đỏ/track, fraction/căn giữa `HP + số`, font game và marquee từng vùng. Tên khu dùng font thường kem mờ. Chưa có mục tiêu/NPC/item: chỉ map title nhỏ có bóng tối, không nền và không chặn pointer. Char còn sống: tên/HP/sức mạnh thật (thiếu dữ liệu tạm `SM --` cho người chơi); Mob không có field sức mạnh nên ẩn pill. Boss dạng Char ID âm cũng ẩn pill nếu chưa có số. Mục tiêu chết/status chết/ẩn/ra khỏi vector map hoặc game bỏ focus thì thẻ ẩn; không tự xóa focus, không đặt phạm vi hoặc timeout mới.
 - `Assets/Scripts/GameScr.cs:655`: đăng ký/paint thẻ; VS head cũ chỉ nhường khi thẻ mobile đang hiện, countdown đặt dưới thẻ. PC giữ cũ. `Assets/Scripts/Hud/MapListsHud.cs:144`: map title nhường cho thẻ đang hiện, fallback mobile có bóng tối.
@@ -54,7 +54,7 @@ Hai lỗi thật trong source: **nhầm rect bắt joystick rộng với vòng h
 
 ## Kiểm tra
 
-Đã kiểm tra tĩnh delimiter/encoding/diff; containment hàng nội dung trong tab;30 tổ hợp số lượng/bố cục và các offset cuộn; tái hiện hai phản ví dụ cap/broad zone bằng công thức. So thân doFire/doUseHP/doSelectSkill/doUseSkill/checkAuto/checkClick/checkDrag/updateKey và GamePad.update/paint/disableCheckDrag/disableClickMove với commit phần1: không đổi. Preview hình học offline không phải ảnh chạy Unity. Thẻ58px ở tình huống2400×1080/F11/B10; ở844×390 font nguyên cỡ buộc cao74.5px thiết kế để không khuất chữ. **Chưa compile/chạy client, Device Simulator, build Unity/APK.**
+Đã kiểm tra tĩnh delimiter/encoding/diff; containment hàng nội dung trong tab;30 tổ hợp số lượng/bố cục và các offset cuộn; tái hiện hai phản ví dụ cap/broad zone bằng công thức. So thân doFire/doUseHP/doSelectSkill/doUseSkill/checkAuto/checkClick/checkDrag/updateKey và GamePad.update/paint/disableCheckDrag/disableClickMove với commit phần1: không đổi. Preview hình học offline không phải ảnh chạy Unity. Sau chỉnh theo mockup mới, font nguyên cỡ F11/B10 cần thẻ khoảng61px thiết kế ở2400×1080 và78.5px ở844×390; không ép chiều cao làm cắt hàng chữ. **Chưa compile/chạy client, Device Simulator, build Unity/APK.**
 
 | Test tay — tất cả chưa chạy | Cần xác nhận |
 |---|---|
@@ -76,5 +76,48 @@ Nguồn sửa phần2 (file:line):
 - `Assets/Scripts/Hud/MapListsHud.cs:249`.
 - `Assets/Scripts/Hud/MobileCombatPointers.cs:118`.
 - `Assets/Scripts/GamePad.cs:299`.
-- `Assets/Scripts/Hud/TargetMobileHud.cs:255`.
+- `Assets/Scripts/Hud/TargetMobileHud.cs:294`.
 - `Assets/Scripts/Controller.cs:1079`.
+
+## Chỉnh theo mockup target_card_stepped_tab_tight.png — 16/10/2026
+
+Tham chiếu trực tiếp ảnh thiết kế mới `D:/KamuiSpace/case CRUD/target_card_stepped_tab_tight.png`, không lấy ảnh test làm hình chuẩn. TargetMobileHud.BuildPanel thay vai cong kết thúc bằng cạnh đứng bằng **vai cong nối tiếp tuyến vào cạnh vát dài**, đi xuống gờ **ngang** giữa hai bậc; bậc dưới tiếp tục hơi nghiêng rồi bo vào đáy. Gờ không còn là đoạn nối chéo; góc bo7px, nền/viền và cache một texture pixel thật giữ nguyên. Xóa đường bao cũ ngay trong builder, không thêm sprite hay bộ nền thứ hai.
+
+Bounds chừa đủ chiều cao font thường cho pill sức mạnh (trước lấy theo font tên đậm rồi trừ2px nên có thể cắt chữ), tính cả lề chữ tên vào chiều rộng nội dung. Nếu tên ngắn thì ô sức mạnh được dùng phần rộng còn lại thay vì luôn bị chặn ở55%. Chữ dài vẫn cuộn; thêm1logical pixel lề glyph ở hai đầu clip để đầu/cuối chuỗi không dính mép khi dừng. HP giữ painter, màu, kích thước ưu tiên và chữ căn giữa. Không sửa danh sách, gameplay, input hoặc PC trong lần này.
+
+Đã đối chiếu preview hình học offline với mockup và kiểm tra12 tổ hợp chiều rộng/tỉ lệ pixel: vai nối tiếp tuyến, gờ ngang thực, vùng nội dung nằm trong nền; delimiter/diff tĩnh. Test tay bổ sung **chưa chạy**: so đúng hai cạnh vát/gờ/bo đáy theo ảnh2; tên/sức mạnh ngắn/dài, đầu/cuối marquee không cắt chữ, pill không cắt trên/dưới; quái không power, đổi mục tiêu/resize/tai thỏ; HP và list giữ nguyên. **Chưa compile/chạy/build.**
+
+## Căn giữa tên, cuộn một chiều và giảm khựng khi đổi mục tiêu — 16/10/2026
+
+- Khi không có pill sức mạnh (Mob/boss không có số), tên dùng cả hàng dưới và căn giữa. Tên dài vượt ô vẫn chạy để đọc đủ. Khi có pill thì tên giữ phần bên trái. Không đổi nguồn sức mạnh, request−79 hoặc logic focus.
+- Marquee đổi từ qua lại thành **chỉ chạy sang trái**, bản sao cùng chuỗi đi vào từ phải sau khoảng cách ngắn; nghỉ1s ở đầu mỗi vòng, không đảo hướng. Clip/lề glyph giữ riêng từng ô. Giữ4 state có sẵn, chỉ reset thời gian khi đổi mục tiêu/text/layout/hiện lại; không clear rồi cấp phát state mới mỗi lần chọn. Chiều rộng font cache theo text/font/zoom; HP/sức mạnh/map-khu chỉ format khi giá trị đổi.
+- Nguyên nhân tốn CPU thấy trong source: lowerWidth/power pill trước phụ thuộc số ký tự, đổi mục tiêu làm key nền đổi và Destroy/BuildPanel/Apply ngay trong painter; builder cũ duyệt **mọi cạnh cho mọi pixel**, có sqrt mỗi cạnh. Cache mask HP/pill đầy còn gọi ClearShapes làm hủy cả nền ngoài ý muốn. Không thể khẳng định toàn bộ mức tụt60→20FPS chỉ từ các nguyên nhân này khi chưa chạy Profiler.
+- Theo yêu cầu cho phép cố định cụm: nền hai bậc và chiều rộng pill nay chỉ theo viewport/font/zoom, **không theo tên, HP, sức mạnh hoặc loại mục tiêu**. Vẫn giữ hình dáng mockup mới; bậc dưới160px thông thường,140px khi hẹp. Chỉ rect chia tên/pill thay đổi khi pill ẩn/hiện; nền giữ nguyên. Không dựng lại texture khi chuyển mục tiêu trong cùng viewport sau lần dựng đầu. Viewport/zoom/safe-area/session thay đổi vẫn dựng/dọn đúng như trước.
+- Builder mới raster bằng scanline, tính khoảng cách trong dải hẹp quanh mỗi cạnh; mỗi pixel cuối chỉ lấy sqrt một lần. Giữ coverage signed-distance/alpha88%/viền1.5px và texture đúng pixel thật, không đổi hình bằng sprite phóng to. Mask HP/pill dùng ShapeKey struct thay chuỗi key cấp phát mỗi frame; eviction cache này chỉ dọn mask riêng, không đụng panelShape.
+
+Kiểm tra tĩnh:4 cấu hình mask (120×31 hai bậc dưới khác nhau,104×31,240×62) so **từng pixel RGBA** giữa mô hình thuật toán cũ và mới, không sai khác. Số phép tính khoảng cách cạnh ở240×62 giảm2,336,160→8,767 (không phải benchmark FPS); scanline chỉ duyệt cạnh theo hàng thay vì theo từng pixel. Kiểm tra offset cuộn đơn điệu, bản sao nối vòng cùng vị trí, kích thước nền không phụ thuộc chuỗi và delimiter/diff. Không thay danh sách/PC/gameplay trong lượt này.
+
+Test tay bổ sung **chưa chạy**: quái không SM tên giữa; người có SM tên/pill đúng; tên dài chạy trái liên tục qua ít nhất3vòng, không lắc/đảo hướng/cắt đầu cuối; liên tục chọn100lần quái↔người/tên dài↔ngắn trên Simulator16:9/20:9 và S22, xem FPS/CPU/GC trước-sau, xác nhận BuildPanel/newTexture2D không xuất hiện theo mỗi lần chọn sau warm-up; đổi map/relog/resize/tai thỏ/ẩn hiện modal không rò texture. **Chưa compile/chạy/build.**
+- `Assets/Scripts/Hud/TargetMobileHud.cs:120` — Bounds.
+- `Assets/Scripts/Hud/TargetMobileHud.cs:183` — Text.
+- `Assets/Scripts/Hud/TargetMobileHud.cs:294` — BuildPanel.
+- `Assets/Scripts/Hud/TargetMobileHud.cs:401` — ClearButtonShapes.
+
+## Chạm mục tiêu bị vùng joystick rộng nuốt — 16/10/2026
+
+Nguồn thật: CombatMobileHud.JoystickTouch phủ rộng tới khoảngh/4 và một phần ba màn hình trái. MobileCombatPointers.Feed trước đây gán mọi press ở đó cho stick, không phát pointerPressed/Released vào GameCanvas để GameScr.checkClick chọn mục tiêu. GamePad.update cần độ kéo lớn hơn4logical mới có hướng di chuyển; chạm đơn có delta0 nên không dịch núm, mobile painter còn giữ vòng nền cố định, dẫn tới cảm giác vùng chết. Không kết luận thêm lỗi kéo trên thiết bị khi chưa chạy.
+
+Sửa mobile: nếu HitTest là vùng bắt joystick rộng, điểm nằm **ngoài rect vòng joystick đang vẽ**, controls đang cho nhận input và có đối tượng ở hitbox map gốc, pointer được giao cho map. GameScr.HasMobilePointerTarget chỉ gọi findClickToItem với point+camera, không đổi focus/di chuyển/gửi service; cùng logic hitbox nới30logical, trạng thái ẩn và loại trừ quái triệu hồi của chính mình. Áp dụng cả Mob/Char/NPC/item theo bộ chọn gốc. Bỏ chọn quái/người/NPC trong cài đặt và các điều kiện cast/khóa gameplay vẫn được hàm gốc giữ nguyên.
+
+Capture.MapTargetThroughJoystick giữ owner map trọn press/hold/release, bỏ qua broad zone ở các bước sau (không re-probe đối tượng đang di chuyển/chết). Đi vào **vòng joystick thật**, nút chiêu/item/ĐÁNH hoặc modal thì hủy thao tác như quy tắc chống xuyên cũ, không đổi owner giữa chừng. Press trên vòng joystick vẫn ưu tiên stick dù có quái phía dưới; press vùng trống vẫn giữ vùng joystick rộng. Giữ joystick bằng ngón1 và chọn quái bằng ngón2 ngoài vòng được phép; world pointer thứ2 bị cách ly như cũ. Không sửa GamePad.update/paint, nguồn phím, xử lý chọn/đánh/double-click/di chuyển hoặc PC.
+
+Kiểm tra tĩnh:9 tình huống owner và5 tình huống hold/release trong mô hình routing; delimiter/diff; so nguyên thân findClickToItem/findClickToMOB/checkClick/checkSingleClickEarly/checkDoubleClick/checkClickMoveTo/doDoubleClickToObj/updateKey vớiHEAD không đổi. **Chưa compile/chạy/build.**
+
+Test tay bổ sung chưa chạy: chạm đúng quái trong vùng khoanh ảnh user thấy focus/thẻ; chạm NPC/người/item ngoài vòng; giữ-kéo vòng joystick và kéo vùng trống như cũ; joystick+chọn quái/chiêu bằng ngón khác; kéo pointer chọn quái vào vòng/chiêu rồi thả không chọn xuyên; mục tiêu chết/rời vị trí giữa press-release theo hàm gốc; modal/loading/map change giữa gesture không phát release cũ; kiểm tra Android16:9/20:9/tai thỏ/S22 và PC không hồi quy.
+- `Assets/Scripts/Hud/MobileCombatPointers.cs:86`.
+- `Assets/Scripts/Hud/MobileCombatPointers.cs:125`.
+- `Assets/Scripts/GameScr.cs:3303`.
+
+## Xác nhận trước PR — 16/10/2026
+
+User đã test lại sửa chạm chọn quái trong vùng joystick rộng, xác nhận “ổn” và yêu cầu tạo PR. Đây là xác nhận của user cho lỗi vừa sửa, không thay thế toàn bộ ma trận test. Agent chỉ kiểm tra tĩnh, không compile/chạy/build Unity/APK. Các thay đổi logo/Packages/ProjectSettings/UserSettings có sẵn giữ ngoài commit/PR.

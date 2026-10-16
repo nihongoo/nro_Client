@@ -3298,6 +3298,14 @@ public class GameScr : mScreen, IChatable
         }
     }
 
+    // Read-only routing probe: use the exact existing target hitboxes and visibility rules.
+    // Selection, double-click attacks and movement stay in the original pointer handlers.
+    internal bool HasMobilePointerTarget(Vector2 point)
+    {
+        return Hud.HudLayout.IsMobileLayout
+            && findClickToItem((int)point.x + cmx, (int)point.y + cmy) != null;
+    }
+
     private IMapObject findClickToItem(int px, int py)
     {
         IMapObject mapObject = null;
