@@ -132,6 +132,7 @@ namespace Hud
         internal static void Cancel()
         {
             CircularCombatIcon.Clear();
+            TargetMobileHud.ClearShapes();
             foreach(Capture capture in pointers.Values) capture.Cancelled = true;
             clicks.Clear(); worldSuppressed = true;
             if(worldPointer.HasValue) GameCanvas.clearAllPointerEvent();

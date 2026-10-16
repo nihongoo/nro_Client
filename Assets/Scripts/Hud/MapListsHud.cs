@@ -59,7 +59,7 @@ namespace Hud
 
         internal static void Register()
         {
-            HudLayout.Register(MapTitle, TitleBounds, Order, () => Visible, false);
+            HudLayout.Register(MapTitle, TitleBounds, Order, () => Visible && !TargetMobileHud.Active, false);
             RegisterBox(persons); RegisterBox(items);
         }
         private static void RegisterBox(ListBox box)
@@ -389,12 +389,21 @@ namespace Hud
             g.translate(-tx, -ty); Clip(g, HudLayout.ScreenBounds);
             try {
                 Rect title = HudLayout.GetRect(MapTitle);
-                Clip(g, title); GUI.color = new Color(1, 1, 1, 0.65f);
-                string zone = Separator + "Khu " + TileMap.zoneID;
-                string titleText = ShortName(TileMap.mapName, (int)title.width - mFont.tahoma_7_white.getWidth(zone) - 4) + zone;
-                if (mFont.tahoma_7_white.getWidth(titleText) > title.width) titleText = ShortName(Title, (int)title.width - 2);
-                (mGraphics.zoomLevel == 1 ? mFont.tahoma_7_grey : mFont.tahoma_7_white).drawString(g,
-                    titleText, (int)title.center.x, (int)title.y + 1, mFont.CENTER);
+                if (!TargetMobileHud.Active) {
+                    Clip(g, title); GUI.color = new Color(1, 1, 1, 0.65f);
+                    string zone = Separator + "Khu " + TileMap.zoneID;
+                    string titleText = ShortName(TileMap.mapName, (int)title.width - mFont.tahoma_7_white.getWidth(zone) - 4) + zone;
+                    if (mFont.tahoma_7_white.getWidth(titleText) > title.width) titleText = ShortName(Title, (int)title.width - 2);
+                    if (HudLayout.IsMobileLayout) {
+                        GUI.color = Color.white;
+                        int x = Mathf.RoundToInt(title.center.x-mFont.tahoma_7_white.getWidth(titleText)/2f);
+                        int y = (int)title.y+1;
+                        mFont.tahoma_7_white.drawTintedString(g,titleText,x+1,y+1,new Color32(43,26,10,255));
+                        mFont.tahoma_7_white.drawTintedString(g,titleText,x,y,new Color32(255,243,218,185));
+                    }
+                    else (mGraphics.zoomLevel == 1 ? mFont.tahoma_7_grey : mFont.tahoma_7_white).drawString(g,
+                        titleText, (int)title.center.x, (int)title.y + 1, mFont.CENTER);
+                }
                 GUI.color = Color.white;
                 PaintBox(g, persons); PaintBox(g, items);
             }
