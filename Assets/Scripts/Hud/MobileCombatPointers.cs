@@ -11,7 +11,7 @@ namespace Hud
             public Vector2 First, Point;
             public Skill Skill;
             public int ItemId = -1;
-            public bool Cancelled;
+            public bool Cancelled, MapTargetThroughJoystick;
             public float Started;
         }
         private sealed class Click { public Capture Capture; public Vector2 Point; }
@@ -81,7 +81,14 @@ namespace Hud
         {
             if (began) {
                 string target = inside ? HudLayout.HitTest(point) : null;
-                var capture = new Capture { Target = target, First = point, Point = point, Cancelled = !inside, Started = Time.realtimeSinceStartup };
+                // Keep the broad floating-stick zone, but let direct map-target taps outside
+                // the visible stick reach the original selection handler. UI/modal hits still win.
+                bool mapTarget = target == CombatMobileHud.JoystickTouch && CombatMobileHud.CanInput
+                    && !HudLayout.GetRect(CombatMobileHud.Joystick).Contains(point)
+                    && GameScr.instance.HasMobilePointerTarget(point);
+                if (mapTarget) target = null;
+                var capture = new Capture { Target = target, First = point, Point = point, Cancelled = !inside,
+                    MapTargetThroughJoystick = mapTarget, Started = Time.realtimeSinceStartup };
                 if (CombatMobileHud.Owns(target)) {
                     if (!CombatMobileHud.CanInput) capture.Cancelled = true;
                     if (target.StartsWith("combat.skill.")) capture.Skill = CombatMobileHud.SlotSkill(int.Parse(target.Substring("combat.skill.".Length)));
@@ -115,9 +122,20 @@ namespace Hud
             if (worldPointer == id) {
                 // Do not let a world drag enter a combat button or acquire a modal that opened mid-gesture.
                 string now = HudLayout.HitTest(point);
-                if (cancelled || now != current.Target && (CombatMobileHud.Owns(now) || now == "legacy.overlay"
-                    || now != null && now.StartsWith("notifications."))) worldSuppressed = true;
-                if (ended && now != current.Target) worldSuppressed = true;
+                if (current.MapTargetThroughJoystick) {
+                    if (current.Cancelled || !CombatMobileHud.CanInput) worldSuppressed = true;
+                    // Keep this pointer's original map owner through release. Do not re-test
+                    // the moving/dying target or acquire a joystick halfway through the gesture.
+                    if (now == CombatMobileHud.JoystickTouch
+                        && !HudLayout.GetRect(CombatMobileHud.Joystick).Contains(point)) now = null;
+                }
+                bool listGesture = MapListsHud.Owns(current.Target);
+                if (listGesture && (current.Cancelled || cancelled || !MapListsHud.CanCaptureInput)) {
+                    worldSuppressed = true; MapListsHud.CancelPointer();
+                }
+                if (!listGesture && (cancelled || now != current.Target && (CombatMobileHud.Owns(now) || now == "legacy.overlay"
+                    || now != null && now.StartsWith("notifications.")))) worldSuppressed = true;
+                if (!listGesture && ended && now != current.Target) worldSuppressed = true;
                 if (worldSuppressed) GameCanvas.clearAllPointerEvent();
                 else if(ended) GameMidlet.gameCanvas.pointerReleased((int)point.x,(int)point.y);
                 else if(!began) GameMidlet.gameCanvas.pointerDragged((int)point.x,(int)point.y);
@@ -132,6 +150,7 @@ namespace Hud
         internal static void Cancel()
         {
             CircularCombatIcon.Clear();
+            TargetMobileHud.ClearShapes();
             foreach(Capture capture in pointers.Values) capture.Cancelled = true;
             clicks.Clear(); worldSuppressed = true;
             if(worldPointer.HasValue) GameCanvas.clearAllPointerEvent();

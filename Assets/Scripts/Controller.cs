@@ -1078,6 +1078,21 @@ public class Controller : IMessageHandler
 			}
 			case -79:
 			{
+				if (Hud.HudLayout.IsMobileLayout)
+				{
+					int targetId = msg.reader().readInt();
+					long targetPower = msg.reader().readLong();
+					string targetLevel = msg.reader().readUTF();
+					Hud.TargetMobileHud.ReceivePower(targetId, targetPower, targetLevel);
+					Char menuTarget = GameCanvas.panel.charMenu;
+					if (menuTarget != null && menuTarget.charID == targetId)
+					{
+						menuTarget.cPower = targetPower;
+						menuTarget.currStrLevel = targetLevel;
+						if (GameCanvas.panel.isShow && GameCanvas.panel.type == 10) InfoDlg.hide();
+					}
+					break;
+				}
 				InfoDlg.hide();
 				int num106 = msg.reader().readInt();
 				Char charMenu = GameCanvas.panel.charMenu;

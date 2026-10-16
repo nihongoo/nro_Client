@@ -295,6 +295,18 @@ public class GamePad
 		GameCanvas.clearKeyHold();
 	}
 
+	// Read-only painted extent for HUD list layout; never the broad acquisition zone.
+	internal UnityEngine.Rect HudVisualBounds
+	{
+		get {
+			if (GameScr.imgAnalog1 == null || GameScr.imgAnalog2 == null) return new UnityEngine.Rect();
+			float w = GameScr.imgAnalog1.getWidth(), h = GameScr.imgAnalog1.getHeight();
+			float knobW = GameScr.imgAnalog2.getWidth(), knobH = GameScr.imgAnalog2.getHeight();
+			return UnityEngine.Rect.MinMaxRect(UnityEngine.Mathf.Min(xC-w/2,xM-knobW/2),
+				UnityEngine.Mathf.Min(yC-h/2,yM-knobH/2),UnityEngine.Mathf.Max(xC+w/2,xM+knobW/2),
+				UnityEngine.Mathf.Max(yC+h/2,yM+knobH/2));
+		}
+	}
 	public void paint(mGraphics g)
 	{
 		if (Hud.HudLayout.IsMobileLayout) {

@@ -159,6 +159,20 @@ namespace Hud
                 if (bounds.width > 0 && bounds.height > 0) output.Add(bounds);
             }
         }
+        // List height follows painted controls, not broad joystick acquisition zones.
+        // Keep the original obstacle API for chat/input; their policies are unchanged.
+        internal static void CopyVisualControls(List<Rect> output)
+        {
+            EnsureViewport(); output.Clear();
+            foreach (Entry entry in backToFront) {
+                if (entry.Order != ControlsOrder || entry.Name == CombatMobileHud.JoystickTouch || !IsVisible(entry)) continue;
+                Rect bounds = entry.Name == "pc-analog.touch"
+                    ? !IsMobileLayout && CombatPcHud.Visible && GameScr.isAnalog != 0 && Char.myCharz().statusMe != 14
+                        && GameScr.gamePad != null ? GameScr.gamePad.HudVisualBounds : new Rect()
+                    : Resolve(entry);
+                if (bounds.width > 0 && bounds.height > 0) output.Add(bounds);
+            }
+        }
         // This is the source behind GameScr.CollectChatObstacles, not a second obstacle system.
         public static void CopyObstaclesAbove(string name, List<Rect> output)
         {

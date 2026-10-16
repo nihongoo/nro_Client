@@ -6,7 +6,7 @@ namespace Hud
 {
     internal static class MapListsHud
     {
-        private const int Order = HudLayout.MenuOrder + 10, Slots = 6;
+        private const int Order = HudLayout.MenuOrder + 10, MaxRows = 5, Slots = MaxRows + 1;
         // World-logic distances, never converted through screen pixels or zoom.
         private const int HalfWidthLeft = 120, HalfWidthRight = 120, Up = 90, Down = 60;
         private const string MapTitle = "map-lists.title";
@@ -56,10 +56,17 @@ namespace Hud
             && ChatPopup.serverChatPopUp == null && !DoHoa.isShowMenuVIP && !InfoDlg.isLock
             && !GameScr.instance.isPaintPopup() && !Notifications.NotificationCenter.ConsumesInput
             && !TopActionsHud.ConsumesInput;
+        internal static bool CanCaptureInput => CanInput;
+        internal static bool Owns(string name) => name != null
+            && (name.StartsWith("map-lists.items.") || name.StartsWith("map-lists.people."));
+        internal static void CancelPointer()
+        {
+            captured = false; pressed = null; pressedEntry = null; active = null;
+        }
 
         internal static void Register()
         {
-            HudLayout.Register(MapTitle, TitleBounds, Order, () => Visible, false);
+            HudLayout.Register(MapTitle, TitleBounds, Order, () => Visible && !TargetMobileHud.Active, false);
             RegisterBox(persons); RegisterBox(items);
         }
         private static void RegisterBox(ListBox box)
@@ -106,7 +113,7 @@ namespace Hud
         private static float BottomLimit(float x, float width, float minTop)
         {
             float bottom = HudLayout.GetRect(HudLayout.WorldBar).yMin - Gap;
-            HudLayout.CopyObstaclesAtOrder(HudLayout.ControlsOrder, obstacles);
+            HudLayout.CopyVisualControls(obstacles);
             foreach (Rect obstacle in obstacles)
                 if (obstacle.xMax > x && obstacle.xMin < x + width && obstacle.yMax > minTop)
                     bottom = Mathf.Min(bottom, Mathf.Max(minTop, obstacle.yMin - Gap));
@@ -140,8 +147,8 @@ namespace Hud
             if (!box.Open || header.width <= 0) return new Rect();
             float top = header.yMax + Gap;
             float available = BottomLimit(header.x, header.width, top) - top;
-            int height = Mathf.FloorToInt(Mathf.Max(0, Mathf.Min(Unit(box.Items ? 160 : 140), available)) / box.RowHeight) * box.RowHeight;
-            height = Mathf.Min(height, box.RowHeight * Mathf.Min(5, box.Count));
+            int rows = Mathf.Min(MaxRows,Mathf.Min(box.Count,Mathf.FloorToInt(Mathf.Max(0,available)/box.RowHeight)));
+            int height = rows*box.RowHeight;
             return new Rect(header.x, top, header.width, height);
         }
         private static Rect TitleBounds()
@@ -158,7 +165,7 @@ namespace Hud
         internal static void BeginSession()
         {
             persons.Open = items.Open = true; persons.Scroll = items.Scroll = 0;
-            captured = false; pressed = null; active = null; mapId = zoneId = -1;
+            CancelPointer(); mapId = zoneId = -1;
             people.Clear(); drops.Clear(); names.Clear(); owners.Clear(); consumedTick = -1; HudLayout.Invalidate();
         }
         private static void Refresh()
@@ -166,7 +173,7 @@ namespace Hud
             people.Clear(); drops.Clear(); names.Clear(); owners.Clear();
             if (mapId != TileMap.mapID || zoneId != TileMap.zoneID) {
                 mapId = TileMap.mapID; zoneId = TileMap.zoneID; persons.Scroll = items.Scroll = 0;
-                captured = false; pressed = null;
+                CancelPointer();
             }
             // Read live objects, not last update's cached projection: removals/movement must
             // be reflected before input and paint. Keep MainMod's list for its other callers.
@@ -242,9 +249,9 @@ namespace Hud
         internal static void UpdateInput()
         {
             consumedTick = -1;
-            if (!Visible) { captured = false; return; }
+            if (!Visible) { CancelPointer(); return; }
             Refresh();
-            if (!CanInput) { captured = false; pressed = null; return; }
+            if (!CanInput) { CancelPointer(); return; }
             Vector2 pointer = new Vector2(GameCanvas.px, GameCanvas.py);
             string hit = HudLayout.HitTest(pointer);
             if (GameCanvas.isPointerJustDown) {
@@ -267,8 +274,9 @@ namespace Hud
             int wheel = GameCanvas.pXYScrollMouse;
             if (wheel != 0) {
                 Vector2 mouse = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
+                string mouseHit = HudLayout.HitTest(mouse);
                 foreach (ListBox box in new[] { persons, items })
-                    if (box.Open && HudLayout.GetRect(box.Body).Contains(mouse)) {
+                    if (box.Open && Owner(mouseHit) == box && HudLayout.GetRect(box.Body).Contains(mouse)) {
                         SetScroll(box, box.Scroll - wheel * box.RowHeight); moved = true; Consume(); break;
                     }
             }
@@ -389,12 +397,21 @@ namespace Hud
             g.translate(-tx, -ty); Clip(g, HudLayout.ScreenBounds);
             try {
                 Rect title = HudLayout.GetRect(MapTitle);
-                Clip(g, title); GUI.color = new Color(1, 1, 1, 0.65f);
-                string zone = Separator + "Khu " + TileMap.zoneID;
-                string titleText = ShortName(TileMap.mapName, (int)title.width - mFont.tahoma_7_white.getWidth(zone) - 4) + zone;
-                if (mFont.tahoma_7_white.getWidth(titleText) > title.width) titleText = ShortName(Title, (int)title.width - 2);
-                (mGraphics.zoomLevel == 1 ? mFont.tahoma_7_grey : mFont.tahoma_7_white).drawString(g,
-                    titleText, (int)title.center.x, (int)title.y + 1, mFont.CENTER);
+                if (!TargetMobileHud.Active) {
+                    Clip(g, title); GUI.color = new Color(1, 1, 1, 0.65f);
+                    string zone = Separator + "Khu " + TileMap.zoneID;
+                    string titleText = ShortName(TileMap.mapName, (int)title.width - mFont.tahoma_7_white.getWidth(zone) - 4) + zone;
+                    if (mFont.tahoma_7_white.getWidth(titleText) > title.width) titleText = ShortName(Title, (int)title.width - 2);
+                    if (HudLayout.IsMobileLayout) {
+                        GUI.color = Color.white;
+                        int x = Mathf.RoundToInt(title.center.x-mFont.tahoma_7_white.getWidth(titleText)/2f);
+                        int y = (int)title.y+1;
+                        mFont.tahoma_7_white.drawTintedString(g,titleText,x+1,y+1,new Color32(43,26,10,255));
+                        mFont.tahoma_7_white.drawTintedString(g,titleText,x,y,new Color32(255,243,218,185));
+                    }
+                    else (mGraphics.zoomLevel == 1 ? mFont.tahoma_7_grey : mFont.tahoma_7_white).drawString(g,
+                        titleText, (int)title.center.x, (int)title.y + 1, mFont.CENTER);
+                }
                 GUI.color = Color.white;
                 PaintBox(g, persons); PaintBox(g, items);
             }
@@ -432,7 +449,8 @@ namespace Hud
                 Clip(g, Intersection(full, body));
                 bool enabled = !box.Items || GameScr.instance.CanPickHudItem(drops[index]);
                 float alpha = enabled ? 1 : 0.55f;
-                bool focused = !box.Items && ReferenceEquals(people[index], Char.myCharz().charFocus);
+                bool focused = box.Items ? ReferenceEquals(drops[index],Char.myCharz().itemFocus)
+                    : ReferenceEquals(people[index], Char.myCharz().charFocus);
                 if (focused || hover == row.Hit || pressed == row.Hit) Fill(g, full, Accent, 0.35f * alpha);
                 Fill(g, new Rect(full.x + Padding, full.yMax - Pixel, Mathf.Max(0, full.width - Padding * 2), Pixel), Divider, 0.2f);
                 mFont statusFont = box.Items ? (enabled ? mFont.nameFontGreen : mFont.nameFontRed) : people[index].GetNameStatusFont();

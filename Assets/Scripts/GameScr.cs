@@ -656,6 +656,7 @@ public class GameScr : mScreen, IChatable
     {
         Hud.TopInfoHud.Register();
         Hud.TopActionsHud.Register();
+        Hud.TargetMobileHud.Register();
         PopUpYesNo.RegisterHudRects();
         Notifications.NotificationCenter.RegisterHudRects();
         Hud.MapListsHud.Register();
@@ -3297,6 +3298,14 @@ public class GameScr : mScreen, IChatable
         }
     }
 
+    // Read-only routing probe: use the exact existing target hitboxes and visibility rules.
+    // Selection, double-click attacks and movement stay in the original pointer handlers.
+    internal bool HasMobilePointerTarget(Vector2 point)
+    {
+        return Hud.HudLayout.IsMobileLayout
+            && findClickToItem((int)point.x + cmx, (int)point.y + cmy) != null;
+    }
+
     private IMapObject findClickToItem(int px, int py)
     {
         IMapObject mapObject = null;
@@ -5413,18 +5422,19 @@ public class GameScr : mScreen, IChatable
     private void paintInfoBar(mGraphics g)
     {
         resetTranslate(g);
-        if (TileMap.mapID == 130 && findCharVS1() != null && findCharVS2() != null)
+        if (!Hud.TargetMobileHud.Active && TileMap.mapID == 130 && findCharVS1() != null && findCharVS2() != null)
         {
             findCharVS1().paintHeadWithXY(g, 137, 25, 0);
             findCharVS2().paintHeadWithXY(g, GameCanvas.w - 15 - 122, 25, 2);
         }
-        else if (isVS() && Char.myCharz().charFocus != null)
+        else if (!Hud.TargetMobileHud.Active && isVS() && Char.myCharz().charFocus != null)
         {
             Char.myCharz().paintHeadWithXY(g, 137, 25, 0);
             Char.myCharz().charFocus.paintHeadWithXY(g, GameCanvas.w - 15 - 122, 25, 2);
         }
         g.translate(-g.getTranslateX(), -g.getTranslateY());
         Hud.TopInfoHud.Paint(g);
+        Hud.TargetMobileHud.Paint(g);
         if (isVS() && secondVS > 0)
         {
             curr = mSystem.currentTimeMillis();
@@ -5433,7 +5443,8 @@ public class GameScr : mScreen, IChatable
                 last = mSystem.currentTimeMillis();
                 secondVS--;
             }
-            mFont.tahoma_7b_white.drawString(g, secondVS + string.Empty, GameCanvas.w / 2, 13, 2, mFont.tahoma_7b_dark);
+            mFont.tahoma_7b_white.drawString(g, secondVS + string.Empty, GameCanvas.w / 2,
+                Hud.HudLayout.IsMobileLayout ? Hud.TargetMobileHud.CountdownY : 13, 2, mFont.tahoma_7b_dark);
         }
     }
 
