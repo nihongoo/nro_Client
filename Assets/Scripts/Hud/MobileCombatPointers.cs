@@ -115,9 +115,13 @@ namespace Hud
             if (worldPointer == id) {
                 // Do not let a world drag enter a combat button or acquire a modal that opened mid-gesture.
                 string now = HudLayout.HitTest(point);
-                if (cancelled || now != current.Target && (CombatMobileHud.Owns(now) || now == "legacy.overlay"
-                    || now != null && now.StartsWith("notifications."))) worldSuppressed = true;
-                if (ended && now != current.Target) worldSuppressed = true;
+                bool listGesture = MapListsHud.Owns(current.Target);
+                if (listGesture && (current.Cancelled || cancelled || !MapListsHud.CanCaptureInput)) {
+                    worldSuppressed = true; MapListsHud.CancelPointer();
+                }
+                if (!listGesture && (cancelled || now != current.Target && (CombatMobileHud.Owns(now) || now == "legacy.overlay"
+                    || now != null && now.StartsWith("notifications.")))) worldSuppressed = true;
+                if (!listGesture && ended && now != current.Target) worldSuppressed = true;
                 if (worldSuppressed) GameCanvas.clearAllPointerEvent();
                 else if(ended) GameMidlet.gameCanvas.pointerReleased((int)point.x,(int)point.y);
                 else if(!began) GameMidlet.gameCanvas.pointerDragged((int)point.x,(int)point.y);
