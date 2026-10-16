@@ -13,7 +13,7 @@ namespace Hud
         private static Image expSkin;
         private static int skinZoom;
         private static int mobileBudgetZoom = -1, mobileTextWidth;
-        private static Texture2D kiSource, kiSmooth, expSource, expSmooth;
+        private static Texture2D kiSource, kiSmooth, expSource, expSmooth, targetHpSource, targetHpSmooth;
         private static Image ExpSkin {
             get {
                 if (expSkin == null || skinZoom != mGraphics.zoomLevel) {
@@ -196,7 +196,22 @@ namespace Hud
             return copy;
         }
 
-        private static void PaintBar(mGraphics g, Rect rect, Texture2D skin, float fraction, string text)
+        // Target PC uses the player's HP/SP artwork and the same three-slice renderer.
+        // Smooth only a private HP copy; the player's shared HP sampling stays unchanged.
+        internal static bool PaintTargetBar(Rect rect, float fraction, bool power)
+        {
+            Texture2D skin = power ? SmoothTexture(ExpSkin, ref expSource, ref expSmooth)
+                : SmoothTexture(GameScr.imgHP, ref targetHpSource, ref targetHpSmooth);
+            if (skin == null) return false;
+            PaintBarSurface(rect,skin,fraction);
+            return true;
+        }
+        internal static void ClearTargetBarSkin()
+        {
+            if (targetHpSmooth != null) UnityEngine.Object.Destroy(targetHpSmooth);
+            targetHpSource = targetHpSmooth = null;
+        }
+        private static void PaintBarSurface(Rect rect, Texture2D skin, float fraction)
         {
             Rect pixels = HudButtonSkin.ScreenPixels(rect);
             Matrix4x4 matrix = GUI.matrix;
@@ -211,6 +226,10 @@ namespace Hud
                 }
             }
             finally { GUI.matrix = matrix; GUI.color = color; }
+        }
+        private static void PaintBar(mGraphics g, Rect rect, Texture2D skin, float fraction, string text)
+        {
+            PaintBarSurface(rect,skin,fraction);
             g.setClip((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
             mFont.tahoma_7_white.drawString(g, text, (int)rect.center.x,
                 (int)rect.y + ((int)rect.height - mFont.tahoma_7_white.getHeight()) / 2, mFont.CENTER);

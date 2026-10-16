@@ -5,14 +5,17 @@ namespace Hud
 {
     // Project the existing focus, loading missing power through the existing stats request.
     // Never selects a target, attacks, opens a panel or changes movement.
-    internal static class TargetMobileHud
+    internal static class TargetInfoHud
     {
-        private const string Root = "target-mobile.bounds", Map = "target-mobile.map", Hp = "target-mobile.hp",
-            Name = "target-mobile.name", Power = "target-mobile.power";
+        private const string Root = "target-info.bounds", Map = "target-info.map", Hp = "target-info.hp",
+            Name = "target-info.name", Power = "target-info.power";
         private const int Order = 10;
         private static readonly Color32 Cream = new Color32(255,243,218,255);
         private static Rect mapRect, hpRect, nameRect, powerRect;
         private static float upperWidth, lowerWidth, stepY;
+        private static bool showsTarget, layoutHasPower;
+        private static object layoutFocus;
+        private const float FramePadding = 10;
         private sealed class PowerRequest
         {
             internal Char Target, Owner;
@@ -41,27 +44,31 @@ namespace Hud
             internal long Hp, MaxHp, Power;
             internal bool HasHp, HasPower, PowerKnown;
         }
-        private static bool Visible => HudLayout.IsMobileLayout && GameScr.instance != null
+        private static bool Visible => GameScr.instance != null
             && GameCanvas.currentScreen == GameScr.instance && GameScr.isPaint && !GameScr.isPaintOther
             && GameScr.isPaintRada == 1 && !GameCanvas.isLoading && !Char.ischangingMap
             && !GameCanvas.panel.isShow && !GameCanvas.menu.showMenu && GameCanvas.currentDialog == null
             && !ChatTextField.gI().isShow && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null
             && !Notifications.NotificationCenter.IsOpen && !Mod.CuongLe.DoHoa.isShowMenuVIP;
-        internal static bool Active => Visible && Read(out _,out _) && HudLayout.GetRect(Root).width > 0;
+        internal static bool Active => Visible && HudLayout.GetRect(Root).width > 0;
+        // One mobile silhouette in logical units. Preserve the approved mobile scale exactly;
+        // desktop derives the same unit from the native 12px reference text row instead of zoom.
         private static float Unit(float pixels) => HudLayout.PixelsToLogical(pixels)
-            * (GameCanvas.h*Mathf.Max(1,mGraphics.zoomLevel)/390f);
+            * (HudLayout.IsMobileLayout ? GameCanvas.h*Mathf.Max(1,mGraphics.zoomLevel)/390f : FontScale);
+        private static float FontScale => Mathf.Max(1,Mathf.Max(mFont.tahoma_7_white.getHeight(),mFont.tahoma_7b_white.getHeight()))
+            / (12f*HudLayout.PixelsToLogical(1));
+        private const float PreferredHpWidth = 192;
         internal static int CountdownY => Active ? Mathf.CeilToInt(HudLayout.GetRect(Root).yMax+Unit(3)) : 13;
 
         internal static void Update()
         {
-            if (!HudLayout.IsMobileLayout) return;
             Char player = Char.ExistingLocalPlayer;
             if (player != powerOwner || powerMap != TileMap.mapID || powerZone != TileMap.zoneID
                 || GameCanvas.currentScreen != GameScr.instance || Char.ischangingMap || GameCanvas.isLoading) {
                 powerRequests.Clear(); nextPowerRequest = 0;
                 powerOwner = player; powerMap = TileMap.mapID; powerZone = TileMap.zoneID;
             }
-            if (!Active || player?.charFocus == null || !Read(out Target data,out _) || !data.HasPower || data.PowerKnown) return;
+            if (!Active || !showsTarget || player?.charFocus == null || !Read(out Target data,out _) || !data.HasPower || data.PowerKnown) return;
             Char target = player.charFocus;
             long now = mSystem.currentTimeMillis();
             if (now < nextPowerRequest) return;
@@ -77,7 +84,7 @@ namespace Hud
         }
         internal static void ReceivePower(int id, long power, string level)
         {
-            if (!HudLayout.IsMobileLayout || !powerRequests.TryGetValue(id,out PowerRequest request)
+            if (!powerRequests.TryGetValue(id,out PowerRequest request)
                 || request.Owner != Char.ExistingLocalPlayer || request.Map != TileMap.mapID || request.Zone != TileMap.zoneID
                 || GameCanvas.currentScreen != GameScr.instance || Char.ischangingMap || GameCanvas.isLoading || power < 0) return;
             // Reply A may arrive after selecting B. Only update the originally requested A.
@@ -120,65 +127,107 @@ namespace Hud
         private static Rect Bounds()
         {
             mapRect = hpRect = nameRect = powerRect = new Rect();
-            if (!HudLayout.IsMobileLayout || !Read(out Target target,out _)) return new Rect();
+            showsTarget = false;
+            bool hasTarget = Read(out Target target,out object identity);
+            layoutFocus = identity; layoutHasPower = target.HasPower;
             float gap = Unit(6), center = GameCanvas.w/2f, wing = Unit(14);
             Rect info = HudLayout.GetRect("top-info.bounds"), hub = HudLayout.GetRect(TopActionsHud.Hub);
             float available = Mathf.Max(0,2*Mathf.Min(center-info.xMax-gap,hub.xMin-gap-center));
             // HP keeps its existing painter, height and preferred width. Only narrow screens shrink it.
-            upperWidth = Mathf.Min(Unit(212),available-2*wing);
-            if (upperWidth < Unit(180)) return new Rect(); // HP minimum 160 + two 10px margins.
+            upperWidth = Mathf.Min(Unit(PreferredHpWidth+20),available-2*wing);
+            float mapHeight = Mathf.Max(Unit(12),mFont.tahoma_7_white.getHeight());
+            // NPC/no focus (or too little room for HP160): a compact map-only tab, same provider/style.
+            if (!hasTarget || upperWidth < Unit(180)) {
+                if (upperWidth < Unit(40)) return new Rect();
+                upperWidth = Mathf.Min(upperWidth,Mathf.Max(Unit(80),mapMeasure.Get(MapValue(),mFont.tahoma_7_white)+Unit(FramePadding*2)+2));
+                lowerWidth = upperWidth; stepY = -1;
+                Rect mapOnly = HudLayout.Anchor(HorizontalAnchor.Center,VerticalAnchor.Top,
+                    new Vector2(upperWidth+2*wing,mapHeight+Unit(1)+Unit(4)),Vector2.zero);
+                mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(FramePadding),mapOnly.y+Unit(1),
+                    upperWidth-Unit(FramePadding*2),mapHeight));
+                return mapOnly;
+            }
+            showsTarget = true;
             float lowerLimit = Mathf.Max(upperWidth-Unit(52),Mathf.Min(Unit(140),upperWidth-Unit(40)));
-            // Fixed silhouette for this viewport: switching targets never rebuilds the background.
+            // Same approved mobile shoulders: 160/212 (~75%) at preferred width.
+            // Short names never shrink the lower tier; overflow uses the existing marquee.
             lowerWidth = lowerLimit;
             float width = upperWidth+2*wing;
-            float mapHeight = Mathf.Max(Unit(12),mFont.tahoma_7_white.getHeight());
             float hpHeight = Mathf.Max(Unit(14),RowHeight);
             float row = Mathf.Max(Unit(14),mFont.tahoma_7b_white.getHeight(),mFont.tahoma_7_white.getHeight()+Unit(2));
-            float hpY = Unit(1)+mapHeight+Unit(2), nameY = hpY+hpHeight+Unit(3.5f);
-            // Native fonts set a hard lower bound on very low-resolution viewports.
-            float height = Mathf.Max(Unit(58),nameY+row+Unit(4));
-            Rect root = HudLayout.Anchor(HorizontalAnchor.Center,VerticalAnchor.Top,new Vector2(width,height),Vector2.zero);
-            mapRect = new Rect(center-upperWidth/2+Unit(10),root.y+Unit(1),upperWidth-Unit(20),mapHeight);
-            hpRect = new Rect(center-upperWidth/2+Unit(10),root.y+hpY,upperWidth-Unit(20),hpHeight);
+            bool mobile = HudLayout.IsMobileLayout;
+            float hpY = Unit(1)+mapHeight+Unit(2);
+            // Leave the 1.5u tier stroke below the HP artwork instead of painting over it.
             stepY = hpY+hpHeight+Unit(1.75f);
-            Rect line = new Rect(center-lowerWidth/2+Unit(10),root.y+nameY,lowerWidth-Unit(20),row);
+            float nameY = mobile ? hpY+hpHeight+Unit(3.5f) : stepY;
+            // Reserve the same stroke clearance below the power artwork as below HP.
+            // Keep the row in place; only extend the desktop background past its bottom edge.
+            float height = mobile ? Mathf.Max(Unit(58),nameY+row+Unit(4)) : nameY+row+Unit(1.75f);
+            Rect root = HudLayout.Anchor(HorizontalAnchor.Center,VerticalAnchor.Top,new Vector2(width,height),Vector2.zero);
+            mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(FramePadding),root.y+Unit(1),
+                upperWidth-Unit(FramePadding*2),mapHeight));
+            hpRect = new Rect(center-upperWidth/2+Unit(FramePadding),root.y+hpY,upperWidth-Unit(FramePadding*2),hpHeight);
+            Rect line = new Rect(center-lowerWidth/2+Unit(FramePadding),root.y+nameY,lowerWidth-Unit(FramePadding*2),row);
             if (target.HasPower) {
                 float power = line.width*.55f;
                 powerRect = new Rect(line.xMax-power,line.y,power,line.height);
                 line.width = Mathf.Max(0,line.width-power-Unit(4));
             }
-            nameRect = line;
+            nameRect = FrameTextBounds(line);
             return root;
+        }
+        private static Rect FrameTextBounds(Rect content)
+        {
+            // Text() adds 4px clip padding itself: account for it once on both platforms.
+            content.x -= Unit(4); content.width += Unit(8);
+            return content;
         }
         internal static void Paint(mGraphics g)
         {
-            if (!Active || !Read(out Target target,out object identity)) return;
+            if (!Visible) return;
+            bool hasTarget = Read(out Target target,out object identity);
+            Rect root = HudLayout.GetRect(Root);
+            if (!ReferenceEquals(layoutFocus,identity) || layoutHasPower != target.HasPower) {
+                HudLayout.Invalidate(); root = HudLayout.GetRect(Root);
+            }
+            if (root.width <= 0) return;
             if (!ReferenceEquals(textTarget,identity)) {
                 foreach (Marquee marquee in marquees.Values) marquee.Restart = true;
                 textTarget = identity;
             }
-            Rect root = HudLayout.GetRect(Root);
-            if (root.width <= 0) return;
             int tx = g.getTranslateX(), ty = g.getTranslateY()-mGraphics.addYWhenOpenKeyBoard;
             g.translate(-tx,-ty);
             try {
                 PaintPanel(root);
                 Text(g,Map,mapRect,MapValue(),mFont.tahoma_7_white,new Color32(255,243,218,185),true);
+                if (!showsTarget || !hasTarget) return;
                 Rect hp = hpRect;
                 if (target.HasHp) {
-                    Rounded(hp,new Color32(80,51,28,255),hp.height/2);
                     float fraction = target.MaxHp <= 0 ? 0 : Mathf.Clamp01((float)((double)target.Hp/target.MaxHp));
-                    if (fraction > 0) RoundedFill(hp,fraction,new Color32(229,70,48,255));
+                    if (HudLayout.IsMobileLayout || !TopInfoHud.PaintTargetBar(InsetBar(hp),fraction,false)) {
+                        Rounded(hp,new Color32(80,51,28,255),hp.height/2);
+                        if (fraction > 0) RoundedFill(hp,fraction,new Color32(229,70,48,255));
+                    }
                     Text(g,Hp,hp,HpValue(target.Hp),mFont.tahoma_7_white,Cream,true);
                 }
                 Text(g,Name,nameRect,target.Name,mFont.tahoma_7b_white,Cream,!target.HasPower);
                 if (target.HasPower) {
                     Rect power = powerRect;
-                    Rounded(power,new Color32(242,205,74,255),power.height/2);
-                    Text(g,Power,power,PowerValue(target),mFont.tahoma_7_white,new Color32(40,24,12,255),true);
+                    if (HudLayout.IsMobileLayout || !TopInfoHud.PaintTargetBar(InsetBar(power),1,true))
+                        Rounded(power,HudLayout.IsMobileLayout ? new Color32(242,205,74,255) : new Color32(43,143,59,255),power.height/2);
+                    Text(g,Power,power,PowerValue(target),mFont.tahoma_7_white,
+                        HudLayout.IsMobileLayout ? new Color32(40,24,12,255) : Cream,true);
                 }
             }
             finally { g.setClip(0,0,GameCanvas.w,GameCanvas.h); g.translate(tx,ty); }
+        }
+        private static Rect InsetBar(Rect rect)
+        {
+            // One design pixel above/below the artwork; keep the native text row and compact tab.
+            float padding = Mathf.Min(HudLayout.PixelsToLogical(1),
+                Mathf.Max(0,(rect.height-mFont.tahoma_7_white.getHeight())/2));
+            rect.y += padding; rect.height -= 2*padding;
+            return rect;
         }
         private static void Text(mGraphics g, string key, Rect rect, string text, mFont font, Color32 color, bool center)
         {
@@ -253,28 +302,67 @@ namespace Hud
             }
             return mapValue;
         }
-        private static Texture2D panelShape;
-        private static Vector4 panelSize, panelDetail;
-        private static float panelStroke;
-        private static int panelZoom;
+        // Cache the map-only tab's native text width on both platforms.
+        private sealed class TextMeasure
+        {
+            private string value;
+            private mFont font;
+            private int zoom, width;
+            internal int Get(string text, mFont current)
+            {
+                if (value != text || font != current || zoom != mGraphics.zoomLevel) {
+                    value = text; font = current; zoom = mGraphics.zoomLevel; width = current.getWidth(text);
+                }
+                return width;
+            }
+        }
+        private static readonly TextMeasure mapMeasure = new TextMeasure();
+        private struct PanelKey : System.IEquatable<PanelKey>
+        {
+            internal Vector4 Size, Detail;
+            internal float Stroke;
+            internal int Zoom;
+            public bool Equals(PanelKey other) => Size.Equals(other.Size) && Detail.Equals(other.Detail)
+                && Stroke.Equals(other.Stroke) && Zoom == other.Zoom;
+            public override bool Equals(object value) => value is PanelKey other && Equals(other);
+            public override int GetHashCode() { unchecked {
+                return ((Size.GetHashCode()*397 ^ Detail.GetHashCode())*397 ^ Stroke.GetHashCode())*397 ^ Zoom;
+            } }
+        }
+        private sealed class PanelMask
+        {
+            internal Texture2D Texture;
+            internal long Used;
+        }
+        private static readonly Dictionary<PanelKey,PanelMask> panels = new Dictionary<PanelKey,PanelMask>();
+        private static long panelUse;
         private static readonly List<Vector2> outlinePoints = new List<Vector2>();
         private static void PaintPanel(Rect root)
         {
             Rect pixels = HudButtonSkin.ScreenPixels(root);
             float sx = pixels.width/root.width, sy = pixels.height/root.height;
             int upper = Mathf.RoundToInt(upperWidth*sx), lower = Mathf.RoundToInt(lowerWidth*sx);
-            int step = Mathf.RoundToInt(stepY*sy), radius = Mathf.Max(1,Mathf.RoundToInt(Unit(7)*Mathf.Min(sx,sy)));
+            // Preserve the single-tier sentinel even when the viewport matrix scales below 1.
+            int step = showsTarget ? Mathf.RoundToInt(stepY*sy) : -1;
+            int radius = Mathf.Max(1,Mathf.RoundToInt(Unit(7)*Mathf.Min(sx,sy)));
             int wing = Mathf.RoundToInt(Unit(14)*sx);
             float stroke = Mathf.Max(1,Unit(1.5f)*Mathf.Min(sx,sy));
-            Vector4 size = new Vector4(pixels.width,pixels.height,upper,lower);
-            Vector4 detail = new Vector4(step,radius,wing,0);
-            if (panelShape == null || panelSize != size || panelDetail != detail || panelStroke != stroke || panelZoom != mGraphics.zoomLevel) {
-                if (panelShape != null) Object.Destroy(panelShape);
-                panelShape = null;
-                panelShape = BuildPanel((int)pixels.width,(int)pixels.height,upper,lower,step,radius,wing,stroke);
-                panelSize = size; panelDetail = detail; panelStroke = stroke; panelZoom = mGraphics.zoomLevel;
+            PanelKey key = new PanelKey {
+                Size = new Vector4(pixels.width,pixels.height,upper,lower),
+                Detail = new Vector4(step,radius,wing,showsTarget ? 0 : 1), Stroke = stroke, Zoom = mGraphics.zoomLevel
+            };
+            if (!panels.TryGetValue(key,out PanelMask mask)) {
+                if (panels.Count >= 8) {
+                    PanelKey oldest = new PanelKey(); long used = long.MaxValue;
+                    foreach (KeyValuePair<PanelKey,PanelMask> entry in panels)
+                        if (entry.Value.Used < used) { oldest = entry.Key; used = entry.Value.Used; }
+                    Object.Destroy(panels[oldest].Texture); panels.Remove(oldest);
+                }
+                mask = new PanelMask { Texture = BuildPanel((int)pixels.width,(int)pixels.height,upper,lower,step,radius,wing,stroke) };
+                panels.Add(key,mask);
             }
-            Draw(pixels,panelShape,new Rect(0,0,1,1),Color.white);
+            mask.Used = ++panelUse;
+            Draw(pixels,mask.Texture,new Rect(0,0,1,1),Color.white);
         }
         private static void Curve(Vector2 control, Vector2 end)
         {
@@ -294,22 +382,29 @@ namespace Hud
         private static Texture2D BuildPanel(int width, int height, int upper, int lower, int step, int radius, int wing, float stroke)
         {
             float ul = (width-upper)/2f, ur = width-ul, ll = (width-lower)/2f, lr = width-ll;
-            // Reference tab: sloping upper sides, a horizontal ledge, then a second gentle slope.
-            // Both shoulders and all ledge/bottom joins are curved, never vertical box corners.
-            float slant = Mathf.Min(radius*.6f,(upper-lower)*.15f);
+            // Both variants share the exact same curves, rasterizer, palette and cache.
             float shoulderX = wing*.55f;
-            // Match the Bezier exit tangent to the long diagonal instead of a vertical wall.
-            float shoulderControl = Mathf.Max(0,shoulderX-(ul-shoulderX)*radius/Mathf.Max(1,step-radius));
+            float shoulderEnd = step < 0 ? height : step;
+            float shoulderControl = Mathf.Max(0,shoulderX-(ul-shoulderX)*radius/Mathf.Max(1,shoulderEnd-radius));
             Vector2 rightShoulder = new Vector2(width-shoulderX,radius);
             Vector2 leftShoulder = new Vector2(shoulderX,radius);
-            Vector2[] vertices = {
-                rightShoulder,new Vector2(ur,step),new Vector2(lr+slant,step),
-                new Vector2(lr,height),new Vector2(ll,height),new Vector2(ll-slant,step),
-                new Vector2(ul,step),leftShoulder
-            };
             outlinePoints.Clear(); outlinePoints.Add(Vector2.zero); outlinePoints.Add(new Vector2(width,0));
             Curve(new Vector2(width-shoulderControl,0),rightShoulder);
-            for (int i=1;i<vertices.Length-1;i++) Corner(vertices[i-1],vertices[i],vertices[i+1],radius);
+            if (step < 0) {
+                // Single-tier map tab, attached to the screen edge with gently sloping sides.
+                Vector2 rightBottom = new Vector2(ur,height), leftBottom = new Vector2(ul,height);
+                Corner(rightShoulder,rightBottom,leftBottom,radius);
+                Corner(rightBottom,leftBottom,leftShoulder,radius);
+            }
+            else {
+                float slant = Mathf.Min(radius*.6f,(upper-lower)*.15f);
+                Vector2[] vertices = {
+                    rightShoulder,new Vector2(ur,step),new Vector2(lr+slant,step),
+                    new Vector2(lr,height),new Vector2(ll,height),new Vector2(ll-slant,step),
+                    new Vector2(ul,step),leftShoulder
+                };
+                for (int i=1;i<vertices.Length-1;i++) Corner(vertices[i-1],vertices[i],vertices[i+1],radius);
+            }
             outlinePoints.Add(leftShoulder); Curve(new Vector2(shoulderControl,0),Vector2.zero);
             Texture2D texture = new Texture2D(width,height,TextureFormat.RGBA32,false) {
                 filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
@@ -405,9 +500,10 @@ namespace Hud
         }
         internal static void ClearShapes()
         {
+            TopInfoHud.ClearTargetBarSkin();
             ClearButtonShapes();
-            if (panelShape != null) Object.Destroy(panelShape);
-            panelShape = null;
+            foreach (PanelMask mask in panels.Values) Object.Destroy(mask.Texture);
+            panels.Clear(); panelUse = 0;
             foreach (Marquee marquee in marquees.Values) marquee.Restart = true;
         }
     }
