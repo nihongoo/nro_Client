@@ -9,7 +9,6 @@ namespace Hud
         private const int Order = HudLayout.MenuOrder + 10, MaxRows = 5, Slots = MaxRows + 1;
         // World-logic distances, never converted through screen pixels or zoom.
         private const int HalfWidthLeft = 120, HalfWidthRight = 120, Up = 90, Down = 60;
-        private const string MapTitle = "map-lists.title";
         private sealed class RowSlot
         {
             internal string Full, Hit, Name, Dot, Icon;
@@ -66,7 +65,6 @@ namespace Hud
 
         internal static void Register()
         {
-            HudLayout.Register(MapTitle, TitleBounds, Order, () => Visible && !TargetMobileHud.Active, false);
             RegisterBox(persons); RegisterBox(items);
         }
         private static void RegisterBox(ListBox box)
@@ -123,15 +121,10 @@ namespace Hud
         {
             if (box.Count == 0) return new Rect();
             Rect top = HudLayout.GetRect("top-info.bounds"), chat = HudLayout.GetRect(HudLayout.ChatButton);
-            float width = Mathf.Max(Unit(box.Items ? 190 : 130),
-                mFont.tahoma_7b_white.getWidth((box.Items ? "Vật phẩm" : "Người") + Separator + "999") + Gap * 2 + 7);
-            if (HudLayout.IsMobileLayout) {
-                // Match the visible HUD spans, excluding FPS from the left power bar.
-                Rect start = HudLayout.GetRect(box.Items ? "top-info.avatar" : TopActionsHud.Hub);
-                Rect end = box.Items ? HudLayout.GetRect("top-info.exp") : chat;
-                width = Mathf.Max(0,end.xMax-start.xMin);
-            }
-            else width = Mathf.Min(width, Mathf.Max(0, GameCanvas.w / 2 - Gap * 2));
+            // Both platforms match the visible HUD spans, excluding FPS from the power bar.
+            Rect start = HudLayout.GetRect(box.Items ? "top-info.avatar" : TopActionsHud.Hub);
+            Rect end = box.Items ? HudLayout.GetRect("top-info.exp") : chat;
+            float width = Mathf.Max(0,end.xMax-start.xMin);
             float margin = box.Items ? top.xMin : GameCanvas.w - chat.xMax;
             float minTop = (box.Items ? top.yMax : chat.yMax) + Gap;
             Rect anchored = HudLayout.Anchor(box.Items ? HorizontalAnchor.Left : HorizontalAnchor.Right,
@@ -151,17 +144,6 @@ namespace Hud
             int height = rows*box.RowHeight;
             return new Rect(header.x, top, header.width, height);
         }
-        private static Rect TitleBounds()
-        {
-            Rect info = HudLayout.GetRect("top-info.bounds"), hub = HudLayout.GetRect(TopActionsHud.Hub);
-            float left = info.xMax + Gap, right = hub.xMin - Gap;
-            float center = GameCanvas.w / 2f;
-            float width = Mathf.Max(0, Mathf.Min(mFont.tahoma_7_white.getWidth(Title) + 4, 2 * Mathf.Min(center - left, right - center)));
-            return new Rect(center - width / 2,
-                Unit(6), width, mFont.tahoma_7_white.getHeight() + 2);
-        }
-        private static string Title => TileMap.mapName + Separator + "Khu " + TileMap.zoneID;
-
         internal static void BeginSession()
         {
             persons.Open = items.Open = true; persons.Scroll = items.Scroll = 0;
@@ -396,22 +378,6 @@ namespace Hud
             Color oldColor = GUI.color;
             g.translate(-tx, -ty); Clip(g, HudLayout.ScreenBounds);
             try {
-                Rect title = HudLayout.GetRect(MapTitle);
-                if (!TargetMobileHud.Active) {
-                    Clip(g, title); GUI.color = new Color(1, 1, 1, 0.65f);
-                    string zone = Separator + "Khu " + TileMap.zoneID;
-                    string titleText = ShortName(TileMap.mapName, (int)title.width - mFont.tahoma_7_white.getWidth(zone) - 4) + zone;
-                    if (mFont.tahoma_7_white.getWidth(titleText) > title.width) titleText = ShortName(Title, (int)title.width - 2);
-                    if (HudLayout.IsMobileLayout) {
-                        GUI.color = Color.white;
-                        int x = Mathf.RoundToInt(title.center.x-mFont.tahoma_7_white.getWidth(titleText)/2f);
-                        int y = (int)title.y+1;
-                        mFont.tahoma_7_white.drawTintedString(g,titleText,x+1,y+1,new Color32(43,26,10,255));
-                        mFont.tahoma_7_white.drawTintedString(g,titleText,x,y,new Color32(255,243,218,185));
-                    }
-                    else (mGraphics.zoomLevel == 1 ? mFont.tahoma_7_grey : mFont.tahoma_7_white).drawString(g,
-                        titleText, (int)title.center.x, (int)title.y + 1, mFont.CENTER);
-                }
                 GUI.color = Color.white;
                 PaintBox(g, persons); PaintBox(g, items);
             }

@@ -597,7 +597,7 @@ public class GameCanvas : IActionListener
             Hud.TopActionsHud.UpdateInput();
 			Notifications.NotificationCenter.UpdateInput();
             Hud.MapListsHud.UpdateInput();
-            Hud.TargetMobileHud.Update();
+            Hud.TargetInfoHud.Update();
             WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)
 			{

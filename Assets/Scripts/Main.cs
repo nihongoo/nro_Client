@@ -422,7 +422,7 @@ public class Main : MonoBehaviour
 	private void OnApplicationPause(bool paused)
 	{
 		if (paused && Hud.HudLayout.IsMobileLayout) Hud.MobileCombatPointers.Cancel();
-		if (paused && !Hud.HudLayout.IsMobileLayout) Hud.CombatPcPointer.Cancel();
+		if (paused && !Hud.HudLayout.IsMobileLayout) { Hud.CombatPcPointer.Cancel(); Hud.TargetInfoHud.ClearShapes(); }
 		isResume = false;
 		if (paused)
 		{

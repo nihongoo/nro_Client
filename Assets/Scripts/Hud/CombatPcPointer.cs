@@ -27,7 +27,7 @@ namespace Hud
             Vector2 currentSize = new Vector2(GameCanvas.w,GameCanvas.h);
             if (screen != GameCanvas.currentScreen || map != TileMap.mapID || character != Char.myCharz().charID
                 || size != currentSize || zoom != mGraphics.zoomLevel || viewport != ScaleGUI.Viewport) {
-                Cancel(); CircularCombatIcon.Clear(); CombatPcHud.ClearBoxes();
+                Cancel(); CircularCombatIcon.Clear(); CombatPcHud.ClearBoxes(); TargetInfoHud.ClearShapes();
                 screen = GameCanvas.currentScreen; map = TileMap.mapID; character = Char.myCharz().charID;
                 size = currentSize; zoom = mGraphics.zoomLevel; viewport = ScaleGUI.Viewport;
             }
