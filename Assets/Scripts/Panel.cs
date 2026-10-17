@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class Panel : IActionListener, IChatable
+public partial class Panel : IActionListener, IChatable
 {
     public class PlayerChat
     {
@@ -1365,6 +1365,11 @@ public class Panel : IActionListener, IChatable
     {
         type = 0;
         setType(0);
+        if (currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5))
+        {
+            currentTabIndex = 6;
+            lastTabIndex[type] = currentTabIndex;
+        }
         if (currentTabIndex == 1)
         {
             setTabInventory(resetSelect: true);
@@ -1835,6 +1840,7 @@ public class Panel : IActionListener, IChatable
 
     public void updateKey()
     {
+        if (InventoryFrameActive && UpdateInventoryFrameInput()) return;
         if ((chatTField != null && chatTField.isShow) || !GameCanvas.panel.isDoneCombine || InfoDlg.isShow)
         {
             return;
@@ -2917,6 +2923,7 @@ public class Panel : IActionListener, IChatable
 
     private void updateKeyInTabBar()
     {
+        if (InventoryFrameActive) return;
         if ((scroll != null && scroll.pointerIsDowning) || pointerIsDowning)
         {
             return;
@@ -3859,6 +3866,7 @@ public class Panel : IActionListener, IChatable
 
     public void paint(mGraphics g)
     {
+        if (InventoryFrameActive) { PaintInventoryFrame(g); return; }
         g.translate(-g.getTranslateX(), -g.getTranslateY() + mGraphics.addYWhenOpenKeyBoard);
         g.translate(-cmx, 0);
         g.translate(X, Y);
@@ -5588,24 +5596,23 @@ public class Panel : IActionListener, IChatable
         paintScrollArrow(g);
     }
 
-    private void paintInventory(mGraphics g)
+    private void paintInventory(mGraphics g, bool bagOnly = false)
     {
-        g.setColor(16711680);
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
         Item[] arrItemBody = Char.myCharz().arrItemBody;
         Item[] arrItemBag = Char.myCharz().arrItemBag;
-        for (int i = 0; i < arrItemBody.Length + arrItemBag.Length; i++)
+        for (int i = bagOnly ? arrItemBody.Length : 0; i < arrItemBody.Length + arrItemBag.Length; i++)
         {
             bool flag = i < arrItemBody.Length;
             int num = i;
             int num2 = i - arrItemBody.Length;
             int num3 = xScroll + 36;
-            int num4 = yScroll + i * ITEM_HEIGHT;
+            int num4 = yScroll + (bagOnly ? i - arrItemBody.Length : i) * ITEM_HEIGHT;
             int num5 = wScroll - 36;
             int h = ITEM_HEIGHT - 1;
             int num6 = xScroll;
-            int num7 = yScroll + i * ITEM_HEIGHT;
+            int num7 = num4;
             int num8 = 34;
             int num9 = ITEM_HEIGHT - 1;
             if (num4 - cmy > yScroll + hScroll || num4 - cmy < yScroll - ITEM_HEIGHT)
@@ -10060,6 +10067,12 @@ public class Panel : IActionListener, IChatable
     {
         if (selected < 0)
         {
+            return;
+        }
+        int appearanceIndex = strCauhinh.Length - (Hud.HudLayout.IsMobileLayout ? 1 : 2);
+        if (selected == appearanceIndex)
+        {
+            OpenInventoryAppearanceSettings();
             return;
         }
         // This PC-only row is appended after all original options; their indices stay intact.

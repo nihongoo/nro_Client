@@ -258,6 +258,9 @@ public class SoundMn
 
 	private static void AddPcHudLabelOption()
 	{
+		int appearanceIndex = Panel.strCauhinh.Length;
+		System.Array.Resize(ref Panel.strCauhinh, appearanceIndex + 1);
+		Panel.strCauhinh[appearanceIndex] = "Giao diện";
 		if (Hud.HudLayout.IsMobileLayout) return;
 		int index = Panel.strCauhinh.Length;
 		System.Array.Resize(ref Panel.strCauhinh,index+1);

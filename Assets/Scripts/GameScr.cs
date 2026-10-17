@@ -670,6 +670,7 @@ public class GameScr : mScreen, IChatable
         Hud.HudLayout.Register("pc-analog.touch", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
             ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
         Hud.CombatPcHud.Register();
+        Hud.InventoryFrame.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
             () => GameCanvas.currentScreen == instance && (GameCanvas.currentDialog != null || GameCanvas.panel.isShow
