@@ -1,5 +1,17 @@
 # Cụm A — khung Hành trang và trang bị
 
+## Sửa lỗi khởi động sau test của người dùng
+
+Người dùng gặp NullReferenceException từ `Panel.InventoryFrameTabIds` qua `HudLayout.HitTest` khi chưa vào game. Nguyên nhân do cụm A đọc `currentTabName.Length` khi dữ liệu chưa khởi tạo; `HitTest` còn resolve rect trước khi kiểm tra visibility. Exception ở đường `Main.OnGUI`/input có thể lặp liên tục và gây lag; chưa có đo FPS để kết luận mọi nguyên nhân lag.
+
+- `Assets/Scripts/Hud/InventoryFrame.cs:13`, `Visible`: chỉ hiện trên `GameScr.instance`, panel đã mở và có dữ liệu tab.
+- `InventoryFrame.cs:119`, `InventoryFrameTabIds`: null trả mảng rỗng; các bộ tab dùng mảng static, không cấp phát mảng mới mỗi lần đọc. Provider tab ở `:38` xử lý panel/tab chưa có bằng rect rỗng, không chia cho 0.
+- `Assets/Scripts/Hud/HudLayout.cs:131`, `ForEachBackToFront`, và `:141`, `HitTest`: kiểm tra visibility trước khi gọi provider rect. `GetRect` vẫn cho phép lấy geometry trực tiếp của rect trang trí/ẩn khi caller cần.
+- Bổ sung test dùng **getter thực** thay cho mảng giả lập cố định: startup không panel/font, panel chưa có tab, màn login, traversal các rect ẩn, resolve tab khi panel null, tái dùng cùng mảng tab. Test mới đã thất bại trên code trước sửa; sau sửa **963 kiểm tra qua**, compile client/Editor qua. Log `Build/inventory-compile/ecabf9825dc84d06b40514e92502683f`.
+- Không chạy Unity/Play Mode/build APK. Người dùng dừng Play, chờ Unity compile xong, Clear Console rồi vào lại game; kiểm tra exception này không lặp, đăng nhập và mở/đóng Hành trang. Nếu còn lag, cần đo tiếp sau khi hết exception spam.
+
+Các số dòng trong phần báo cáo cụm A bên dưới là tại commit ban đầu; phần sửa startup này làm dịch số dòng trong `InventoryFrame.cs`.
+
 Nhánh `feat/inventory-frame`, tạo tại repo chính từ `origin/develop` đã fetch (`bc44620`). Không tạo clone/worktree, không sửa server, không đổi protocol, không build Unity/APK, không push/merge/stash và chưa xoá nhánh/stash nào. Dừng sau cụm A để người dùng test và merge. Link mockup không đọc được qua công cụ; triển khai theo thông số văn bản và hai lựa chọn người dùng đã xác nhận.
 
 ## Khảo sát và dữ liệu hiện có

@@ -133,8 +133,9 @@ namespace Hud
             EnsureViewport();
             foreach (Entry entry in backToFront)
             {
+                if (!IsVisible(entry)) continue;
                 Rect bounds = Resolve(entry);
-                if (bounds.width > 0 && bounds.height > 0 && IsVisible(entry)) paint(entry.Name, bounds);
+                if (bounds.width > 0 && bounds.height > 0) paint(entry.Name, bounds);
             }
         }
         public static string HitTest(Vector2 point)
@@ -143,7 +144,7 @@ namespace Hud
             for (int i = backToFront.Count - 1; i >= 0; i--)
             {
                 Entry entry = backToFront[i];
-                if (entry.BlocksPointer && Resolve(entry).Contains(point) && IsVisible(entry)) return entry.Name;
+                if (entry.BlocksPointer && IsVisible(entry) && Resolve(entry).Contains(point)) return entry.Name;
             }
             return null;
         }

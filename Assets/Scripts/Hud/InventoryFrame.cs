@@ -10,8 +10,10 @@ namespace Hud
             Bag = "inventory.legacy-bag", Money = "inventory.money";
         internal const int Background = 0x3b2515, Border = 0x6b4426, Dark = 0x27170c,
             Accent = 0xf2b45a, Red = 0xd93a2b;
-        internal static bool Visible => GameCanvas.panel != null && GameCanvas.panel.isShow
-            && GameCanvas.panel.InventoryFrameActive && GameCanvas.currentDialog == null
+        internal static bool Visible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
+            && GameCanvas.panel != null && GameCanvas.panel.isShow
+            && GameCanvas.panel.InventoryFrameActive && GameCanvas.panel.InventoryFrameTabIds.Length > 0
+            && GameCanvas.currentDialog == null
             && !GameCanvas.menu.showMenu && !Notifications.NotificationCenter.IsOpen;
         // Mockup pixels are reference-design pixels, as in CombatMobileHud. Font and
         // native game icons remain logical-sized; MotherCanvas zoom is not changed.
@@ -33,8 +35,9 @@ namespace Hud
             for (int i = 0; i < 5; i++) {
                 int slot = i;
                 HudLayout.Register(Tab(i), () => {
+                    int count = GameCanvas.panel?.InventoryFrameTabIds.Length ?? 0;
+                    if (count == 0) return new Rect();
                     Rect tabs = HudLayout.GetRect(Tabs);
-                    int count = GameCanvas.panel.InventoryFrameTabIds.Length;
                     return new Rect(tabs.x + slot * tabs.width / count, tabs.y, tabs.width / count, tabs.height);
                 }, HudLayout.OverlayOrder + 12,
                     () => Visible && slot < GameCanvas.panel.InventoryFrameTabIds.Length);
@@ -113,8 +116,11 @@ namespace Hud
 public partial class Panel
 {
     internal bool InventoryFrameActive => type == 0 && Equals(GameCanvas.panel);
-    internal int[] InventoryFrameTabIds => currentTabName.Length >= 7
-        ? new[] { 0, 1, 2, 3, 6 } : currentTabName.Length == 4 ? new[] { 0, 1, 2, 3 } : new[] { 0, 1, 2, 3, 4 };
+    internal int[] InventoryFrameTabIds => currentTabName == null ? Array.Empty<int>() : currentTabName.Length >= 7
+        ? inventoryMainTabs : currentTabName.Length == 4 ? inventoryFourTabs : inventoryFiveTabs;
+    private static readonly int[] inventoryMainTabs = new[] { 0, 1, 2, 3, 6 };
+    private static readonly int[] inventoryFourTabs = new[] { 0, 1, 2, 3 };
+    private static readonly int[] inventoryFiveTabs = new[] { 0, 1, 2, 3, 4 };
     private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 };
     private static readonly string[] inventorySlotLabels = { "Áo", "Quần", "Găng", "Giày", "Rada", "GLT", "Skin", "Tai", "Pet" };
     private string inventoryPressed;

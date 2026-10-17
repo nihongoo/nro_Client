@@ -66,9 +66,9 @@ class mGraphics {
     public static int zoomLevel=2,addYWhenOpenKeyBoard;
     public void setColor(int color){} public void fillRect(int x,int y,int w,int h){} public void setClip(int x,int y,int w,int h){}
 }
-class Panel { public bool isShow=true,InventoryFrameActive=true; public int currentTabIndex=1; public int[] InventoryFrameTabIds={0,1,2,3,6}; }
+partial class Panel { public bool isShow=true,InventoryFrameActive=true; public int currentTabIndex=1; public string[][] currentTabName=new string[7][]; }
 class Menu { public bool showMenu; }
-static class GameCanvas { public static int w=640,h=360; public static bool modal; public static object currentDialog; public static Menu menu=new Menu(); public static Panel panel=new Panel(); }
+static class GameCanvas { public static int w=640,h=360; public static bool modal; public static object currentDialog,currentScreen=GameScr.instance; public static Menu menu=new Menu(); public static Panel panel=new Panel(); }
 namespace Notifications { public static class NotificationCenter { public static bool IsOpen; } }
 class GamePad { public Rect HudVisualBounds=>new Rect(); }
 class Char { static Char p=new Char(); public static Char myCharz()=>p; public int statusMe; }
@@ -83,6 +83,27 @@ class InventoryTests {
     static void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
     static void Near(float a,float b,string s)=>Check(Math.Abs(a-b)<.1,s);
     static void Main(){
+        Panel savedPanel=GameCanvas.panel;
+        mFont savedFont=mFont.tahoma_7_yellow;
+        GameCanvas.currentScreen=null; GameCanvas.panel=null; mFont.tahoma_7_yellow=null;
+        HudLayout.BeginFrame();
+        Check(HudLayout.HitTest(new Vector2(10,10))==null,"startup without panel/fonts must not resolve inventory");
+        int painted=0; HudLayout.ForEachBackToFront((name,rect)=>painted++);
+        Check(painted==0,"startup traversal must skip hidden inventory providers");
+        Check(HudLayout.GetRect(InventoryFrame.Tab(0)).width==0,"explicit tab resolution without panel must be empty");
+        GameCanvas.panel=savedPanel; savedPanel.isShow=false; savedPanel.currentTabName=null;
+        HudLayout.BeginFrame();
+        Check(HudLayout.HitTest(new Vector2(10,10))==null,"closed uninitialized panel must not resolve inventory");
+        Check(savedPanel.InventoryFrameTabIds.Length==0,"uninitialized tabs must be empty");
+        GameCanvas.currentScreen=GameScr.instance; savedPanel.isShow=true; HudLayout.BeginFrame();
+        Check(HudLayout.HitTest(new Vector2(10,10))==null,"in-game panel with uninitialized tabs must be hidden");
+        GameCanvas.currentScreen=null;
+        mFont.tahoma_7_yellow=savedFont; savedPanel.currentTabName=new string[7][];
+        Check(object.ReferenceEquals(savedPanel.InventoryFrameTabIds,savedPanel.InventoryFrameTabIds),"tab reads must reuse the array");
+        savedPanel.isShow=true;
+        HudLayout.BeginFrame();
+        Check(HudLayout.HitTest(new Vector2(10,10))==null,"inventory must not capture login input");
+        GameCanvas.currentScreen=GameScr.instance;
         foreach(bool mobile in new[]{true,false})foreach(int zoom in new[]{2,3,4}){
             foreach(int[] size in mobile?new[]{new[]{422,195},new[]{585,270},new[]{844,390}}:new[]{new[]{640,360},new[]{960,540},new[]{1280,720}}){
                 UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
@@ -132,9 +153,11 @@ output.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix="inventory-", dir=output) as folder:
     path = Path(folder)
     (path / "InventoryRegistry.cs").write_text(source[:source.index("public partial class Panel")], encoding="utf-8")
+    tab_members = source[source.index("    internal int[] InventoryFrameTabIds"):source.index("    private static readonly int[] inventoryBodySlots")]
+    (path / "PanelTabs.cs").write_text("using System; partial class Panel {\n" + tab_members + "\n}", encoding="utf-8")
     (path / "InventoryTests.cs").write_text(fixture, encoding="utf-8")
     exe = path / "InventoryTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
-                    str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"),
+                    str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"),
                     str(ROOT / "Assets/Scripts/Hud/HudLayout.cs")], check=True)
     subprocess.run([str(exe)], check=True)
