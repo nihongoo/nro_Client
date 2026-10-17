@@ -7,6 +7,7 @@ public partial class Panel
 {
     private readonly List<int> inventoryBagMap = new List<int>();
     private readonly InventoryBagDoubleTap inventoryBagDoubleTap = new InventoryBagDoubleTap();
+    private readonly InventoryBagDoubleTap inventoryEquipmentDoubleTap = new InventoryBagDoubleTap();
     private readonly List<int> inventoryBagKeyboardSlots = new List<int>();
     private InventoryBagFilter inventoryBagFilter;
     private int inventoryDragX, inventoryDetailDragScroll;
@@ -21,8 +22,12 @@ public partial class Panel
         Item[] bag = Char.myCharz().arrItemBag;
         InventoryBag.Map(bag, inventoryBagFilter, inventoryBagMap);
         if (inventoryBagDetailOpen) {
-            int index = selected - (Char.myCharz().arrItemBody?.Length ?? 0);
-            if (bag == null || index < 0 || index >= bag.Length || !ReferenceEquals(bag[index], inventoryBagDetailItem))
+            Item[] body = Char.myCharz().arrItemBody;
+            int bodyLength = body?.Length ?? 0;
+            int index = selected - bodyLength;
+            Item current = selected >= 0 && selected < bodyLength ? body[selected]
+                : bag != null && index >= 0 && index < bag.Length ? bag[index] : null;
+            if (!ReferenceEquals(current, inventoryBagDetailItem))
                 CloseInventoryBagDetail();
         }
     }
@@ -30,6 +35,7 @@ public partial class Panel
     {
         inventoryBagDetailOpen = false; inventoryBagDetailItem = null; cp = null;
         inventoryBagDoubleTap.Reset(); HudLayout.Invalidate();
+        inventoryEquipmentDoubleTap.Reset();
     }
     private bool IsInventoryBagDragTarget(string hit) => currentTabIndex == 1 && hit != null
         && (hit == InventoryFrame.Bag || hit.StartsWith("inventory.bag.cell.")
@@ -63,11 +69,32 @@ public partial class Panel
             else { currItem = item; perform(2000, item); }
             return true;
         }
+        OpenInventoryItemDetail(item); return true;
+    }
+
+    private void HandleInventoryEquipmentClick(int slot)
+    {
+        Item[] body = Char.myCharz().arrItemBody;
+        selected = inventoryBodySlots[slot];
+        if (selected < 0 || selected >= (body?.Length ?? 0)) { selected = -1; return; }
+        Item item = body[selected];
+        if (selected == InventoryBag.EquippedPorataIndex(body)) {
+            if (inventoryEquipmentDoubleTap.Tap(selected, item, mSystem.currentTimeMillis())) {
+                if (Char.myCharz().statusMe == 14) GameCanvas.startOKDlg(mResources.can_not_do_when_die);
+                else { currItem = item; perform(2001, item); }
+            } else OpenInventoryItemDetail(item);
+            return;
+        }
+        CloseInventoryBagDetail(); doFireInventory();
+    }
+
+    private void OpenInventoryItemDetail(Item item)
+    {
         currItem = item; inventoryBagDetailItem = item; inventoryBagDetailOpen = true;
         int menuY = GameCanvas.menu.menuY;
         addItemDetail(item);
         GameCanvas.menu.menuY = menuY;
-        PrepareInventoryBagDetail(); HudLayout.Invalidate(); return true;
+        PrepareInventoryBagDetail(); HudLayout.Invalidate();
     }
 
     private void PrepareInventoryBagDetail()
@@ -104,6 +131,7 @@ public partial class Panel
     private void MoveInventoryBagSelection(int direction)
     {
         inventoryBagDoubleTap.Reset();
+        inventoryEquipmentDoubleTap.Reset();
         inventoryBagKeyboardSlots.Clear();
         int bodyLength = Char.myCharz().arrItemBody?.Length ?? 0;
         foreach (int index in inventoryBodySlots)
@@ -134,6 +162,7 @@ public partial class Panel
             ChatPopup.cmyText = Mathf.Clamp(ChatPopup.cmyText - amount * 24, 0, cp.lim);
         else if (HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
             inventoryBagDoubleTap.Reset();
+            inventoryEquipmentDoubleTap.Reset();
             cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim); HudLayout.Invalidate();
         }
         return true;

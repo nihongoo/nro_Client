@@ -1,5 +1,17 @@
 # Cụm B — túi đồ dạng lưới
 
+## Bấm đúp Tai để Dùng và xác định runtime server cũ
+
+- `HandleInventoryEquipmentClick`, `Assets/Scripts/Hud/InventoryBagPanel.cs:75`: với454 thật tại body7, tap đầu mở chi tiết, tap thứ hai trong350ms gọi `perform(2001, item)` đúng một lần. Không mở menu ở tap đầu vì menu sẽ chặn tap thứ hai. Món trang bị khác giữ menu cũ. Không Dùng khi chết; kéo/đổi chọn/đổi tab/wheel/đổi object từ server huỷ cặp tap. `InventoryBagDoubleTap` được dùng bằng instance riêng `inventoryEquipmentDoubleTap` để không trộn cặp tap túi với body.
+- `OpenInventoryItemDetail:91`: gom đoạn mở chi tiết dùng chung túi/body, bỏ đoạn lặp tương ứng. `SyncInventoryBag:20` kiểm tra object chi tiết theo cả body và bag; nếu không, chi tiết Tai sẽ bị đóng nhầm mỗi lần sync vì selected7 không phải index túi.
+- `UpdateInventoryFrameInput`, `Assets/Scripts/Hud/InventoryFrame.cs:250`, gọi helper mới; không đổi vị trí hoặc hit-test. Các điểm reset tap cũng áp dụng cho instance Tai.
+- **224 kiểm tra input qua**, thêm chạm đầu, đúp dùng2001 một lần, tap thứ ba không dùng thêm, body bị server thay, khi chết, kéo ô Tai không dùng/mở chi tiết.15 kiểm tra routing packet, registry/model34.061 và compile C# client/Editor độc lập qua. Chưa chạy Unity/APK/máy thật.
+- Tự mặc454: source hiện không chặn chỉ vì có nhiều bông tai trong túi. Server có thêm **59 kiểm tra qua**, bao gồm sáu thứ tự454/921/1819 và hai bản454; chỉ một454 được mặc, các món khác giữ nguyên.
+- Nguyên nhân cụ thể trên bản `run.bat` người dùng xác nhận đang dùng: `build/server/current.txt` trước đây chọn `20261016-153658-5584ec58779c47dd9d19c1174fe8dabe`; kiểm tra `javap` trên class `InventoryService` của release đó không có `autoEquipPorata`. Source mới chưa vào runtime được chọn. Không kết luận số cặp gây lỗi hoặc tạo454 giả ở client.
+- Đã chạy **compile server** bằng `compile.bat --no-pause`, thành công551 file Java; runtime mới `20261017-162037-ec2a2dea5fc444e0bb97ec8a0b3e708a` được script chọn cho `run.bat`. `javap` xác nhận class mới có `autoEquipPorata` và `Service.player` gọi hàm này; `run.bat --check` qua. Không build Unity/APK; không dừng/khởi động server hoặc sửa DB trực tiếp. Thay đổi sẵn của người dùng vẫn không đưa vào commit; bản compile server dùng toàn bộ source hiện tại trong workspace.
+
+**Cần thực hiện trước khi test:** dừng server cũ bằng quy trình bình thường để lưu dữ liệu, chạy lại `run.bat`, rồi đăng nhập lại client mới. Acc có454 thật trong túi sẽ tự mặc khi đủ điều kiện; nếu Tai có921/1819 thì trả món đó về túi. Không xoá các món mod/bản dư. Tap Tai một lần xem chi tiết, đúp để hợp thể/tách; test cuộn, F và ô nhanh vẫn dùng đúng món. Chưa xác nhận kết quả trên phiên server sau khi người dùng restart.
+
 ## Sửa chọn mục Chức năng và ưu tiên tự mặc454
 
 - Lỗi Chức năng do bản sửa cuộn trước: `UpdateInventoryFrameInput`, `Assets/Scripts/Hud/InventoryFrame.cs:250`, trả về false để chuyển nội dung tab khác cho handler cũ, nhưng lại xoá `isPointerJustDown` / release trước khi chuyển. `Panel.updateKeyTool`, `Assets/Scripts/Panel.cs:2064`, gọi `updateKeyScrollView`, cần các sự kiện này để chọn mục. Bản sửa thêm `frameGesture` tại263: chỉ tiêu thụ pointer cho Hành trang hoặc gesture bắt đầu ở nút đóng/hàng tab. Nội dung Nhiệm vụ/Kỹ năng/Bang hội/Chức năng giữ nguyên pointer cho handler cũ; cuộn Trang bị + Túi vẫn nhận điểm nhấn một lần.

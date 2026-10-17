@@ -37,6 +37,7 @@ members += bag[bag.index("    private readonly List<int>"):bag.index("    privat
 for name in ("SyncInventoryFrame", "SelectInventoryFrameTab", "UpdateInventoryFrameInput", "CloseInventoryFrame"):
     members += method(frame, name)
 for name in ("SyncInventoryBag", "CloseInventoryBagDetail", "IsInventoryBagDragTarget", "HandleInventoryBagClick",
+             "HandleInventoryEquipmentClick", "OpenInventoryItemDetail",
              "PrepareInventoryBagDetail", "ScrollInventoryBagIntoView", "MoveInventoryBagSelection",
              "UpdateInventoryBagDetailDrag", "ScrollInventoryBagMouse"):
     members += method(bag, name)
@@ -77,6 +78,7 @@ public partial class Panel {
  public bool FrameTick(){HudLayout.BeginFrame();return UpdateInventoryFrameInput();}
  public void ScrollTo(int visual){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.BagCellBounds(visual));}
  public void ScrollToFilter(int filter){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.FilterBounds(filter));}
+ public void ScrollToEquipment(int slot){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.EquipmentBounds(slot));}
  public void Wheel(int amount){ScrollInventoryBagMouse(amount);}
  public void Move(int direction){MoveInventoryBagSelection(direction);}
  public bool Preview=>InventoryBagDetailOpen;
@@ -94,7 +96,7 @@ class InputTests {
  static void Run(bool mobile,int w,int h,int zoom){
   global::Main.isPC=!mobile;UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
   GameCanvas.panel=new Panel();GameCanvas.currentDialog=null;GameCanvas.menu.showMenu=false;GameCanvas.clearAllPointerEvent();
-  Panel p=GameCanvas.panel;Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.statusMe=0;
+  Panel p=GameCanvas.panel;Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.arrItemBody=new Item[8];ch.statusMe=0;
   GameCanvas.w=w;GameCanvas.h=h;mGraphics.zoomLevel=zoom;
   Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30},quantity=758};
   Item consumable=new Item{template=new ItemTemplate{id=13,type=6},quantity=2};
@@ -172,6 +174,28 @@ class InputTests {
   Check(p.currentTabIndex==1,"tab header stopped switching from legacy tab to inventory");
   Click(HudLayout.GetRect(InventoryFrame.Tab(4)),7400);
   Check(p.currentTabIndex==6,"function tab header did not select existing function tab");
+  Click(HudLayout.GetRect(InventoryFrame.Tab(1)),7800);
+  Item porata=new Item{template=new ItemTemplate{id=454,type=27},quantity=1};ch.arrItemBody[7]=porata;
+  p.cmy=p.cmtoY=0;HudLayout.Invalidate();p.ScrollToEquipment(7);
+  int equipmentActions=p.actions,equipmentMenus=p.menus;
+  Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8000);p.Tick();p.Tick();
+  Check(p.selected==7&&p.Preview&&p.actions==equipmentActions&&p.menus==equipmentMenus,"first Porata tap must preview without opening blocking menu");
+  Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8100);
+  Check(p.actions==equipmentActions+1&&p.lastAction==2001&&p.selected==7&&p.menus==equipmentMenus,"equipped Porata double tap did not directly use once");
+  Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8200);
+  Check(p.actions==equipmentActions+1,"third Porata tap sent a second use packet");
+  ch.arrItemBody[7]=new Item{template=porata.template};p.Tick();
+  Check(!p.Preview,"server body replacement left stale Porata detail");
+  Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8300);
+  Check(p.actions==equipmentActions+1,"server body replacement retained old double tap");
+  ch.statusMe=14;Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8400);
+  Check(p.actions==equipmentActions+1&&GameCanvas.currentDialog!=null,"dead player directly used equipped Porata");
+  ch.statusMe=0;GameCanvas.currentDialog=null;
+  Click(HudLayout.GetRect(InventoryFrame.DetailClose),8800);p.ScrollToEquipment(7);
+  GameCanvas.pointerPressed((int)HudLayout.GetRect(InventoryFrame.Slot(7)).center.x,(int)HudLayout.GetRect(InventoryFrame.Slot(7)).center.y);p.Tick();
+  GameCanvas.pointerDragged(GameCanvas.px,GameCanvas.py-12);p.Tick();
+  GameCanvas.pointerReleased(GameCanvas.px,GameCanvas.py);p.Tick();
+  Check(p.actions==equipmentActions+1&&!p.Preview,"dragging Porata slot used item/opened detail");
  }
  static void Main(){
   Run(false,640,360,2);Run(false,1280,720,4);Run(true,422,195,2);Run(true,844,390,4);

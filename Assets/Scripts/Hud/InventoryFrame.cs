@@ -257,6 +257,7 @@ public partial class Panel
         if (GameCanvas.isPointerJustDown) {
             inventoryPressed = hit;
             if (hit == null || !hit.StartsWith("inventory.bag.cell.")) inventoryBagDoubleTap.Reset();
+            if (hit != InventoryFrame.Slot(7)) inventoryEquipmentDoubleTap.Reset();
             inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
@@ -270,6 +271,7 @@ public partial class Panel
             int delta = GameCanvas.py - inventoryDragY;
             if (System.Math.Abs(delta) > 4 || System.Math.Abs(GameCanvas.px - inventoryDragX) > 4) {
                 inventoryDragging = true; inventoryBagDoubleTap.Reset();
+                inventoryEquipmentDoubleTap.Reset();
             }
             if (inventoryDragging) { cmy = cmtoY = Mathf.Clamp(inventoryDragScroll - delta, 0, cmyLim); HudLayout.Invalidate(); }
         }
@@ -285,9 +287,7 @@ public partial class Panel
             if (currentTabIndex == 1 && click) {
                 if (hit != null && hit.StartsWith("inventory.equipment.")) {
                     int slot = int.Parse(hit.Substring("inventory.equipment.".Length));
-                    selected = inventoryBodySlots[slot];
-                    if (selected >= (Char.myCharz().arrItemBody?.Length ?? 0)) selected = -1;
-                    if (selected >= 0) { CloseInventoryBagDetail(); doFireInventory(); }
+                    HandleInventoryEquipmentClick(slot);
                     GameCanvas.clearAllPointerEvent(); return true;
                 }
             }
@@ -323,6 +323,7 @@ public partial class Panel
         if (GameCanvas.keyPressed[12] || GameCanvas.keyPressed[fire]) {
             GameCanvas.keyPressed[12] = GameCanvas.keyPressed[fire] = false;
             inventoryBagDoubleTap.Reset();
+            inventoryEquipmentDoubleTap.Reset();
             if (selected >= 0 && selected < currentListLength) {
                 doFireInventory();
                 if (InventoryBagDetailOpen) PrepareInventoryBagDetail();
