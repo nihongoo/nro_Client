@@ -1,0 +1,190 @@
+using System;
+using System.Collections.Generic;
+using Hud;
+using UnityEngine;
+
+public partial class Panel
+{
+    private readonly List<int> inventoryBagMap = new List<int>();
+    private readonly InventoryBagDoubleTap inventoryBagDoubleTap = new InventoryBagDoubleTap();
+    private readonly List<int> inventoryBagKeyboardSlots = new List<int>();
+    private InventoryBagFilter inventoryBagFilter;
+    private int inventoryDragX, inventoryDetailDragScroll;
+    private bool inventoryBagDetailOpen;
+    private Item inventoryBagDetailItem;
+    private static readonly string[] inventoryBagFilters = { "Tất cả", "Trang bị", "Tiêu hao", "Nguyên liệu" };
+    internal int InventoryBagCellCount => inventoryBagMap.Count;
+    internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && currentTabIndex == 1 && cp != null;
+
+    private void SyncInventoryBag()
+    {
+        Item[] bag = Char.myCharz().arrItemBag;
+        InventoryBag.Map(bag, inventoryBagFilter, inventoryBagMap);
+        if (inventoryBagDetailOpen) {
+            int index = selected - (Char.myCharz().arrItemBody?.Length ?? 0);
+            if (bag == null || index < 0 || index >= bag.Length || !ReferenceEquals(bag[index], inventoryBagDetailItem))
+                CloseInventoryBagDetail();
+        }
+    }
+    private void CloseInventoryBagDetail()
+    {
+        inventoryBagDetailOpen = false; inventoryBagDetailItem = null; cp = null;
+        inventoryBagDoubleTap.Reset(); HudLayout.Invalidate();
+    }
+    private bool IsInventoryBagDragTarget(string hit) => currentTabIndex == 1 && hit != null
+        && (hit == InventoryFrame.Bag || hit.StartsWith("inventory.bag.cell.")
+            || hit.StartsWith("inventory.equipment.") || hit.StartsWith("inventory.filter."));
+
+    private bool HandleInventoryBagClick(string hit)
+    {
+        if (currentTabIndex != 1 || hit == null) return false;
+        if (hit == InventoryFrame.DetailClose) { CloseInventoryBagDetail(); return true; }
+        if (hit == InventoryFrame.DetailActions) {
+            if (inventoryBagDetailItem != null) { doFireInventory(); PrepareInventoryBagDetail(); }
+            return true;
+        }
+        if (hit.StartsWith("inventory.filter.")) {
+            inventoryBagFilter = (InventoryBagFilter)int.Parse(hit.Substring("inventory.filter.".Length));
+            CloseInventoryBagDetail(); selected = -1; waitToPerform = -1;
+            SyncInventoryBag(); HudLayout.Invalidate(); return true;
+        }
+        if (!hit.StartsWith("inventory.bag.cell.")) return false;
+        int visual = int.Parse(hit.Substring("inventory.bag.cell.".Length));
+        if (visual < 0 || visual >= inventoryBagMap.Count) return true;
+        int index = inventoryBagMap[visual];
+        Item[] bag = Char.myCharz().arrItemBag;
+        if (bag == null || index >= bag.Length) return true;
+        Item item = bag[index];
+        selected = (Char.myCharz().arrItemBody?.Length ?? 0) + index; waitToPerform = -1;
+        if (item?.template == null) { CloseInventoryBagDetail(); return true; }
+        bool equip = inventoryBagDoubleTap.Tap(index, item, mSystem.currentTimeMillis());
+        if (equip) {
+            if (Char.myCharz().statusMe == 14) GameCanvas.startOKDlg(mResources.can_not_do_when_die);
+            else { currItem = item; perform(2000, item); }
+            return true;
+        }
+        currItem = item; inventoryBagDetailItem = item; inventoryBagDetailOpen = true;
+        int menuY = GameCanvas.menu.menuY;
+        addItemDetail(item);
+        GameCanvas.menu.menuY = menuY;
+        PrepareInventoryBagDetail(); HudLayout.Invalidate(); return true;
+    }
+
+    private void PrepareInventoryBagDetail()
+    {
+        if (cp?.says == null || inventoryBagDetailItem == null) return;
+        Rect bounds = HudLayout.GetRect(InventoryFrame.Detail);
+        string text = string.Join("\n", cp.says) + "\n|0|1|Số lượng: " + inventoryBagDetailItem.quantity;
+        cp.says = mFont.tahoma_7_red.splitFontArray(text, Mathf.Max(20, (int)bounds.width - 28));
+        ChatPopup.cmyText = 0;
+    }
+    private void PaintInventoryBagDetail(mGraphics g)
+    {
+        Rect bounds = HudLayout.GetRect(InventoryFrame.Detail), actions = HudLayout.GetRect(InventoryFrame.DetailActions);
+        // Dock the existing item popup; the C layout/bonus/compare/actions are a later cluster.
+        cp.cx = (int)bounds.x; cp.cy = 0; cp.sayWidth = (int)bounds.width - 2;
+        cp.ch = (int)bounds.height; cp.isClip = true; cp.sayRun = 23;
+        cp.lim = Mathf.Max(0, cp.says.Length * 12 + 45 - (int)bounds.height);
+        paintDetail(g); GameScr.resetTranslate(g);
+        InventoryFrame.Clip(g, bounds);
+        InventoryFrame.Rounded(g, actions, InventoryFrame.EquipmentBackground);
+        mFont.tahoma_7b_dark.drawString(g, "Thao tác", (int)actions.center.x, (int)actions.y + 3, mFont.CENTER);
+        Rect close = HudLayout.GetRect(InventoryFrame.DetailClose);
+        InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
+        g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+        InventoryFrame.Clip(g, HudLayout.ScreenBounds);
+    }
+    private void ScrollInventoryBagIntoView(Rect cell)
+    {
+        Rect viewport = HudLayout.GetRect(InventoryFrame.Bag);
+        if (cell.y < viewport.y) cmy -= (int)(viewport.y - cell.y);
+        else if (cell.yMax + 4 > viewport.yMax) cmy += (int)(cell.yMax + 4 - viewport.yMax);
+        cmy = cmtoY = Mathf.Clamp(cmy, 0, cmyLim); HudLayout.Invalidate();
+    }
+    private void MoveInventoryBagSelection(int direction)
+    {
+        inventoryBagDoubleTap.Reset();
+        inventoryBagKeyboardSlots.Clear();
+        int bodyLength = Char.myCharz().arrItemBody?.Length ?? 0;
+        foreach (int index in inventoryBodySlots)
+            if (index >= 0 && index < bodyLength) inventoryBagKeyboardSlots.Add(index);
+        foreach (int index in inventoryBagMap) inventoryBagKeyboardSlots.Add(bodyLength + index);
+        if (inventoryBagKeyboardSlots.Count == 0) return;
+        int old = inventoryBagKeyboardSlots.IndexOf(selected);
+        int next = old < 0 ? (direction > 0 ? 0 : inventoryBagKeyboardSlots.Count - 1)
+            : (old + direction + inventoryBagKeyboardSlots.Count) % inventoryBagKeyboardSlots.Count;
+        selected = inventoryBagKeyboardSlots[next];
+        if (inventoryBagDetailOpen) CloseInventoryBagDetail();
+    }
+    private void UpdateInventoryBagDetailDrag()
+    {
+        if (GameCanvas.isPointerJustDown && inventoryPressed == InventoryFrame.Detail)
+            inventoryDetailDragScroll = ChatPopup.cmyText;
+        if (inventoryPressed != InventoryFrame.Detail || !GameCanvas.isPointerDown || cp == null) return;
+        int delta = GameCanvas.py - inventoryDragY;
+        if (System.Math.Abs(delta) > 4) inventoryDragging = true;
+        if (inventoryDragging) ChatPopup.cmyText = Mathf.Clamp(inventoryDetailDragScroll - delta, 0, cp.lim);
+    }
+    private bool ScrollInventoryBagMouse(int amount)
+    {
+        if (!InventoryFrameActive || currentTabIndex != 1) return false;
+        if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
+        Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
+        if (InventoryBagDetailOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point))
+            ChatPopup.cmyText = Mathf.Clamp(ChatPopup.cmyText - amount * 24, 0, cp.lim);
+        else if (HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
+            inventoryBagDoubleTap.Reset();
+            cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim); HudLayout.Invalidate();
+        }
+        return true;
+    }
+
+    private void PaintInventoryBag(mGraphics g)
+    {
+        Rect viewport = HudLayout.GetRect(InventoryFrame.Bag), filter = InventoryFrame.FilterBounds(0);
+        InventoryFrame.Clip(g, viewport);
+        mFont.tahoma_7b_dark.drawString(g, "Túi đồ (" + (Char.myCharz().arrItemBag?.Length ?? 0) + " ô)",
+            W / 2, (int)filter.y - 13, mFont.CENTER);
+        for (int i = 0; i < inventoryBagFilters.Length; i++) {
+            Rect chip = InventoryFrame.FilterBounds(i);
+            if (chip.yMax < viewport.y || chip.y > viewport.yMax) continue;
+            InventoryFrame.Clip(g, InventoryFrame.Intersection(chip, viewport));
+            PopUp.paintPopUp(g, (int)chip.x, (int)chip.y, (int)chip.width, (int)chip.height,
+                i == (int)inventoryBagFilter ? 1 : 0, true);
+            mFont font = i == (int)inventoryBagFilter ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey;
+            string label = inventoryBagFilters[i];
+            if (font.getWidth(label) + 4 <= chip.width)
+                font.drawString(g, label, (int)chip.center.x, (int)chip.y + 5, mFont.CENTER);
+            else {
+                string[] words = label.Split(' ');
+                font.drawString(g, words[0], (int)chip.center.x, (int)chip.y + 1, mFont.CENTER);
+                font.drawString(g, string.Join(" ", words, 1, words.Length - 1), (int)chip.center.x, (int)chip.y + 11, mFont.CENTER);
+            }
+        }
+        int cells = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns;
+        Item[] bag = Char.myCharz().arrItemBag;
+        for (int visual = 0; visual < cells; visual++) {
+            Rect cell = InventoryFrame.BagCellBounds(visual);
+            if (cell.yMax + 4 < viewport.y || cell.y > viewport.yMax) continue;
+            bool allocated = visual < inventoryBagMap.Count;
+            int index = allocated ? inventoryBagMap[visual] : -1;
+            Item item = index >= 0 && bag != null && index < bag.Length ? bag[index] : null;
+            bool chosen = allocated && selected == (Char.myCharz().arrItemBody?.Length ?? 0) + index;
+            InventoryFrame.Clip(g, viewport);
+            InventoryFrame.Rounded(g, cell, chosen ? InventoryFrame.Accent : allocated ? InventoryFrame.SlotBackground : InventoryFrame.MoneyBackground,
+                allocated ? (byte)255 : (byte)100);
+            if (!allocated) continue;
+            if (item?.template == null) continue;
+            // Icon position never depends on quantity, badge width or level.
+            InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
+            SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0,
+                mGraphics.HCENTER | mGraphics.VCENTER);
+            InventoryFrame.Clip(g, viewport);
+            if (InventoryBag.HasLevel(item))
+                mFont.tahoma_7_yellow.drawString(g, "Lv" + Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7),
+                    (int)cell.x + 2, (int)cell.y + 1, mFont.LEFT);
+            if (item.quantity > 1) InventoryBagBadge.Paint(g, cell, viewport, item.quantity);
+        }
+        InventoryFrame.Clip(g, viewport);
+    }
+}

@@ -2631,6 +2631,7 @@ public partial class Panel : IActionListener, IChatable
 
     public void updateScroolMouse(int a)
     {
+        if (ScrollInventoryBagMouse(a)) return;
         bool flag = false;
         if (GameCanvas.pxMouse > wScroll)
         {
@@ -5596,19 +5597,19 @@ public partial class Panel : IActionListener, IChatable
         paintScrollArrow(g);
     }
 
-    private void paintInventory(mGraphics g, bool bagOnly = false)
+    private void paintInventory(mGraphics g)
     {
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
         Item[] arrItemBody = Char.myCharz().arrItemBody;
         Item[] arrItemBag = Char.myCharz().arrItemBag;
-        for (int i = bagOnly ? arrItemBody.Length : 0; i < arrItemBody.Length + arrItemBag.Length; i++)
+        for (int i = 0; i < arrItemBody.Length + arrItemBag.Length; i++)
         {
             bool flag = i < arrItemBody.Length;
             int num = i;
             int num2 = i - arrItemBody.Length;
             int num3 = xScroll + 36;
-            int num4 = yScroll + (bagOnly ? i - arrItemBody.Length : i) * ITEM_HEIGHT;
+            int num4 = yScroll + i * ITEM_HEIGHT;
             int num5 = wScroll - 36;
             int h = ITEM_HEIGHT - 1;
             int num6 = xScroll;
@@ -5620,13 +5621,8 @@ public partial class Panel : IActionListener, IChatable
                 continue;
             }
             Item item = ((!flag) ? arrItemBag[num2] : arrItemBody[num]);
-            if (bagOnly)
-                Hud.InventoryFrame.Rounded(g, new Rect(num6, num4, wScroll - 1, h), (i == selected) ? 16383818 : 15723751);
-            else
-            {
-                g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
-                g.fillRect(num3, num4, num5, h);
-            }
+            g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
+            g.fillRect(num3, num4, num5, h);
             int iconColor = (i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045);
             if (item != null)
             {
@@ -5643,13 +5639,8 @@ public partial class Panel : IActionListener, IChatable
                     iconColor = (i != selected) ? color1[2] : color2[2];
                 }
             }
-            if (bagOnly)
-                Hud.InventoryFrame.Rounded(g, new Rect(num6, num7, num8, num9), iconColor);
-            else
-            {
-                g.setColor(iconColor);
-                g.fillRect(num6, num7, num8, num9);
-            }
+            g.setColor(iconColor);
+            g.fillRect(num6, num7, num8, num9);
             if (item != null && item.isSelect && GameCanvas.panel.type == 12)
             {
                 g.setColor((i != selected) ? 6047789 : 7040779);

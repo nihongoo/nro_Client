@@ -64,7 +64,8 @@ namespace UnityEngine {
     }
 }
 namespace UnityEngine.Device { public static class Application { public static RuntimePlatform platform; } }
-class Item { public ItemOption[] itemOption; }
+partial class Item { public ItemOption[] itemOption; public ItemTemplate template; public int quantity; }
+class ItemTemplate { public short id; public sbyte type; }
 class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
 class ItemOptionTemplate { public int id; }
 class mFont {
@@ -76,7 +77,12 @@ class mGraphics {
     public static int zoomLevel=2,addYWhenOpenKeyBoard;
     public void setColor(int color){} public void fillRect(int x,int y,int w,int h){} public void setClip(int x,int y,int w,int h){}
 }
-partial class Panel { public bool isShow=true,InventoryFrameActive=true; public int currentTabIndex=1; public string[][] currentTabName=new string[7][]; }
+partial class Panel {
+    public bool isShow=true,InventoryFrameActive=true,InventoryBagDetailOpen;
+    public int currentTabIndex=1,cmy,InventoryBagCellCount=30;
+    public int InventoryFrameScroll=>currentTabIndex==1?cmy:0;
+    public string[][] currentTabName=new string[7][];
+}
 class Menu { public bool showMenu; }
 static class GameCanvas { public static int w=640,h=360; public static bool modal; public static object currentDialog,currentScreen=GameScr.instance; public static Menu menu=new Menu(); public static Panel panel=new Panel(); }
 namespace Notifications { public static class NotificationCenter { public static bool IsOpen; } }
@@ -156,6 +162,34 @@ class InventoryTests {
                 Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Slot(0)).center)!=InventoryFrame.Slot(0),"hidden equipment still captures input");
                 GameCanvas.panel.currentTabIndex=1;GameCanvas.panel.isShow=false;
                 Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Close).center)==null,"closed frame captures input");GameCanvas.panel.isShow=true;
+                Rect viewport=HudLayout.GetRect(InventoryFrame.Bag);
+                foreach(int capacity in new[]{0,30,35,36,80,255}){
+                    GameCanvas.panel.InventoryBagCellCount=capacity;
+                    int rows=InventoryBag.Rows(capacity);
+                    Check(rows>=7&&rows*5>=capacity,"bag capacity hidden or manufactured");
+                    Rect last=InventoryFrame.BagCellBounds(rows*5-1);
+                    GameCanvas.panel.cmy=(int)Math.Ceiling(last.yMax+5+GameCanvas.panel.cmy-viewport.yMax);
+                    HudLayout.Invalidate();
+                    for(int i=0;i<Math.Max(35,capacity);i++){
+                        Rect cell=InventoryFrame.BagCellBounds(i);
+                        Near(cell.width,InventoryFrame.Unit(mobile?44:56),"bag cell size changed");
+                        Check(cell.x>=viewport.x&&cell.xMax+2<=viewport.xMax,"bag badge at outer column is clipped");
+                        if(i%5!=4)Near(InventoryFrame.BagCellBounds(i+1).y,cell.y,"bag is not five columns");
+                        Rect badge=InventoryBag.BadgeBounds(cell,cell.width+InventoryFrame.BagGap-2,10);
+                        Check(badge.x>=viewport.x&&badge.xMax<=viewport.xMax,"maximum badge width outside viewport");
+                    }
+                    if(capacity>0){
+                        Rect real=HudLayout.GetRect(InventoryFrame.BagCell(capacity-1));
+                        Check(real.height>0&&HudLayout.HitTest(real.center)==InventoryFrame.BagCell(capacity-1),"last real bag slot inaccessible");
+                    }
+                    if(capacity<35){
+                        Rect ghost=InventoryFrame.BagCellBounds(34);
+                        Check(HudLayout.HitTest(ghost.center)!=InventoryFrame.BagCell(34),"padding slot accepts input");
+                    }
+                    Check(HudLayout.HitTest(new Vector2(10,50))==InventoryFrame.Tab(0),"scrolled inventory steals tab input");
+                    GameCanvas.panel.cmy=0;HudLayout.Invalidate();
+                }
+                GameCanvas.panel.InventoryBagCellCount=30;
             }
         }
         Check(InventoryFrame.Option(null,72)==0,"null item");
@@ -174,6 +208,29 @@ class InventoryTests {
         GUI.color=new Color{r=123}; PopUp.fail=true;
         try{InventoryFrame.Rounded(new mGraphics(),new Rect(0,0,40,40),InventoryFrame.SlotBackground);}catch(Exception){}
         Check(GUI.color.r==123,"native skin tint leaked into other UI");
+        Check(InventoryBag.Quantity(758)=="758"&&InventoryBag.Quantity(9999)=="9999","small quantity changed");
+        Check(InventoryBag.Quantity(10000)=="10k"&&InventoryBag.Quantity(24300)=="24,3k","quantity k threshold");
+        Check(InventoryBag.Quantity(999999)=="999,9k"&&InventoryBag.Quantity(1000000)=="1M","quantity M threshold");
+        Check(InventoryBag.Quantity(int.MaxValue)=="2,1B","largest server quantity label");
+        Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30}};
+        Item consumable=new Item{template=new ItemTemplate{id=13,type=6}},skin=new Item{template=new ItemTemplate{id=200,type=5}};
+        Item[] bag=new[]{null,equipment,material,consumable,skin}; var map=new List<int>();
+        InventoryBag.Map(bag,InventoryBagFilter.All,map);Check(map.Count==5&&map[1]==1,"all slots must retain server indices");
+        InventoryBag.Map(bag,InventoryBagFilter.Equipment,map);Check(map.Count==2&&map[0]==1&&map[1]==4,"equipment filter remapped packet indices");
+        InventoryBag.Map(bag,InventoryBagFilter.Material,map);Check(map.Count==1&&map[0]==2,"material filter index");
+        InventoryBag.Map(bag,InventoryBagFilter.Consumable,map);Check(map.Count==1&&map[0]==3,"consumable filter index");
+        Check(InventoryBag.HasLevel(equipment)&&!InventoryBag.HasLevel(skin)&&!InventoryBag.HasLevel(material),"level badge type gate");
+        InventoryBagDoubleTap tap=new InventoryBagDoubleTap();
+        Check(!tap.Tap(1,equipment,100)&&tap.Tap(1,equipment,200)&&!tap.Tap(1,equipment,250),"double tap must fire once per pair");
+        tap.Reset();Check(!tap.Tap(2,material,100)&&!tap.Tap(2,material,200),"double tap used material");
+        tap.Reset();Check(!tap.Tap(3,consumable,100)&&!tap.Tap(3,consumable,200),"double tap used consumable");
+        tap.Reset();Check(!tap.Tap(1,equipment,100)&&!tap.Tap(1,new Item{template=equipment.template},200),"server replacement must cancel double equip");
+        tap.Reset();tap.Tap(1,equipment,100);Check(!tap.Tap(1,equipment,500),"slow second click equipped");
+        tap.Reset();tap.Tap(1,equipment,100);tap.Reset();Check(!tap.Tap(1,equipment,200),"drag/filter cancellation equipped");
+        Item earring=new Item{template=new ItemTemplate{id=454,type=27}};
+        Check(InventoryBag.CanEquip(earring)&&!InventoryBag.HasLevel(earring),"known earring equip/level classification");
+        tap.Reset();Check(!tap.Tap(4,earring,100)&&tap.Tap(4,earring,200),"known earring should dispatch equip, never consumable use");
+        Check(InventoryBag.Category(new Item{template=new ItemTemplate{id=933,type=27}})==InventoryBagFilter.Material,"earring fragment misclassified as consumable");
         Console.WriteLine("PASS: "+checks+" inventory registry/metadata checks; no Unity build");
     }
 }
@@ -188,8 +245,12 @@ with tempfile.TemporaryDirectory(prefix="inventory-", dir=output) as folder:
     tab_members = source[source.index("    internal int[] InventoryFrameTabIds"):source.index("    private static readonly int[] inventoryBodySlots")]
     (path / "PanelTabs.cs").write_text("using System; partial class Panel {\n" + tab_members + "\n}", encoding="utf-8")
     (path / "InventoryTests.cs").write_text(fixture, encoding="utf-8")
+    item_source = (ROOT / "Assets/Scripts/Item.cs").read_text(encoding="utf-8-sig")
+    item_body = item_source[item_source.index("    public bool isTypeBody()"):item_source.index("    public string getLockstring()")]
+    (path / "ItemBody.cs").write_text("partial class Item {\n" + item_body + "\n}", encoding="utf-8")
     exe = path / "InventoryTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
                     str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"),
+                    str(path / "ItemBody.cs"), str(ROOT / "Assets/Scripts/Hud/InventoryBag.cs"),
                     str(ROOT / "Assets/Scripts/Hud/HudLayout.cs")], check=True)
     subprocess.run([str(exe)], check=True)
