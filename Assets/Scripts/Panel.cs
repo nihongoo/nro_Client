@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class Panel : IActionListener, IChatable
+public partial class Panel : IActionListener, IChatable
 {
     public class PlayerChat
     {
@@ -1365,6 +1365,11 @@ public class Panel : IActionListener, IChatable
     {
         type = 0;
         setType(0);
+        if (currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5))
+        {
+            currentTabIndex = 6;
+            lastTabIndex[type] = currentTabIndex;
+        }
         if (currentTabIndex == 1)
         {
             setTabInventory(resetSelect: true);
@@ -1835,6 +1840,7 @@ public class Panel : IActionListener, IChatable
 
     public void updateKey()
     {
+        if (InventoryFrameActive && UpdateInventoryFrameInput()) return;
         if ((chatTField != null && chatTField.isShow) || !GameCanvas.panel.isDoneCombine || InfoDlg.isShow)
         {
             return;
@@ -2917,6 +2923,7 @@ public class Panel : IActionListener, IChatable
 
     private void updateKeyInTabBar()
     {
+        if (InventoryFrameActive) return;
         if ((scroll != null && scroll.pointerIsDowning) || pointerIsDowning)
         {
             return;
@@ -3859,6 +3866,7 @@ public class Panel : IActionListener, IChatable
 
     public void paint(mGraphics g)
     {
+        if (InventoryFrameActive) { PaintInventoryFrame(g); return; }
         g.translate(-g.getTranslateX(), -g.getTranslateY() + mGraphics.addYWhenOpenKeyBoard);
         g.translate(-cmx, 0);
         g.translate(X, Y);
@@ -5588,24 +5596,23 @@ public class Panel : IActionListener, IChatable
         paintScrollArrow(g);
     }
 
-    private void paintInventory(mGraphics g)
+    private void paintInventory(mGraphics g, bool bagOnly = false)
     {
-        g.setColor(16711680);
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
         Item[] arrItemBody = Char.myCharz().arrItemBody;
         Item[] arrItemBag = Char.myCharz().arrItemBag;
-        for (int i = 0; i < arrItemBody.Length + arrItemBag.Length; i++)
+        for (int i = bagOnly ? arrItemBody.Length : 0; i < arrItemBody.Length + arrItemBag.Length; i++)
         {
             bool flag = i < arrItemBody.Length;
             int num = i;
             int num2 = i - arrItemBody.Length;
             int num3 = xScroll + 36;
-            int num4 = yScroll + i * ITEM_HEIGHT;
+            int num4 = yScroll + (bagOnly ? i - arrItemBody.Length : i) * ITEM_HEIGHT;
             int num5 = wScroll - 36;
             int h = ITEM_HEIGHT - 1;
             int num6 = xScroll;
-            int num7 = yScroll + i * ITEM_HEIGHT;
+            int num7 = num4;
             int num8 = 34;
             int num9 = ITEM_HEIGHT - 1;
             if (num4 - cmy > yScroll + hScroll || num4 - cmy < yScroll - ITEM_HEIGHT)
@@ -5613,25 +5620,36 @@ public class Panel : IActionListener, IChatable
                 continue;
             }
             Item item = ((!flag) ? arrItemBag[num2] : arrItemBody[num]);
-            g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
-            g.fillRect(num3, num4, num5, h);
-            g.setColor((i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045));
+            if (bagOnly)
+                Hud.InventoryFrame.Rounded(g, new Rect(num6, num4, wScroll - 1, h), (i == selected) ? 16383818 : 15723751);
+            else
+            {
+                g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
+                g.fillRect(num3, num4, num5, h);
+            }
+            int iconColor = (i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045);
             if (item != null)
             {
                 if (item.isHaveOption(34))
                 {
-                    g.setColor((i != selected) ? color1[0] : color2[0]);
+                    iconColor = (i != selected) ? color1[0] : color2[0];
                 }
                 else if (item.isHaveOption(35))
                 {
-                    g.setColor((i != selected) ? color1[1] : color2[1]);
+                    iconColor = (i != selected) ? color1[1] : color2[1];
                 }
                 else if (item.isHaveOption(36))
                 {
-                    g.setColor((i != selected) ? color1[2] : color2[2]);
+                    iconColor = (i != selected) ? color1[2] : color2[2];
                 }
             }
-            g.fillRect(num6, num7, num8, num9);
+            if (bagOnly)
+                Hud.InventoryFrame.Rounded(g, new Rect(num6, num7, num8, num9), iconColor);
+            else
+            {
+                g.setColor(iconColor);
+                g.fillRect(num6, num7, num8, num9);
+            }
             if (item != null && item.isSelect && GameCanvas.panel.type == 12)
             {
                 g.setColor((i != selected) ? 6047789 : 7040779);
@@ -10060,6 +10078,12 @@ public class Panel : IActionListener, IChatable
     {
         if (selected < 0)
         {
+            return;
+        }
+        int appearanceIndex = strCauhinh.Length - (Hud.HudLayout.IsMobileLayout ? 1 : 2);
+        if (selected == appearanceIndex)
+        {
+            OpenInventoryAppearanceSettings();
             return;
         }
         // This PC-only row is appended after all original options; their indices stay intact.
