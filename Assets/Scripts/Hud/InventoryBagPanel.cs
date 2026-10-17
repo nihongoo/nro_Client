@@ -175,14 +175,17 @@ public partial class Panel
                 allocated ? (byte)255 : (byte)100);
             if (!allocated) continue;
             if (item?.template == null) continue;
+            if (item.template.type >= 0 && item.template.type <= 4) {
+                int setColor = InventoryFrame.SetColor(item);
+                if (setColor != InventoryFrame.Border) InventoryItemVisuals.PaintAura(cell, viewport, setColor);
+            }
             // Icon position never depends on quantity, badge width or level.
             InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
             SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0,
                 mGraphics.HCENTER | mGraphics.VCENTER);
             InventoryFrame.Clip(g, viewport);
             if (InventoryBag.HasLevel(item))
-                mFont.tahoma_7_yellow.drawString(g, "Lv" + Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7),
-                    (int)cell.x + 2, (int)cell.y + 1, mFont.LEFT);
+                InventoryItemVisuals.PaintLevel(g, cell, viewport, InventoryFrame.Option(item, Item.OPT_LVITEM), true);
             if (item.quantity > 1) InventoryBagBadge.Paint(g, cell, viewport, item.quantity);
         }
         InventoryFrame.Clip(g, viewport);

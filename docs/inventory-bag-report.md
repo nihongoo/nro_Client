@@ -1,5 +1,19 @@
 # Cụm B — túi đồ dạng lưới
 
+## Sao asset gốc, badge Lv và aura set phía trong
+
+Theo ảnh test tiếp theo, thay chỉ báo sáu chấm bằng **asset sao gốc**: `Panel.imgStar` (`/mainImage/star.png`) cho sao đã gắn và `Panel.imgMaxStar` (`/mainImage/starE.png`) cho sao trống, nạp tại `Panel.cs:720`, `:721`. `InventoryItemVisuals.PaintStars` giữ đúng sáu vị trí, đọc option102 như trước. Hàng sao căn giữa dưới ô, không đè badge Lv hoặc ô ở hàng kế tiếp; chỉ sáu ô nâng cấp có hàng sao.
+
+`Assets/Scripts/Hud/InventoryItemVisuals.cs`, `PaintLevel`: badge Lv vàng bo gốc, độ rộng cố định theo `Lv7`, chữ đen `MiddleCenter`, padding/margin=0. Trong túi badge ở góc trên, số lượng vẫn ở góc dưới; icon không bị dịch. Cùng hàm căn chữ dùng cho Lv trang bị; vẫn giới hạn 0–7 và chỉ sáu loại được nâng cấp. Bỏ dòng Lv vàng thả trực tiếp lên icon và đoạn vẽ badge cũ bị lệch baseline.
+
+`InventoryItemVisuals.PaintAura` / `AuraPixels`: thêm **aura màu set mờ dần vào phía trong khung**, vẽ dưới icon. Mép ngoài giữ viền bo, vùng giữa trong suốt để icon rõ; không có lớp khung lồng mới. Mask góc lấy alpha của `PopUp.goc` gốc. Chỉ áo/quần/găng/giày/rada có option set đã xác minh nhận aura, cả đang mặc và trong túi; GLT/skin/bông tai/pet không nhận aura set. Viền vàng chọn món vẫn phân biệt với màu aura set.
+
+Aura dùng texture64×64 cache theo màu (bảng set có13 màu); đọc mask một lần mỗi sprite/zoom, đổi nguồn thì huỷ cache cũ. Không tạo texture hoặc tính gradient mỗi frame. Style Lv cache theo font/zoom/độ rộng, giới hạn8 style. Không sửa sprite nguồn, server, packet, vị trí khung hoặc hit-test.
+
+Code thay thế đã bỏ: vòng lặp `fillRect` vẽ chấm sao; các đoạn đo/vẽ Lv riêng ở `PaintInventoryEquipment` và chữ Lv túi chưa có badge. Không xoá code ngoài phạm vi.
+
+Kiểm tra `python Tests/Inventory/visuals.py`: **65.172 kiểm tra qua** cho màu/alpha aura, gradient giảm vào trong, giữa trong suốt, asset sao x1–x4 tồn tại, hàng sao và badge Lv không chồng nhau. Các bộ skin58.962, registry/model34.061, input60 và compile C# client/Editor vẫn qua. Chưa chạy Unity/Play Mode/build APK; cần xem lại trên S22/PC để đánh giá độ sáng aura và độ dễ đọc của badge ở zoom hiện dùng.
+
 ## Sửa góc trắng và giảm viền theo ảnh test
 
 Ảnh test người dùng có các mảng trắng ở góc khối Trang bị, ô đồ, badge Lv và footer. Nguyên nhân: `mGraphics.DrawRegionTexture` (`Assets/Scripts/mGraphics.cs:10`) dùng `Graphics.DrawTexture`; sprite góc trắng `PopUp.goc` không nhận tint `GUI.color` như phần fill. Cách tint của lần sửa trước chưa xử lý đường vẽ sprite này.

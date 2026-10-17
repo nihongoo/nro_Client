@@ -379,7 +379,7 @@ public partial class Panel
     private void PaintInventoryEquipment(mGraphics g, int slot)
     {
         Rect rect = InventoryFrame.EquipmentBounds(slot), viewport = HudLayout.GetRect(InventoryFrame.Bag);
-        if (rect.yMax + 8 < viewport.y || rect.y > viewport.yMax) return;
+        if (rect.yMax + 9 < viewport.y || rect.y > viewport.yMax) return;
         InventoryFrame.Clip(g, viewport);
         int index = inventoryBodySlots[slot]; Item[] body = Char.myCharz().arrItemBody;
         Item item = body != null && index >= 0 && index < body.Length ? body[index] : null;
@@ -390,6 +390,8 @@ public partial class Panel
         bool chosen = index >= 0 && index == selected;
         int border = chosen ? InventoryFrame.Accent : color == InventoryFrame.Border ? 0 : color;
         InventoryFrame.Rounded(g, rect, InventoryFrame.SlotBackground, 255, border);
+        if (slot < 5 && item != null && color != InventoryFrame.Border)
+            InventoryItemVisuals.PaintAura(rect, viewport, color);
         if (item == null) {
             InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
             mFont.tahoma_7_white.drawString(g, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER);
@@ -401,16 +403,8 @@ public partial class Panel
         if (slot < 6) {
             int level = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7);
             int stars = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_STARSLOT), 0, 6);
-            if (item != null) {
-                string label = "Lv" + level;
-                int width = mFont.tahoma_7.getWidth(label) + 4;
-                InventoryFrame.Rounded(g, new Rect(rect.xMax - width + 3, rect.yMax - 9, width, 12), InventoryFrame.Accent);
-                mFont.tahoma_7.drawString(g, label, (int)rect.xMax - width + 5, (int)rect.yMax - 9, 0);
-            }
-            for (int i = 0; i < 6; i++) {
-                g.setColor(i < stars ? InventoryFrame.Accent : InventoryFrame.Border);
-                g.fillRect((int)rect.center.x - 11 + i * 4, (int)rect.yMax + 4, 3, 3);
-            }
+            if (item != null) InventoryItemVisuals.PaintLevel(g, rect, viewport, level, false);
+            InventoryItemVisuals.PaintStars(rect, viewport, stars);
         }
     }
 
