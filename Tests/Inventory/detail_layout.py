@@ -84,7 +84,8 @@ for mobile, w, h in [(True,422,195),(True,585,270),(True,844,390),(True,1560,720
             lower=(w-dw+6,h/2+5,max(0,dw-12),max(0,h/2-13-rows*26))
             buttons=[]
             for i in range(bottom_count):
-                button=(w-dw+6+(i%2)*((dw-16)/2+4),h-5-rows*26+(i//2)*26,max(0,dw-12 if bottom_count==1 else (dw-16)/2),24)
+                full_row=bottom_count%2==1 and i==bottom_count-1
+                button=(w-dw+6+(i%2)*((dw-16)/2+4),h-5-rows*26+(i//2)*26,max(0,dw-12 if full_row else (dw-16)/2),24)
                 button=native_button(button)
                 check(button[1]+button[3]<=h-5,'action not anchored to bottom')
                 check(not overlap(button,lower),'description intersects footer button')

@@ -85,6 +85,8 @@ Code thừa lần này: bỏ đường đóng vô điều kiện chỉ vì khác
 
 ### Chỉnh tiếp: gom toàn bộ nút xuống đáy
 
+Cập nhật nút lẻ cuối hàng: `InventoryDetailButtonBounds` trong `Assets/Scripts/Hud/InventoryDetailPanel.cs:48` dùng toàn bộ bề rộng nội dung khi hàng cuối chỉ có một nút. Vì vậy Bỏ ra ở hàng thứ hai của đồ tiêu hao rộng bằng nút Tháo đứng riêng: rộng panel trừ12 logical, cao24 logical, lề mỗi bên6. Hàng hai nút Mặc/Bỏ ra vẫn chia đôi như trước. Dùng chung rect cho vẽ/hit-test và asset cũ; không thay handler. Bỏ điều kiện cũ chỉ cho phép toàn chiều rộng khi tổng số nút bằng1; không xoá thêm code ngoài phạm vi. Kiểm tra mô hình bố cục và phân tích ngữ nghĩa C# đã qua, chưa chạy Unity.
+
 `Assets/Scripts/Hud/InventoryDetailPanel.cs:36` (`InventoryDetailControlsHeight`, `InventoryDetailActionTop`, `InventoryDetailDividerY`) và `InventoryDetailButtonBounds:48`: gom nút thành một cụm liên tục từ dưới lên: Sử dụng/Auto/Bỏ ra → danh sách vứt → hàng 1 trái/2 giữa/3 phải. Khoảng cách các hàng2 logical, giữ nguyên asset/nội dung/hành động và kích thước nút. Không còn hàng gán ô nhanh nằm lẻ phía trên đường chia.
 
 Vùng mô tả dừng trước cụm nút. Trên viewport thấp, đường chia được nâng vừa đủ để còn vùng mô tả cuộn tối thiểu12 logical; màn đủ cao vẫn chia ở giữa. Không giảm kích thước ô/nút. Đã bỏ phép đặt hàng gán theo giữa màn và phép trừ chỗ của hàng này ở vùng thông tin phía trên. Không xoá thêm code legacy.

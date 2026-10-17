@@ -55,7 +55,8 @@ public partial class Panel
             return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), InventoryDetailActionTop, w);
         }
         if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height - 5 - ((InventoryDetailBottomCount + 1) / 2) * 26 - 26, r.width - 12);
-        float width = Mathf.Max(0, InventoryDetailBottomCount == 1 ? r.width - 12 : (r.width - 16) / 2);
+        bool fullRow = InventoryDetailBottomCount % 2 == 1 && button.Position == InventoryDetailBottomCount - 1;
+        float width = Mathf.Max(0, fullRow ? r.width - 12 : (r.width - 16) / 2);
         int rows = (InventoryDetailBottomCount + 1) / 2;
         return InventoryDetailNativeButtonRect(r.x + 6 + button.Position % 2 * (width + 4), r.height - 5 - rows * 26 + button.Position / 2 * 26, width);
     }
