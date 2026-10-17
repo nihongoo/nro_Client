@@ -41,11 +41,7 @@ namespace Hud
             => new Rect(cell.xMax + 2 - width, cell.yMax + 2 - height, width, height);
         internal static string Quantity(int quantity)
         {
-            if (quantity < 10000) return quantity.ToString(CultureInfo.InvariantCulture);
-            decimal divisor = quantity >= 1000000000 ? 1000000000m : quantity >= 1000000 ? 1000000m : 1000m;
-            string suffix = quantity >= 1000000000 ? "B" : quantity >= 1000000 ? "M" : "k";
-            decimal value = decimal.Floor(quantity / divisor * 10) / 10;
-            return value.ToString("0.#", CultureInfo.InvariantCulture).Replace('.', ',') + suffix;
+            return quantity > 999 ? "999+" : quantity.ToString(CultureInfo.InvariantCulture);
         }
     }
 

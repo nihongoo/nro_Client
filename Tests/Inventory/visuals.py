@@ -60,7 +60,8 @@ class VisualTests {
     Check(star.y>=level.yMax&&star.yMax<cell.yMax+9,"stars overlap Lv or next equipment row");
    }
    Rect bagLevel=InventoryItemVisuals.LevelBounds(cell,24,true);
-   Check(bagLevel.x>=cell.x&&bagLevel.xMax<=cell.xMax,"Lv pill exceeds bag cell width");
+   Check(Math.Abs(bagLevel.x-(cell.x-3))<.01&&Math.Abs(bagLevel.y-(cell.y-3))<.01,"bag Lv not anchored outside corner");
+   Check(Math.Abs(level.xMax-cell.xMax-3)<.01&&Math.Abs(level.yMax-cell.yMax-3)<.01,"equipped Lv corner offset changed");
    Check(bagLevel.yMax<=cell.yMax-2,"Lv pill overlaps lower quantity badge area");
   }
   Console.WriteLine("PASS: "+checks+" aura pixel/star/Lv layout checks; no Unity build");

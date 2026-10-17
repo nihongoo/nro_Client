@@ -1,5 +1,13 @@
 # Cụm B — túi đồ dạng lưới
 
+## Điều chỉnh góc Lv và giới hạn số lượng hiển thị
+
+- `InventoryItemVisuals.LevelBounds`, `Assets/Scripts/Hud/InventoryItemVisuals.cs:23`: đưa badge Lv túi ra góc trên trái, nhô 3 đơn vị logic theo cả hai trục, cân với badge trang bị nhô 3 đơn vị ở góc dưới phải. Giữ nguyên khung, icon, aura, hit-test và vị trí badge số lượng.
+- `InventoryBag.Quantity`, `Assets/Scripts/Hud/InventoryBag.cs:42`: đến 999 hiện số thật; từ 1.000 trở lên hiện **999+** (ví dụ 1.148 → 999+). Đây là giới hạn hiển thị trên ô; không giới hạn stack thật, số ô hay sửa server. Panel chi tiết vẫn hiện số đầy đủ.
+- `InventoryBagBadge.maximumLabels`, `Assets/Scripts/Hud/InventoryBagBadge.cs:12`: đo chiều rộng theo `999` / `999+`, tiếp tục dùng badge đỏ bo gốc và căn giữa chữ.
+- Code thừa đã bỏ trong phạm vi: phép chia/làm tròn và hậu tố k/M/B không còn dùng trong `Quantity`, cùng các nhãn đo chiều rộng tương ứng. Không xoá code khác.
+- Kiểm tra: model/geometry 34.061, hình học Lv/aura/sao 65.180, input 60, skin 58.962 đều qua; compile C# client và Editor độc lập qua. Không chạy Unity/Play Mode/build APK. Cần xem lại trên S22/PC: Lv ở cột đầu/hàng đầu khi cuộn và badge số lượng với 999 / 1.000 / 1.148; panel chi tiết phải giữ số thật.
+
 ## Sao asset gốc, badge Lv và aura set phía trong
 
 Theo ảnh test tiếp theo, thay chỉ báo sáu chấm bằng **asset sao gốc**: `Panel.imgStar` (`/mainImage/star.png`) cho sao đã gắn và `Panel.imgMaxStar` (`/mainImage/starE.png`) cho sao trống, nạp tại `Panel.cs:720`, `:721`. `InventoryItemVisuals.PaintStars` giữ đúng sáu vị trí, đọc option102 như trước. Hàng sao căn giữa dưới ô, không đè badge Lv hoặc ô ở hàng kế tiếp; chỉ sáu ô nâng cấp có hàng sao.
@@ -61,8 +69,8 @@ Registry chuẩn bị tên cho tối đa 256 vị trí theo trường byte của
 
 - `InventoryBagBadge.Paint` dùng **`Notifications.NotificationSkin.BadgeIcon`**, skin đỏ HUD hiện có (`/mainImage/notification-badge.png`), ghép lại phần giữa và giữ đầu bo như badge HUD. Không đổi vị trí/icon khi thêm badge, không có offset `quantity > 1 ? 8 : 0` của danh sách cũ.
 - Badge là lớp phủ gắn góc dưới phải, tràn 2 logic; chỉ clip theo **viewport cuộn**, không clip theo khung ô. Hit-test ô bao gồm vùng badge tràn; có thể tap lên badge để chọn món. Cuộn ra khỏi viewport vẫn bị clip đúng ở rìa vùng cuộn.
-- Chiều rộng cố định theo nhãn lớn nhất trong các định dạng `9999`, `999,9k`, `999,9M`, `2,1B`; giới hạn theo bề rộng ô + khoảng trống giữa ô để không đè badge hàng xóm. Giữ font gốc, chỉ giảm cỡ chữ trong badge khi không đủ chỗ; cache phép đo theo font/zoom/kích thước ô. Bitmap zoom1 dùng font bitmap gốc và scale phần chữ, không dịch icon.
-- Dưới 10.000: `758`, `9999`. Từ 10.000: `10k`, `24,3k`; hàng triệu dùng `M`, hàng tỷ dùng `B` để cả giá trị `int.MaxValue` vừa nhãn (`2,1B`). Dùng tối đa một chữ số thập phân và cắt xuống; `999999 → 999,9k`. Số đầy đủ thêm vào phần xem chi tiết, không đưa tên/chỉ số trở lại ô.
+- Chiều rộng cố định theo nhãn lớn nhất `999` / `999+`; giới hạn theo bề rộng ô + khoảng trống giữa ô để không đè badge hàng xóm. Giữ font gốc, chỉ giảm cỡ chữ trong badge khi không đủ chỗ; cache phép đo theo font/zoom/kích thước ô. Bitmap zoom1 dùng font bitmap gốc và scale phần chữ, không dịch icon.
+- Đến 999 hiện số thật; trên 999 hiện `999+`, thay cho cách viết k/M/B trước đây theo yêu cầu mới. Số đầy đủ hiện trong phần xem chi tiết, không đưa tên/chỉ số trở lại ô và không thay dữ liệu item.
 - Lv chỉ áp dụng `type` 0–4 và 32, theo sáu loại nâng cấp đã chốt. Skin/type5, bông tai, vật phẩm khác không hiện Lv trong túi. Lv nằm phía trên, badge số lượng phía dưới để không chồng nhau.
 
 ## File và hàm chính / tái dùng
@@ -104,7 +112,7 @@ Chưa làm bố cục C chia nửa, bảy vạch level, bonus set/so sánh mới
 ### Checklist người dùng test
 
 1. S22/PC: cuộn từ Trang bị xuống đủ 7 hàng; header/tab/tiền đứng yên; scroll qua ô cuối của túi thật. Đọc nhãn N ô; với acc30 phải có 5 ô mờ không chọn được; acc lớn hơn35 không mất đồ.
-2. Chọn **Sao pha lê lam ×758**: icon luôn ở giữa khung, badge không kéo icon sang trái và không bị cắt mép ô. Test 9.999 / 10.000 / 24.300 / số lớn, các cột biên và hàng cuối; xem số đầy đủ trong preview.
+2. Chọn **Sao pha lê lam ×758**: icon luôn ở giữa khung, badge không kéo icon sang trái và không bị cắt mép ô. Test 999 phải hiện `999`, 1.000 / 1.148 / 24.300 / số lớn phải hiện `999+`, các cột biên và hàng cuối; xem số đầy đủ trong preview. Lv túi nhô góc trên trái cân với Lv trang bị ở góc dưới phải.
 3. Lọc từng nhóm, tap một món mở preview; đổi món cập nhật; X giữ chọn. Xong lọc tap đúp trang bị → mặc đúng món, món cũ về túi; tap đúp đá/đậu không được Dùng.
 4. Thử kéo bắt đầu trên icon/chip/badge, wheel PC, phím điều hướng/xác nhận cũ; không gửi nhầm Mặc khi kéo. Đổi tab/đóng mở, đăng nhập lại không có exception lặp.
 5. Nút Thao tác/menu cũ: Dùng/Vứt/gán ô nhanh còn hoạt động, rương/shop/giao dịch không đổi. Test khi chết và khi server cập nhật túi trong lúc preview mở.

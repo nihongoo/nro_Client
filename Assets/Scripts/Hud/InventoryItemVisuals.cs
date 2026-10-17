@@ -23,7 +23,7 @@ namespace Hud
         internal static Rect LevelBounds(Rect cell, float width, bool bag)
         {
             width = bag ? System.Math.Min(width, cell.width - 4) : width;
-            return new Rect(bag ? cell.x + 2 : cell.xMax - width + 3, bag ? cell.y - 2 : cell.yMax - 9, width, 12);
+            return new Rect(bag ? cell.x - 3 : cell.xMax - width + 3, bag ? cell.y - 3 : cell.yMax - 9, width, 12);
         }
 
         // Rounded alpha comes from the native corner sprite. The center stays transparent.

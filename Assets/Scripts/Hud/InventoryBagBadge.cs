@@ -9,7 +9,7 @@ namespace Hud
         private static float cachedWidth;
         private static int cachedZoom;
         private static float width, height, bitmapScale;
-        private static readonly string[] maximumLabels = { "9999", "999,9k", "999,9M", "2,1B" };
+        private static readonly string[] maximumLabels = { "999", "999+" };
 
         internal static void Paint(mGraphics g, Rect cell, Rect viewport, int quantity)
         {

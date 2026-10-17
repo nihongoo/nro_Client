@@ -210,10 +210,10 @@ class InventoryTests {
         GUI.color=new Color{r=123}; PopUp.fail=true;
         try{InventoryFrame.Rounded(new mGraphics(),new Rect(0,0,40,40),InventoryFrame.SlotBackground);}catch(Exception){}
         Check(GUI.color.r==123,"native skin tint leaked into other UI");
-        Check(InventoryBag.Quantity(758)=="758"&&InventoryBag.Quantity(9999)=="9999","small quantity changed");
-        Check(InventoryBag.Quantity(10000)=="10k"&&InventoryBag.Quantity(24300)=="24,3k","quantity k threshold");
-        Check(InventoryBag.Quantity(999999)=="999,9k"&&InventoryBag.Quantity(1000000)=="1M","quantity M threshold");
-        Check(InventoryBag.Quantity(int.MaxValue)=="2,1B","largest server quantity label");
+        Check(InventoryBag.Quantity(758)=="758"&&InventoryBag.Quantity(999)=="999","quantity below display cap changed");
+        Check(InventoryBag.Quantity(1000)=="999+"&&InventoryBag.Quantity(1148)=="999+","quantity display cap boundary");
+        Check(InventoryBag.Quantity(9999)=="999+"&&InventoryBag.Quantity(24300)=="999+","large quantity still abbreviated");
+        Check(InventoryBag.Quantity(int.MaxValue)=="999+","largest server quantity display cap");
         Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30}};
         Item consumable=new Item{template=new ItemTemplate{id=13,type=6}},skin=new Item{template=new ItemTemplate{id=200,type=5}};
         Item[] bag=new[]{null,equipment,material,consumable,skin}; var map=new List<int>();
