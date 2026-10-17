@@ -1,5 +1,51 @@
 # Cụm A — khung Hành trang và trang bị
 
+## Lần sửa 2 — nền gốc, góc bo và thanh tài nguyên (hiện tại)
+
+Tiếp tục `feat/inventory-frame`; giữ các rect panel/tab/9 ô/túi/footer, kích thước ô, hit-test và handler. Không thêm chip lọc/lưới túi/panel chi tiết của cụm B/C. Phần này thay thế mô tả màu mockup và footer phẳng của bản A ban đầu bên dưới.
+
+### Nền và tài nguyên được tái dùng
+
+| Thành phần | Màu / sprite gốc dùng trong bản sửa | Nguồn thực tế |
+| --- | --- | --- |
+| Panel kho đồ | `GameCanvas.paintz.paintFrameSimple`: nền **14338484**, viền **6702080**, đúng panel Hành trang cũ | `Assets/Scripts/Paint.cs:375`; điểm gọi cũ `Assets/Scripts/Panel.cs:3881` |
+| Header | **9993045**, chữ dùng `mFont.tahoma_7_yellow` sẵn có | `Panel.paintTopInfo:6180`; màu nền ở `:6183`; Hành trang cũ dùng font vàng trong `paintItemBodyBagInfo` |
+| Khối Trang bị | **15196114** (nền body cũ), khung góc sprite `PopUp.goc` | `Panel.paintInventory:5599`; `Assets/Scripts/Hud/InventoryFrame.cs:301` |
+| Ô trang bị | **9993045** (nền icon body cũ); chọn dùng **9541120**, vòng nhấn **16383818**. Màu riêng của set đã chốt vẫn giữ, chỉ 5 ô đầu | `Panel.paintInventory:5599`; `InventoryFrame.PaintInventoryEquipment:318` |
+| Hàng túi / vùng icon túi | **15723751** / **11837316**; chọn **16383818** / **9541120**; màu option34/35/36 của danh sách cũ giữ nguyên | `Panel.paintInventory:5599`, nhánh `bagOnly`; các màn dùng hàm này với `bagOnly=false` giữ đường vẽ cũ |
+| Footer tài nguyên | **11837316**, đúng nền footer cũ; bo bằng `PopUp.goc` | `Panel.paintBottomMoneyInfo:5880`; `InventoryFrame.PaintInventoryMoney:356` |
+| Tab | `PopUp.imgPopUp` — `/mainImage/myTexture2dimgPopup.png`; chọn dùng `PopUp.imgPopUp2` — `/mainImage/myTexture2dimgPopup2.png`; màu ruột gốc **16770503** / **12052656**; font `tahoma_7_grey` / `tahoma_7_green2` | `Assets/Scripts/PopUp.cs:176`, `paintPopUp`; `Panel.paintTab:5714` |
+| Nút X | `Panel.imgX` — `/mainImage/myTexture2dbtX.png`, đúng sprite nút đóng cũ, trên khung bo gốc | `Panel.loadBg:714`; `InventoryFrame.cs:283` |
+| Lv | Nền chọn vàng gốc **16383818**, chữ `mFont.tahoma_7`; bo bằng `PopUp.goc` | `InventoryFrame.cs:346` |
+| Vàng / ngọc xanh | `Panel.imgXu` — `/mainImage/myTexture2dimgMoney.png`; `Panel.imgLuong` — `/mainImage/myTexture2dimgDiamond.png`; font `mFont.tahoma_7_yellow` | `Panel.loadBg:715`, `:716`; `InventoryFrame.cs:356` |
+
+Không còn các hằng nền/viền/nút/chữ lấy từ bảng hex mockup trong `InventoryFrame.cs`. Màu viền 13 set là bảng phân biệt set đã được người dùng chốt riêng trước đó, tiếp tục giữ.
+
+### Góc bo
+
+`InventoryFrame.Rounded:100` tái dùng nguyên `PopUp.paintPopUp(..., isButton:false)` và sprite **`PopUp.goc`**, được nạp từ **`/mainImage/myTexture2dbd3.png`** (`PopUp.loadBg:90`). Sprite có góc 7×6 logic và phần trong màu trắng: tint sprite/ruột trắng cùng màu nền gốc để tránh góc bị trắng lệch nền; khôi phục `GUI.color` trong `finally`. Không tạo texture/sprite, không tự viết hình học bo góc. Tab dùng nguyên bộ ghép sprite của `paintPopUp(..., isButton:true)` như màn cũ.
+
+Khối Trang bị, ô đang mặc/ô trống, vùng highlight, hàng túi và vùng icon của hàng túi, nút X, badge Lv, footer đều dùng khung bo này. Khung panel ngoài giữ `paintFrameSimple` nguyên bản vì yêu cầu tái dùng đúng nền panel cũ. Nền badge Lv cao 12 logic để đủ hai nửa góc 6 của sprite gốc; điểm neo, vị trí ô và các rect tương tác không đổi.
+
+**Chưa có sprite phù hợp:** chưa tìm thấy tài nguyên gốc cho **viền đứt có góc bo**. Đã bỏ vòng lặp tự vẽ viền đứt vuông; ô trống hiện dùng khung bo liền và nhãn ô có sẵn. Cần người dùng quyết định giữ khung bo liền hay cung cấp/chọn tài nguyên viền đứt phù hợp. Không tự vẽ thêm. Chip lọc chưa tồn tại trong cụm A; chưa triển khai trước cụm B.
+
+### Căn thanh tài nguyên
+
+`InventoryFrame.MoneySpriteUv:115` dùng vùng alpha thực của sprite x1/x2/x3/x4, không sửa file ảnh. Ví dụ x2: vàng 26×20 nhưng phần nhìn thấy 24×18; ngọc 24×20 và phần nhìn thấy 24×20. Vì vậy chỉ đặt hai ảnh cùng kích thước texture chưa đủ. `MoneyIconBounds:123` chuẩn hóa **phần hình nhìn thấy cao 10 logic** cho cả hai, giữ đúng tỉ lệ ảnh và đặt tâm tại `row.center.y`. Vẽ vào rect tường minh, không còn phụ thuộc pivot/anchor cũ.
+
+`MoneyTextBounds:126` và `Panel.PaintInventoryMoneyText:389`: số ở ô rộng cố định theo chuỗi tối đa **99.999.999.999** / **1.000.000**, cộng 1 logic để bù việc `mFont.getWidth` làm tròn xuống. Font GUI giữ font game, `MiddleLeft`, padding/margin=0, không wrap; không đi qua offset `mFont.yAddFont`/`yAdd` của đường vẽ chữ cũ. Bitmap zoom1 dùng `font.getHeight()` để căn giữa. Cả hai số canh trái bên trong ô cố định, giữ khoảng cách **3 logic từ mép icon tới điểm bắt đầu số**, kể cả số ngọc ngắn; cả cụm ngọc vẫn neo phải. Không có ngọc đỏ.
+
+Trạng thái kiểm tra: đã xác nhận alpha crop từ **8 PNG gốc**, tâm dọc icon/ô chữ trùng nhau, chiều cao hai icon bằng nhau, gap bằng nhau, số tối đa không đè nhau và không vượt footer trên các viewport mobile 422×195 / 585×270 / 844×390 và PC 640×360 / 960×540 / 1280×720, zoom2/3/4. **1139 kiểm tra qua**, compile C# client/Editor qua; chưa mở Unity/Play Mode, chưa có ảnh S22/PC thực nên chưa xác nhận cảm nhận baseline bằng mắt trên thiết bị. Cần người dùng kiểm tra footer ở số ngắn và tối đa, zoom đang dùng trên S22, góc bo và màu set khi chọn món.
+
+### Dọn code trong lần sửa 2
+
+- Xoá `InventoryFrame.Fill` và `InventoryFrame.Text` sau khi đối chiếu/chuyển hết chỗ gọi sang skin/font gốc; xoá các hằng mockup `Background`, `Dark`, `Red` không còn dùng và đường đổi màu font tạm đi kèm.
+- Bỏ các vòng `drawLine` tự dựng viền đứt vuông và lệnh `drawRect` ô trang bị; thay bằng sprite bo. Bỏ `fillRoundRect` ở badge Lv vì `Assets/Scripts/mGraphics.cs:969` chỉ gọi `fillRect`, không thực sự bo. Sáu dấu sao nhỏ vẫn dùng chỉ báo 3×3, không thêm hình học/sprite mới cho chúng.
+- Bỏ nhánh `case 5` trong hai hàm riêng của frame (`SelectInventoryFrameTab`, `PaintInventoryFrame`): đã đối chiếu toàn bộ chỗ gọi, chỉ chọn từ bộ tab 0/1/2/3/6 hoặc mở Giao diện với ID4; không có chỗ gán tab5. Các hàm rương dùng chung của `Panel` và NPC vẫn giữ.
+- Trong `Panel.paintInventory`, màu icon tính một lần vào `iconColor`, tránh tính màu rồi bị bước vẽ skin ghi đè. Không xoá code ở màn khác; danh sách code thừa ngoài phạm vi ở phần dưới vẫn chỉ ghi nhận.
+
+Các số dòng của phần này theo bản sửa lần 2; các mục khảo sát/lịch sử bên dưới giữ số dòng tại lần ghi nhận và có thể đã dịch.
+
 ## Sửa lỗi khởi động sau test của người dùng
 
 Người dùng gặp NullReferenceException từ `Panel.InventoryFrameTabIds` qua `HudLayout.HitTest` khi chưa vào game. Nguyên nhân do cụm A đọc `currentTabName.Length` khi dữ liệu chưa khởi tạo; `HitTest` còn resolve rect trước khi kiểm tra visibility. Exception ở đường `Main.OnGUI`/input có thể lặp liên tục và gây lag; chưa có đo FPS để kết luận mọi nguyên nhân lag.

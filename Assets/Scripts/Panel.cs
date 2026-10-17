@@ -5620,25 +5620,36 @@ public partial class Panel : IActionListener, IChatable
                 continue;
             }
             Item item = ((!flag) ? arrItemBag[num2] : arrItemBody[num]);
-            g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
-            g.fillRect(num3, num4, num5, h);
-            g.setColor((i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045));
+            if (bagOnly)
+                Hud.InventoryFrame.Rounded(g, new Rect(num6, num4, wScroll - 1, h), (i == selected) ? 16383818 : 15723751);
+            else
+            {
+                g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
+                g.fillRect(num3, num4, num5, h);
+            }
+            int iconColor = (i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045);
             if (item != null)
             {
                 if (item.isHaveOption(34))
                 {
-                    g.setColor((i != selected) ? color1[0] : color2[0]);
+                    iconColor = (i != selected) ? color1[0] : color2[0];
                 }
                 else if (item.isHaveOption(35))
                 {
-                    g.setColor((i != selected) ? color1[1] : color2[1]);
+                    iconColor = (i != selected) ? color1[1] : color2[1];
                 }
                 else if (item.isHaveOption(36))
                 {
-                    g.setColor((i != selected) ? color1[2] : color2[2]);
+                    iconColor = (i != selected) ? color1[2] : color2[2];
                 }
             }
-            g.fillRect(num6, num7, num8, num9);
+            if (bagOnly)
+                Hud.InventoryFrame.Rounded(g, new Rect(num6, num7, num8, num9), iconColor);
+            else
+            {
+                g.setColor(iconColor);
+                g.fillRect(num6, num7, num8, num9);
+            }
             if (item != null && item.isSelect && GameCanvas.panel.type == 12)
             {
                 g.setColor((i != selected) ? 6047789 : 7040779);

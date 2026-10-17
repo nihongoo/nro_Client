@@ -6,9 +6,9 @@ InventoryFrame registry/helpers; the whole client is checked separately with its
 real assembly references so fixtures are not a substitute for a compile check.
 """
 from pathlib import Path
-import re
 import subprocess
 import tempfile
+from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 source = (ROOT / "Assets/Scripts/Hud/InventoryFrame.cs").read_text(encoding="utf-8-sig")
@@ -21,6 +21,16 @@ assert "Service.gI()" not in source  # Existing Panel handlers remain responsibl
 assert "X = Y = cmx = cmtoX = 0" not in source  # Do not defeat hide animation.
 assert "new[] { 0, 1, 2, 3, 6 }" in source
 assert "color = InventoryFrame.SetColor(item)" in source
+assert "0x3b2515" not in source and "0x27170c" not in source
+assert "g.fillRoundRect(" not in source
+assert "TextAnchor.MiddleLeft" in source and "padding = new RectOffset(0, 0, 0, 0)" in source
+
+currency_assets = []
+for gold, filename in ((True, "myTexture2dimgMoney.png"), (False, "myTexture2dimgDiamond.png")):
+    for zoom in (1, 2, 3, 4):
+        with Image.open(ROOT / f"Assets/Resources/res/x{zoom}/mainImage/{filename}") as asset:
+            left, top, right, bottom = asset.getbbox()
+            currency_assets.append([int(gold), zoom, *asset.size, left, asset.height-bottom, right-left, bottom-top])
 
 fixture = r'''
 #pragma warning disable 0649
@@ -35,6 +45,7 @@ namespace UnityEngine {
         byte r; public Color32(byte r,byte g,byte b,byte a){this.r=r;}
         public static implicit operator Color(Color32 value)=>new Color{r=value.r};
     }
+    public static class GUI { public static Color color; }
     public struct Vector2 {
         public float x,y; public Vector2(float x,float y){this.x=x;this.y=y;} public static Vector2 zero=>new Vector2();
         public static Vector2 operator *(Vector2 v,float n)=>new Vector2(v.x*n,v.y*n);
@@ -57,11 +68,10 @@ class Item { public ItemOption[] itemOption; }
 class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
 class ItemOptionTemplate { public int id; }
 class mFont {
-    public static mFont tahoma_7_yellow=new mFont(); public Color color1; public bool fail;
+    public static mFont tahoma_7_yellow=new mFont();
     public int getWidth(string text)=>text.Length*5;
-    public void drawString(mGraphics g,string s,int x,int y,int a){}
-    public void _drawString(mGraphics g,string s,int x,int y,int a){if(fail)throw new Exception("render fixture");}
 }
+class PopUp { public static bool fail; public static void paintPopUp(mGraphics g,int x,int y,int w,int h,int color,bool isButton){if(fail)throw new Exception("skin fixture");} }
 class mGraphics {
     public static int zoomLevel=2,addYWhenOpenKeyBoard;
     public void setColor(int color){} public void fillRect(int x,int y,int w,int h){} public void setClip(int x,int y,int w,int h){}
@@ -104,6 +114,14 @@ class InventoryTests {
         HudLayout.BeginFrame();
         Check(HudLayout.HitTest(new Vector2(10,10))==null,"inventory must not capture login input");
         GameCanvas.currentScreen=GameScr.instance;
+        int[][] assets = new int[][] { CURRENCY_ASSETS };
+        foreach(int[] asset in assets){
+            Rect uv=InventoryFrame.MoneySpriteUv(asset[0]==1,asset[1]);
+            Near(uv.x*asset[2],asset[4],"currency left alpha crop");
+            Near(uv.y*asset[3],asset[5],"currency bottom alpha crop");
+            Near(uv.width*asset[2],asset[6],"currency visible width");
+            Near(uv.height*asset[3],asset[7],"currency visible height");
+        }
         foreach(bool mobile in new[]{true,false})foreach(int zoom in new[]{2,3,4}){
             foreach(int[] size in mobile?new[]{new[]{422,195},new[]{585,270},new[]{844,390}}:new[]{new[]{640,360},new[]{960,540},new[]{1280,720}}){
                 UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
@@ -113,6 +131,19 @@ class InventoryTests {
                 Check(root.width<GameCanvas.w,"character view fully covered");
                 // Fixed maximum resource fields and their icons must not overlap.
                 Check(root.width>=mFont.tahoma_7_yellow.getWidth("99.999.999.999")+mFont.tahoma_7_yellow.getWidth("1.000.000")+42,"resource fields collide");
+                int[] goldAsset=Array.Find(assets,a=>a[0]==1&&a[1]==zoom),gemAsset=Array.Find(assets,a=>a[0]==0&&a[1]==zoom);
+                float goldAspect=(float)goldAsset[6]/goldAsset[7],gemAspect=(float)gemAsset[6]/gemAsset[7];
+                Rect goldText=InventoryFrame.MoneyTextBounds(money,mFont.tahoma_7_yellow.getWidth("99.999.999.999")+1,true,goldAspect);
+                Rect gemText=InventoryFrame.MoneyTextBounds(money,mFont.tahoma_7_yellow.getWidth("1.000.000")+1,false,goldAspect);
+                Rect goldIcon=InventoryFrame.MoneyIconBounds(money,goldText.x,goldAspect),gemIcon=InventoryFrame.MoneyIconBounds(money,gemText.x,gemAspect);
+                Near(goldIcon.height,gemIcon.height,"currency icons have different visible heights");
+                Near(goldIcon.center.y,goldText.center.y,"gold icon/text not centered");
+                Near(gemIcon.center.y,gemText.center.y,"gem icon/text not centered");
+                Near(goldText.x-goldIcon.xMax,InventoryFrame.MoneyGap,"gold icon/number gap");
+                Near(gemText.x-gemIcon.xMax,InventoryFrame.MoneyGap,"gem icon/number gap");
+                Check(goldText.xMax<=gemIcon.x,"maximum currency values overlap");
+                Check(goldIcon.x>=money.x&&gemText.xMax<=money.xMax,"currency content outside footer");
+                Check(goldIcon.y>=money.y&&goldIcon.yMax<=money.yMax,"currency icon clipped vertically");
                 for(int i=0;i<9;i++){
                     Rect cell=HudLayout.GetRect(InventoryFrame.Slot(i));
                     Near(cell.width,InventoryFrame.Unit(mobile?40:64),"equipment size changed");
@@ -140,13 +171,14 @@ class InventoryTests {
         }
         item.itemOption=new[]{new ItemOption{optionTemplate=new ItemOptionTemplate{id=34}}};
         Check(InventoryFrame.SetColor(item)==InventoryFrame.Border,"rarity is not a set identity");
-        mFont font=new mFont{color1=new Color{r=123},fail=true};
-        try{InventoryFrame.Text(new mGraphics(),font,"test",0,0,0);}catch(Exception){}
-        Check(font.color1.r==123,"temporary text palette leaked into other UI");
+        GUI.color=new Color{r=123}; PopUp.fail=true;
+        try{InventoryFrame.Rounded(new mGraphics(),new Rect(0,0,40,40),InventoryFrame.SlotBackground);}catch(Exception){}
+        Check(GUI.color.r==123,"native skin tint leaked into other UI");
         Console.WriteLine("PASS: "+checks+" inventory registry/metadata checks; no Unity build");
     }
 }
 '''
+fixture = fixture.replace("CURRENCY_ASSETS", ",".join("new int[]{" + ",".join(map(str, asset)) + "}" for asset in currency_assets))
 output = (ROOT / "Build/inventory-tests").resolve()
 assert output.is_relative_to(ROOT.resolve())
 output.mkdir(parents=True, exist_ok=True)

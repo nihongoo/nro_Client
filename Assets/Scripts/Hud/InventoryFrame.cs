@@ -8,8 +8,10 @@ namespace Hud
     {
         internal const string Root = "inventory.frame", Close = "inventory.close", Tabs = "inventory.tabs",
             Bag = "inventory.legacy-bag", Money = "inventory.money";
-        internal const int Background = 0x3b2515, Border = 0x6b4426, Dark = 0x27170c,
-            Accent = 0xf2b45a, Red = 0xd93a2b;
+        // Original Panel.paintInventory / paintBottomMoneyInfo colors.
+        internal const int Border = 6702080, Accent = 16383818,
+            EquipmentBackground = 15196114, SlotBackground = 9993045, MoneyBackground = 11837316;
+        internal const float MoneyIconHeight = 10, MoneyGap = 3;
         internal static bool Visible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
             && GameCanvas.panel != null && GameCanvas.panel.isShow
             && GameCanvas.panel.InventoryFrameActive && GameCanvas.panel.InventoryFrameTabIds.Length > 0
@@ -95,21 +97,35 @@ namespace Hud
             }
             return Border;
         }
-        internal static void Fill(mGraphics g, Rect rect, int color)
+        internal static void Rounded(mGraphics g, Rect rect, int color)
         {
-            g.setColor(color); g.fillRect((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
+            // Use the game's existing rounded corner sprite, not fillRoundRect (which is square).
+            // goc has a white interior: tint its corners and the white center together so
+            // original inventory colors do not acquire white corner patches.
+            Color previous = GUI.color;
+            try {
+                GUI.color = new Color32((byte)(color >> 16), (byte)(color >> 8), (byte)color, 255);
+                PopUp.paintPopUp(g, (int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height, 16777215, false);
+            } finally { GUI.color = previous; }
         }
         internal static void Clip(mGraphics g, Rect rect) => g.setClip((int)rect.x, (int)rect.y,
             Mathf.Max(0, (int)rect.width), Mathf.Max(0, (int)rect.height));
-        internal static void Text(mGraphics g, mFont font, string text, int x, int y, int align, int rgb = 0xfff1d0)
+        // Transparent padding of the unchanged x1/x2/x3/x4 currency sprites.
+        // UVs are verified against PNG alpha bounds by Tests/Inventory/run.py.
+        internal static Rect MoneySpriteUv(bool gold, int zoom)
         {
-            if (mGraphics.zoomLevel == 1) { font.drawString(g, text, x, y, align); return; }
-            Color previous = font.color1;
-            try {
-                font.color1 = new Color32((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb, 255);
-                font._drawString(g, text, x, y, align);
-            } finally { font.color1 = previous; }
+            if (gold && zoom == 2) return new Rect(1f/26, 1f/20, 24f/26, 18f/20);
+            if (gold && zoom == 3) return new Rect(1f/39, 1f/30, 37f/39, 28f/30);
+            if (gold && zoom == 4) return new Rect(2f/52, 2f/40, 48f/52, 36f/40);
+            if (!gold && zoom == 4) return new Rect(1f/48, 0, 46f/48, 1);
+            return new Rect(0, 0, 1, 1);
         }
+        internal static Rect MoneyIconBounds(Rect row, float textLeft, float aspect)
+            => new Rect(textLeft - MoneyGap - MoneyIconHeight * aspect,
+                row.center.y - MoneyIconHeight / 2, MoneyIconHeight * aspect, MoneyIconHeight);
+        internal static Rect MoneyTextBounds(Rect row, int width, bool gold, float goldAspect)
+            => new Rect(gold ? row.x + 3 + MoneyIconHeight * goldAspect + MoneyGap : row.xMax - 3 - width,
+                row.y, width, row.height);
     }
 }
 
@@ -174,7 +190,6 @@ public partial class Panel
             case 2: setTabSkill(); break;
             case 3: setTabClans(); break;
             case 4: setTabMod(); break;
-            case 5: setTabBox(); break;
             case 6: setTabTool(); break;
         }
         HudLayout.Invalidate(); SyncInventoryFrame();
@@ -253,42 +268,45 @@ public partial class Panel
         SyncInventoryFrame(); GameScr.resetTranslate(g);
         g.setColor(0, .25f); g.fillRect(0, 0, GameCanvas.w, GameCanvas.h);
         Rect root = HudLayout.GetRect(InventoryFrame.Root);
-        InventoryFrame.Fill(g, root, InventoryFrame.Background);
-        g.setColor(InventoryFrame.Border); g.drawRect(0, 0, W - 1, H - 1);
+        GameCanvas.paintz.paintFrameSimple(0, 0, W, H, g);
+        g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
         SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
         Char character = Char.myCharz();
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
-        InventoryFrame.Text(g, mFont.tahoma_7, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
-        InventoryFrame.Text(g, mFont.tahoma_7, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
-        InventoryFrame.Text(g, mFont.tahoma_7, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
-        InventoryFrame.Text(g, mFont.tahoma_7, mResources.giamsatthuong + ": " + character.cGiamST + "%  " + mResources.critdame + ": " + character.cCritDameFull + "%", 46, 34, 0);
+        mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
+        mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
+        mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
+        mFont.tahoma_7_yellow.drawString(g, mResources.giamsatthuong + ": " + character.cGiamST + "%  " + mResources.critdame + ": " + character.cCritDameFull + "%", 46, 34, 0);
         Rect close = HudLayout.GetRect(InventoryFrame.Close);
-        InventoryFrame.Clip(g, root); InventoryFrame.Fill(g, close, InventoryFrame.Red);
-        mFont.tahoma_7b_white.drawString(g, "X", (int)close.center.x, (int)close.y + 3, mFont.CENTER);
+        InventoryFrame.Clip(g, root);
+        InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
+        g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
         int[] ids = InventoryFrameTabIds;
         int activeTab = currentTabName.Length >= 7 && currentTabIndex == 4 ? 6 : currentTabIndex;
         for (int i = 0; i < ids.Length; i++) {
             Rect tab = HudLayout.GetRect(InventoryFrame.Tab(i));
-            InventoryFrame.Fill(g, tab, activeTab == ids[i] ? InventoryFrame.Border : InventoryFrame.Dark);
             InventoryFrame.Clip(g, tab);
+            PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width - 1, (int)tab.height,
+                activeTab == ids[i] ? 1 : 0, true);
             string[] words = currentTabName[ids[i]];
             for (int line = 0; line < words.Length; line++)
-                InventoryFrame.Text(g, mFont.tahoma_7b_white, words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11,
-                    mFont.CENTER, activeTab == ids[i] ? 0xfff1d0 : 0xc9a77c);
+                (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
+                    words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
         }
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
-                InventoryFrame.Text(g, mFont.tahoma_7b_yellow, "Trang bị", W / 2, 73, mFont.CENTER, InventoryFrame.Accent);
+                InventoryFrame.Rounded(g, new Rect(3, 73, W - 6, HudLayout.GetRect(InventoryFrame.Bag).y - 73),
+                    InventoryFrame.EquipmentBackground);
+                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73, mFont.CENTER);
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 if (hScroll > 0) paintInventory(g, true);
                 break;
             case 2: paintSkill(g); break;
             case 3: paintClans(g); break;
             case 4: paintModTabs(g); break;
-            case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
@@ -307,25 +325,14 @@ public partial class Panel
             color = InventoryFrame.SetColor(item);
         }
         bool chosen = index >= 0 && index == selected;
-        if (chosen) {
-            g.setColor(InventoryFrame.Accent, .25f);
-            g.fillRect((int)rect.x - 2, (int)rect.y - 2, (int)rect.width + 4, (int)rect.height + 4);
-        }
-        InventoryFrame.Fill(g, rect, InventoryFrame.Dark);
-        g.setColor(chosen ? InventoryFrame.Accent : color);
+        if (chosen)
+            InventoryFrame.Rounded(g, new Rect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4), InventoryFrame.Accent);
+        InventoryFrame.Rounded(g, rect, chosen ? 9541120 : color);
+        InventoryFrame.Rounded(g, new Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4), InventoryFrame.SlotBackground);
         if (item == null) {
-            for (int x = (int)rect.x; x < rect.xMax; x += 5) {
-                g.drawLine(x, (int)rect.y, Mathf.Min(x + 2, (int)rect.xMax), (int)rect.y);
-                g.drawLine(x, (int)rect.yMax, Mathf.Min(x + 2, (int)rect.xMax), (int)rect.yMax);
-            }
-            for (int y = (int)rect.y; y < rect.yMax; y += 5) {
-                g.drawLine((int)rect.x, y, (int)rect.x, Mathf.Min(y + 2, (int)rect.yMax));
-                g.drawLine((int)rect.xMax, y, (int)rect.xMax, Mathf.Min(y + 2, (int)rect.yMax));
-            }
             InventoryFrame.Clip(g, rect);
-            InventoryFrame.Text(g, mFont.tahoma_7_white, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER, 0xc9a77c);
+            mFont.tahoma_7_white.drawString(g, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER);
         } else {
-            g.drawRect((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
             InventoryFrame.Clip(g, rect);
             SmallImage.drawSmallImage(g, item.template.iconID, (int)rect.center.x, (int)rect.center.y, 0, 3);
         }
@@ -336,13 +343,12 @@ public partial class Panel
             if (item != null) {
                 string label = "Lv" + level;
                 int width = mFont.tahoma_7.getWidth(label) + 4;
-                g.setColor(InventoryFrame.Accent);
-                g.fillRoundRect((int)rect.xMax - width + 3, (int)rect.yMax - 9, width, 11, 5, 5);
-                InventoryFrame.Text(g, mFont.tahoma_7, label, (int)rect.xMax - width + 5, (int)rect.yMax - 9, 0, InventoryFrame.Dark);
+                InventoryFrame.Rounded(g, new Rect(rect.xMax - width + 3, rect.yMax - 9, width, 12), InventoryFrame.Accent);
+                mFont.tahoma_7.drawString(g, label, (int)rect.xMax - width + 5, (int)rect.yMax - 9, 0);
             }
             for (int i = 0; i < 6; i++) {
                 g.setColor(i < stars ? InventoryFrame.Accent : InventoryFrame.Border);
-                g.fillRoundRect((int)rect.center.x - 11 + i * 4, (int)rect.yMax + 4, 3, 3, 3, 3);
+                g.fillRect((int)rect.center.x - 11 + i * 4, (int)rect.yMax + 4, 3, 3);
             }
         }
     }
@@ -350,19 +356,60 @@ public partial class Panel
     private void PaintInventoryMoney(mGraphics g)
     {
         Rect row = HudLayout.GetRect(InventoryFrame.Money);
-        InventoryFrame.Clip(g, row); InventoryFrame.Fill(g, row, InventoryFrame.Dark);
+        InventoryFrame.Clip(g, row); InventoryFrame.Rounded(g, row, InventoryFrame.MoneyBackground);
         // Reserve the maximum text widths independently; a value never moves its neighbor.
-        int gemWidth = mFont.tahoma_7_yellow.getWidth("1.000.000");
-        int goldWidth = mFont.tahoma_7_yellow.getWidth("99.999.999.999");
-        int gemRight = W - 5, gemLeft = gemRight - gemWidth;
-        g.drawImage(imgXu, 10, (int)row.center.y, 3);
-        InventoryFrame.Clip(g, new Rect(20, row.y, goldWidth, row.height));
-        InventoryFrame.Text(g, mFont.tahoma_7_yellow, Char.myCharz().xu.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', '.'),
-            20, (int)row.y + 4, 0);
-        InventoryFrame.Clip(g, row); g.drawImage(imgLuong, gemLeft - 9, (int)row.center.y, 3);
-        InventoryFrame.Clip(g, new Rect(gemLeft, row.y, gemWidth, row.height));
-        InventoryFrame.Text(g, mFont.tahoma_7_yellow, Char.myCharz().luong.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', '.'),
-            gemRight, (int)row.y + 4, mFont.RIGHT);
+        // getWidth truncates physical font metrics to logical integers; keep the last pixel.
+        int gemWidth = mFont.tahoma_7_yellow.getWidth("1.000.000") + 1;
+        int goldWidth = mFont.tahoma_7_yellow.getWidth("99.999.999.999") + 1;
+        Rect goldUv = InventoryFrame.MoneySpriteUv(true, mGraphics.zoomLevel);
+        Rect gemUv = InventoryFrame.MoneySpriteUv(false, mGraphics.zoomLevel);
+        float goldAspect = imgXu.texture.width * goldUv.width / (imgXu.texture.height * goldUv.height);
+        float gemAspect = imgLuong.texture.width * gemUv.width / (imgLuong.texture.height * gemUv.height);
+        Rect goldText = InventoryFrame.MoneyTextBounds(row, goldWidth, true, goldAspect);
+        Rect gemText = InventoryFrame.MoneyTextBounds(row, gemWidth, false, goldAspect);
+        PaintInventoryMoneyIcon(imgXu, goldUv, InventoryFrame.MoneyIconBounds(row, goldText.x, goldAspect));
+        PaintInventoryMoneyIcon(imgLuong, gemUv, InventoryFrame.MoneyIconBounds(row, gemText.x, gemAspect));
+        PaintInventoryMoneyText(g, goldText, Char.myCharz().xu);
+        PaintInventoryMoneyText(g, gemText, Char.myCharz().luong);
         InventoryFrame.Clip(g, HudLayout.ScreenBounds);
+    }
+
+    private static void PaintInventoryMoneyIcon(Image image, Rect uv, Rect bounds)
+    {
+        int zoom = mGraphics.zoomLevel;
+        Color previous = GUI.color;
+        try {
+            GUI.color = Color.white;
+            GUI.DrawTextureWithTexCoords(new Rect(bounds.x * zoom, bounds.y * zoom,
+                bounds.width * zoom, bounds.height * zoom), image.texture, uv);
+        } finally { GUI.color = previous; }
+    }
+
+    private static GUIStyle inventoryMoneyTextStyle;
+    private static void PaintInventoryMoneyText(mGraphics g, Rect bounds, long value)
+    {
+        string text = value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture).Replace(',', '.');
+        mFont font = mFont.tahoma_7_yellow;
+        if (mGraphics.zoomLevel == 1) {
+            InventoryFrame.Clip(g, bounds);
+            font.drawString(g, text, (int)bounds.x, (int)(bounds.center.y - font.getHeight() / 2f), mFont.LEFT);
+            return;
+        }
+        if (inventoryMoneyTextStyle == null || inventoryMoneyTextStyle.font != font.myFont)
+            inventoryMoneyTextStyle = new GUIStyle(GUI.skin.label) {
+                font = font.myFont, alignment = TextAnchor.MiddleLeft,
+                padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0),
+                wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
+            };
+        inventoryMoneyTextStyle.normal.textColor = inventoryMoneyTextStyle.hover.textColor = font.color1;
+        inventoryMoneyTextStyle.active.textColor = inventoryMoneyTextStyle.focused.textColor = font.color1;
+        int zoom = mGraphics.zoomLevel;
+        Color previous = GUI.color;
+        try {
+            GUI.color = Color.white;
+            GUI.BeginGroup(new Rect(bounds.x * zoom, bounds.y * zoom, bounds.width * zoom, bounds.height * zoom));
+            try { GUI.Label(new Rect(0, 0, bounds.width * zoom, bounds.height * zoom), text, inventoryMoneyTextStyle); }
+            finally { GUI.EndGroup(); }
+        } finally { GUI.color = previous; }
     }
 }
