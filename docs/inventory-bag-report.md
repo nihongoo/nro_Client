@@ -1,5 +1,18 @@
 # Cụm B — túi đồ dạng lưới
 
+## Sửa góc trắng và giảm viền theo ảnh test
+
+Ảnh test người dùng có các mảng trắng ở góc khối Trang bị, ô đồ, badge Lv và footer. Nguyên nhân: `mGraphics.DrawRegionTexture` (`Assets/Scripts/mGraphics.cs:10`) dùng `Graphics.DrawTexture`; sprite góc trắng `PopUp.goc` không nhận tint `GUI.color` như phần fill. Cách tint của lần sửa trước chưa xử lý đường vẽ sprite này.
+
+- `Assets/Scripts/Hud/InventoryFrameSkin.cs:11`, `Corners`: dùng `HudButtonSkin.CopyNative` tạo bản sao **sprite gốc**, tô phần trắng theo nền và phần đen theo màu viền. `TintCorners:32` giữ nguyên alpha/hình bo. Không sửa asset nguồn hay tự vẽ hình học góc.
+- Cache theo màu nền/viền/độ mờ, giới hạn 64 bản; đổi sprite/zoom thì huỷ bản sao cũ. Không copy/read GPU mỗi frame. Kiểm tra 10.000 lần lấy cùng skin không phát sinh bản sao mới.
+- `InventoryFrame.Rounded:145` truyền sprite đã tô vào overload `PopUp.paintPopUp:181`. Hàm 7 tham số cũ tại `PopUp.cs:176` vẫn giữ nguyên, dùng góc gốc/viền đen; không đổi giao diện của popup/tab ở màn khác.
+- `PaintInventoryEquipment`, `InventoryFrame.cs:391`: bỏ lớp khung ngoài/khung trong lồng nhau, chỉ còn **một khung bo**. Ô chọn dùng viền vàng, ô có set dùng màu set; ô thường viền mảnh đen. Nền, icon, số ô, vị trí, badge và thao tác không đổi.
+- Code thừa đã bỏ: cách tint RGB dựa vào `GUI.color` không tác động lên sprite, các lần vẽ khung bo lồng/viền glow thừa ở ô trang bị. Không xoá chức năng chọn hay nhận diện set.
+- `python Tests/Inventory/skin.py`: **58.962 kiểm tra qua** trên PNG góc x1–x4 và code recolor/cache thực (trắng→đúng nền, đen→đúng viền, alpha, nguồn không đổi và tái dùng cache). Các bộ 34.061 geometry/model và 60 input vẫn qua; compile C# client/Editor qua. Chưa chạy Unity/Play Mode/build APK; cần người dùng xác nhận ảnh sau sửa.
+
+Ảnh mới cũng xác nhận nhãn client đang hiển thị **50 ô thật** cho acc test. Theo lựa chọn đã chốt, client giữ đủ 50 ô (5×10), cuộn xuống tiếp, không giảm về 35 hoặc sửa server.
+
 Nhánh `feat/inventory-bag` tạo trong repo chính từ `develop`/`origin/develop` **f4e58a9**, sau khi fetch và xác nhận PR #23 đã merge. Tree của cụm A trùng tree develop tại thời điểm tạo nhánh. Không clone/worktree mới, không sửa server/protocol, không build Unity/APK, không push/merge/stash và không xoá nhánh.
 
 Đường dẫn client dưới đây tương đối với `D:/project_Unity/client_Nro/Mod-nro-unity`; đường dẫn server tương đối với `D:/dowload/SRC NRO NEW 03/SRC`. Số dòng theo bản B.

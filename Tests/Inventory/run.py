@@ -72,7 +72,9 @@ class mFont {
     public static mFont tahoma_7_yellow=new mFont();
     public int getWidth(string text)=>text.Length*5;
 }
-class PopUp { public static bool fail; public static void paintPopUp(mGraphics g,int x,int y,int w,int h,int color,bool isButton){if(fail)throw new Exception("skin fixture");} }
+class Image {}
+static class InventoryFrameSkin { public static Image Corners(int fill,int border,byte opacity)=>null; }
+class PopUp { public static bool fail; public static void paintPopUp(mGraphics g,int x,int y,int w,int h,int color,bool isButton,Image corner=null,int borderColor=0){if(fail)throw new Exception("skin fixture");} }
 class mGraphics {
     public static int zoomLevel=2,addYWhenOpenKeyBoard;
     public void setColor(int color){} public void fillRect(int x,int y,int w,int h){} public void setClip(int x,int y,int w,int h){}

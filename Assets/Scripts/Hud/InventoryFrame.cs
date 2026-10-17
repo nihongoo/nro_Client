@@ -142,15 +142,15 @@ namespace Hud
             }
             return Border;
         }
-        internal static void Rounded(mGraphics g, Rect rect, int color, byte opacity = 255)
+        internal static void Rounded(mGraphics g, Rect rect, int color, byte opacity = 255, int borderColor = 0)
         {
-            // Use the game's existing rounded corner sprite, not fillRoundRect (which is square).
-            // goc has a white interior: tint its corners and the white center together so
-            // original inventory colors do not acquire white corner patches.
+            // Sprite regions use Graphics.DrawTexture and do not inherit GUI.color.
+            // Pass a cached recolored copy; GUI.color controls opacity of the center fills only.
             Color previous = GUI.color;
             try {
-                GUI.color = new Color32((byte)(color >> 16), (byte)(color >> 8), (byte)color, opacity);
-                PopUp.paintPopUp(g, (int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height, 16777215, false);
+                GUI.color = new Color32(255, 255, 255, opacity);
+                PopUp.paintPopUp(g, (int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height,
+                    color, false, InventoryFrameSkin.Corners(color, borderColor, opacity), borderColor);
             } finally { GUI.color = previous; }
         }
         internal static void Clip(mGraphics g, Rect rect) => g.setClip((int)rect.x, (int)rect.y,
@@ -388,10 +388,8 @@ public partial class Panel
             color = InventoryFrame.SetColor(item);
         }
         bool chosen = index >= 0 && index == selected;
-        if (chosen)
-            InventoryFrame.Rounded(g, new Rect(rect.x - 2, rect.y - 2, rect.width + 4, rect.height + 4), InventoryFrame.Accent);
-        InventoryFrame.Rounded(g, rect, chosen ? 9541120 : color);
-        InventoryFrame.Rounded(g, new Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height - 4), InventoryFrame.SlotBackground);
+        int border = chosen ? InventoryFrame.Accent : color == InventoryFrame.Border ? 0 : color;
+        InventoryFrame.Rounded(g, rect, InventoryFrame.SlotBackground, 255, border);
         if (item == null) {
             InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
             mFont.tahoma_7_white.drawString(g, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER);
