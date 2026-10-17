@@ -20,7 +20,7 @@ fixture = fixture.replace("public static mFont tahoma_7_yellow=new mFont();", "p
 fixture = fixture.replace("public static int Max(int a,int b)=>Math.Max(a,b);", "public static int Max(int a,int b)=>Math.Max(a,b); public static int Clamp(int n,int lo,int hi)=>Math.Max(lo,Math.Min(n,hi));")
 
 def method(source, name):
-    start = re.search(r"    private [^\n]*\b" + name + r"\(", source).start()
+    start = re.search(r"^[ \t]*(?:private|public) [^\n]*\b" + name + r"\(", source, re.M).start()
     begin = source.index("{", start)
     arrow = source.find("=>", start, begin)
     if arrow >= 0:
@@ -46,12 +46,18 @@ static class Main { public static bool isPC=true; }
 static class InfoDlg { public static bool isShow; }
 static class mSystem { public static long now; public static long currentTimeMillis()=>now; }
 static class mResources { public static string can_not_do_when_die="dead"; }
+static class Res { public static int abs(int value)=>Math.Abs(value); }
+static class mScreen { public static int keyTouch; }
+class Position { public Position(int x,int y){} }
 class Command { public int x,y,w,h; }
 public class Field { public bool isShow; }
 class ChatPopup { public string[] says; public int lim; public static int cmyText; }
 static partial class GameCanvas {
  public static bool[] keyPressed=new bool[30]; public static int px,py,pxMouse,pyMouse;
  public static bool isPointerJustDown,isPointerJustRelease,isPointerClick,isPointerDown;
+ public static bool isPointerMove; public static int pxFirst,pyFirst,pxLast,pyLast,curPos;
+ public static long lastTimePress; public static Position[] arrPos=new Position[4];
+ @@POINTER_METHODS@@
  public static void clearAllPointerEvent(){isPointerJustDown=isPointerJustRelease=isPointerClick=isPointerDown=false;}
  public static void startOKDlg(string text){currentDialog=new object();}
 }
@@ -133,6 +139,26 @@ class InputTests {
   Check(!GameCanvas.keyPressed[global::Main.isPC?22:8]&&!p.Preview,"existing navigation key was not consumed");
   p.selected=45;GameCanvas.keyPressed[global::Main.isPC?25:5]=true;p.Tick();
   Check(p.menus==1&&p.actions==1,"existing confirm key must retain legacy menu dispatch");
+  GameCanvas.menu.showMenu=false;
+  foreach(int target in new[]{0,1,2,3}) {
+   p.cmy=p.cmtoY=0;HudLayout.Invalidate();p.Tick();
+   if(target==1)p.ScrollTo(0);if(target==2)p.ScrollToFilter(0);
+   Rect drag=target==0?HudLayout.GetRect(InventoryFrame.Slot(0)):
+    target==1?HudLayout.GetRect(InventoryFrame.BagCell(0)):
+    target==2?HudLayout.GetRect(InventoryFrame.Filter(0)):new Rect(4,78,1,1);
+   int x=(int)drag.center.x,y=(int)drag.center.y,origin=p.cmy,actions=p.actions,menus=p.menus;
+   Rect header=HudLayout.GetRect(InventoryFrame.Tabs),footer=HudLayout.GetRect(InventoryFrame.Money);
+   GameCanvas.pointerPressed(x,y);p.Tick();p.Tick();
+   Check(!GameCanvas.isPointerJustDown,"inventory did not consume first press");
+   GameCanvas.pointerDragged(x,y-12);p.Tick();p.Tick();
+   Check(p.cmy==Math.Min(p.cmyLim,origin+12),"native pointer drag lost initial origin");
+   GameCanvas.pointerDragged(x,y-24);p.Tick();p.Tick();
+   Check(p.cmy==Math.Min(p.cmyLim,origin+24),"native pointer drag origin reset while held");
+   GameCanvas.pointerReleased(x,y-30);p.Tick();p.Tick();
+   Check(p.cmy==Math.Min(p.cmyLim,origin+30)&&p.cmtoY==p.cmy,"release position not applied");
+   Check(!GameCanvas.isPointerJustRelease&&p.actions==actions&&p.menus==menus,"swipe dispatched click/menu or left release pending");
+   Check(HudLayout.GetRect(InventoryFrame.Tabs).y==header.y&&HudLayout.GetRect(InventoryFrame.Money).y==footer.y,"swipe moved fixed header/footer");
+  }
  }
  static void Main(){
   Run(false,640,360,2);Run(false,1280,720,4);Run(true,422,195,2);Run(true,844,390,4);
@@ -140,6 +166,9 @@ class InputTests {
  }
 }
 '''
+canvas = (ROOT / "Assets/Scripts/GameCanvas.cs").read_text(encoding="utf-8-sig")
+fixture = fixture.replace("@@POINTER_METHODS@@", "\n".join(method(canvas, name).replace("public void ", "public static void ")
+                          for name in ("pointerPressed", "pointerDragged", "pointerReleased")))
 output = ROOT / "Build/inventory-input-tests"
 output.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix="input-", dir=output) as folder:

@@ -120,7 +120,7 @@ public partial class Panel
     {
         if (GameCanvas.isPointerJustDown && inventoryPressed == InventoryFrame.Detail)
             inventoryDetailDragScroll = ChatPopup.cmyText;
-        if (inventoryPressed != InventoryFrame.Detail || !GameCanvas.isPointerDown || cp == null) return;
+        if (inventoryPressed != InventoryFrame.Detail || !(GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease) || cp == null) return;
         int delta = GameCanvas.py - inventoryDragY;
         if (System.Math.Abs(delta) > 4) inventoryDragging = true;
         if (inventoryDragging) ChatPopup.cmyText = Mathf.Clamp(inventoryDetailDragScroll - delta, 0, cp.lim);

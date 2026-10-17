@@ -1,5 +1,17 @@
 # Cụm B — túi đồ dạng lưới
 
+## Sửa kéo cuộn Trang bị + Túi trên mobile
+
+Nguyên nhân xác nhận từ code: `GameCanvas.pointerPressed` (`Assets/Scripts/GameCanvas.cs:2150`) bật `isPointerJustDown`; `pointerDragged:2123` không tắt cờ. `Panel.UpdateInventoryFrameInput` (`Assets/Scripts/Hud/InventoryFrame.cs:250`) trước đây khởi tạo lại `inventoryDragY` / `inventoryDragScroll` mỗi lần thấy cờ đó, nên delta bị về0 trong lúc giữ kéo. `GameCanvas.update` còn có thể gọi `panel.updateKey` hai lần mỗi tick (`GameCanvas.cs:654`, `:666`). Bộ test cũ tự tắt cờ sau lần nhấn nên chưa bắt được lỗi này.
+
+- `UpdateInventoryFrameInput`: tiêu thụ `GameCanvas.isPointerJustDown` sau khi chốt điểm nhấn và điểm bắt đầu cuộn chi tiết, chỉ chốt một lần cho mỗi gesture. Giữ nguyên `HudLayout` và vùng cuộn chung.
+- Áp dụng vị trí cuối khi nhận release; tiêu thụ release kể cả sau swipe/khi nhả ở khoảng trống để không xử lý lại. Swipe không gọi chọn/mặc/mở menu.
+- `UpdateInventoryBagDetailDrag`, `Assets/Scripts/Hud/InventoryBagPanel.cs:119`: nhận cả vị trí release cuối, cùng cơ chế giữ điểm nhấn. Không đổi layout, giới hạn cuộn, wheel PC, header/tab/footer, server hoặc dữ liệu món.
+- `Tests/Inventory/input.py`: thêm phương thức `GameCanvas.pointerPressed` / `pointerDragged` / `pointerReleased` thực vào harness, không tự tắt cờ để giả lập một gesture hợp lệ. Kiểm tra kéo từ ô trang bị, ô túi, chip lọc và khoảng trống; hai update liên tiếp mỗi bước, nhiều bước giữ kéo, vị trí release, không dispatch click/mặc/menu, header/footer cố định, trên bốn viewport mobile/PC zoom2/4. **156 kiểm tra qua** (trước đây60). Bỏ riêng dòng tiêu thụ JustDown trong bản source đưa vào harness thì test thất bại đúng tại `inventory did not consume first press`; không sửa file game để chạy đối chứng.
+- Registry/model34.061 và compile C# client/Editor độc lập qua. Chưa chạy Unity/Play Mode/build APK hoặc xác nhận touch thật qua toàn bộ `MobileCombatPointers.Poll`.
+
+Không xoá code game ngoài phạm vi, không phát hiện thêm hàm chết cần xoá trong bản sửa này. Phần giả lập cờ pointer của test cũ vẫn dùng cho các kiểm tra tap trước đó; ca kéo mới dùng code pointer thực để tránh bỏ sót cùng lỗi. Test máy thật: vuốt lên/xuống từ Trang bị sang Túi, từ ô/icon/chip/khoảng trống; kiểm tra cuộn đến cuối rồi quay đầu, không bật menu hoặc mặc đồ khi vuốt, và header/tab/tiền vẫn cố định. Wheel/click/tap đúp PC cần giữ hành vi cũ.
+
 ## Porata [454] tự chuyển thật sang ô Tai
 
 Theo lựa chọn mới, không làm icon đại diện cho món còn trong túi: server chuyển **chính món Porata [454]** từ túi sang `itemsBody[7]`, trả ô túi về trống. Không cấp thêm sức chứa hay che món còn chiếm slot. Việc chuyển xảy ra trước gói đăng nhập trong `Service.player` (`src/nro/models/services/Service.java:816`) và trước đồng bộ túi trong `InventoryService.sendItemBags` (`src/nro/models/services/InventoryService.java:603`). Chi tiết server tại `docs/porata-equipment-report.md` trong repo server.
