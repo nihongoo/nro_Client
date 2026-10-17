@@ -64,7 +64,7 @@ namespace UnityEngine {
     }
 }
 namespace UnityEngine.Device { public static class Application { public static RuntimePlatform platform; } }
-partial class Item { public ItemOption[] itemOption; public ItemTemplate template; public int quantity; }
+partial class Item { public ItemOption[] itemOption; public ItemTemplate template; public int quantity; public string info,content; }
 class ItemTemplate { public short id; public sbyte type; }
 class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
 class ItemOptionTemplate { public int id; }
@@ -219,6 +219,15 @@ class InventoryTests {
         Check(InventoryBag.Quantity(9999)=="999+"&&InventoryBag.Quantity(24300)=="999+","large quantity still abbreviated");
         Check(InventoryBag.Quantity(int.MaxValue)=="999+","largest server quantity display cap");
         Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30}};
+        Item refreshed=new Item{template=equipment.template,quantity=7};
+        Check(InventoryBag.SameDetailItem(equipment,refreshed),"quantity-only server refresh must preserve detail");
+        Check(!InventoryBag.SameDetailItem(equipment,null)&&!InventoryBag.SameDetailItem(equipment,material),"removed/replaced item must invalidate detail");
+        refreshed.content="changed";Check(!InventoryBag.SameDetailItem(equipment,refreshed),"changed metadata accepted as same item");
+        refreshed.content=null;refreshed.itemOption=new[]{new ItemOption{optionTemplate=new ItemOptionTemplate{id=0},param=5}};
+        Check(!InventoryBag.SameDetailItem(equipment,refreshed),"changed options accepted as same item");
+        equipment.itemOption=new[]{new ItemOption{optionTemplate=new ItemOptionTemplate{id=0},param=5}};
+        Check(InventoryBag.SameDetailItem(equipment,refreshed),"new option objects for same stats rejected");
+        refreshed.itemOption[0].param=6;Check(!InventoryBag.SameDetailItem(equipment,refreshed),"changed stat accepted as same item");
         Item consumable=new Item{template=new ItemTemplate{id=13,type=6}},skin=new Item{template=new ItemTemplate{id=200,type=5}};
         Item[] bag=new[]{null,equipment,material,consumable,skin}; var map=new List<int>();
         InventoryBag.Map(bag,InventoryBagFilter.All,map);Check(map.Count==5&&map[1]==1,"all slots must retain server indices");

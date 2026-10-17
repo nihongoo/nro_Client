@@ -29,7 +29,9 @@ using System; using System.Collections.Generic; using Hud;
 namespace UnityEngine { struct Rect { public float x,y,width,height; public float xMax=>x+width; public float yMax=>y+height;
  public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;} } }
 class ItemTemplate { public short id; public sbyte type; }
-partial class Item { public ItemTemplate template; public int indexUI,quantity=1; }
+partial class Item { public ItemTemplate template; public int indexUI,quantity=1; public string info,content; public ItemOption[] itemOption; }
+class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
+class ItemOptionTemplate { public int id; }
 class Char { static Char p=new Char(); public static Char myCharz()=>p;
  public Item[] arrItemBag=new Item[30],arrItemBody=new Item[11]; }
 class Service { static Service s=new Service(); public static Service gI()=>s; public int calls,where,index;

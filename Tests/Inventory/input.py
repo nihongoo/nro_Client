@@ -75,7 +75,8 @@ public partial class Panel {
  private void perform(int action,object item){actions++;lastAction=action;lastIndex=selected-Char.myCharz().arrItemBody.Length;}
  internal Rect InventoryDetailUpperBounds=>new Rect(); internal Rect InventoryDetailLowerBounds=>new Rect();
  internal int InventoryDetailButtonCount=>0; internal Rect InventoryDetailButtonBounds(int i)=>new Rect();
- private void BuildInventoryDetail(){} private void ClearInventoryDetail(){} private void EnsureInventoryDetailLayout(){}
+ private int inventoryDetailTopScroll,inventoryDetailBottomScroll;
+ private void PrepareInventoryBagDetail(){} private void BuildInventoryDetail(){} private void ClearInventoryDetail(){} private void EnsureInventoryDetailLayout(){}
  private bool HandleInventoryDetailButton(string hit)=>false; private void ScrollInventoryDetail(Vector2 p,int delta){}
  private void UpdateInventoryBagDetailDrag(){}
  public void Tick(){HudLayout.BeginFrame();UpdateInventoryFrameInput();}
@@ -127,7 +128,7 @@ class InputTests {
   Check(p.actions==1&&!p.Preview&&p.cmy!=before,"drag selected/equipped an item or did not scroll");
   p.ScrollTo(0);Click(HudLayout.GetRect(InventoryFrame.BagCell(0)),3800);
   ch.arrItemBag[37]=new Item{template=equipment.template};p.Tick();
-  Check(!p.Preview,"server item replacement left stale detail actions");
+  Check(p.Preview,"unchanged server bag refresh closed detail");
   Click(HudLayout.GetRect(InventoryFrame.BagCell(0)),3900);
   Check(p.actions==1,"server replacement retained old double tap");
   Click(HudLayout.GetRect(InventoryFrame.DetailClose),4200);
@@ -189,7 +190,7 @@ class InputTests {
   Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8200);
   Check(p.actions==equipmentActions+1,"third Porata tap sent a second use packet");
   ch.arrItemBody[7]=new Item{template=porata.template};p.Tick();
-  Check(!p.Preview,"server body replacement left stale Porata detail");
+  Check(p.Preview,"unchanged server body refresh closed detail");
   Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8300);
   Check(p.actions==equipmentActions+1,"server body replacement retained old double tap");
   ch.statusMe=14;Click(HudLayout.GetRect(InventoryFrame.Slot(7)),8400);

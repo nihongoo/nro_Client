@@ -13,6 +13,7 @@ public partial class Panel
     private int inventoryDragX, inventoryDetailDragScroll;
     private bool inventoryBagDetailOpen;
     private Item inventoryBagDetailItem;
+    private int inventoryBagDetailQuantity;
     private static readonly string[] inventoryBagFilters = { "Tất cả", "Trang bị", "Tiêu hao", "Nguyên liệu" };
     internal int InventoryBagCellCount => inventoryBagMap.Count;
     internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && currentTabIndex == 1 && inventoryBagDetailItem?.template != null;
@@ -27,8 +28,15 @@ public partial class Panel
             int index = selected - bodyLength;
             Item current = selected >= 0 && selected < bodyLength ? body[selected]
                 : bag != null && index >= 0 && index < bag.Length ? bag[index] : null;
-            if (!ReferenceEquals(current, inventoryBagDetailItem))
-                CloseInventoryBagDetail();
+            if (!ReferenceEquals(current, inventoryBagDetailItem)) {
+                if (!InventoryBag.SameDetailItem(inventoryBagDetailItem, current)) { CloseInventoryBagDetail(); return; }
+                inventoryBagDetailItem = currItem = current;
+                inventoryBagDoubleTap.Reset(); inventoryEquipmentDoubleTap.Reset();
+                int top = inventoryDetailTopScroll, bottom = inventoryDetailBottomScroll;
+                BuildInventoryDetail(); // Rebind commands to the refreshed server item.
+                inventoryDetailTopScroll = top; inventoryDetailBottomScroll = bottom;
+            } else if (current != null && inventoryBagDetailQuantity != current.quantity) PrepareInventoryBagDetail();
+            inventoryBagDetailQuantity = current?.quantity ?? 0;
         }
     }
     private void CloseInventoryBagDetail()
@@ -89,6 +97,7 @@ public partial class Panel
     private void OpenInventoryItemDetail(Item item)
     {
         currItem = item; inventoryBagDetailItem = item; inventoryBagDetailOpen = true;
+        inventoryBagDetailQuantity = item.quantity;
         cp = null; // Detail C replaces the legacy popup, including its mutating getCompare().
         BuildInventoryDetail(); HudLayout.Invalidate();
     }

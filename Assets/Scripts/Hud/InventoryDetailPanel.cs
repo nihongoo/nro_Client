@@ -33,14 +33,14 @@ public partial class Panel
     {
         get { int count = 0; foreach (var button in inventoryDetailButtons) if (button.Group == 0) count++; return count; }
     }
-    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 26 : 0) + (inventoryDetailDiscard ? 26 : 0);
+    private float InventoryDetailControlsHeight => inventoryDetailQuick ? 26 : 0;
     internal Rect InventoryDetailUpperBounds
     {
         get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, 27, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 30 - InventoryDetailControlsHeight)); }
     }
     internal Rect InventoryDetailLowerBounds
     {
-        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, r.height / 2 + 5, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 13 - ((InventoryDetailBottomCount + 1) / 2) * 26)); }
+        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, r.height / 2 + 5, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 13 - ((InventoryDetailBottomCount + 1) / 2) * 26 - (inventoryDetailDiscard ? 26 : 0))); }
     }
     internal Rect InventoryDetailButtonBounds(int index)
     {
@@ -51,7 +51,7 @@ public partial class Panel
             float w = Mathf.Max(0, (r.width - 16) / 3);
             return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), r.height / 2 - InventoryDetailControlsHeight, w);
         }
-        if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height / 2 - 26, r.width - 12);
+        if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height - 5 - ((InventoryDetailBottomCount + 1) / 2) * 26 - 26, r.width - 12);
         float width = Mathf.Max(0, InventoryDetailBottomCount == 1 ? r.width - 12 : (r.width - 16) / 2);
         int rows = (InventoryDetailBottomCount + 1) / 2;
         return InventoryDetailNativeButtonRect(r.x + 6 + button.Position % 2 * (width + 4), r.height - 5 - rows * 26 + button.Position / 2 * 26, width);
@@ -121,7 +121,7 @@ public partial class Panel
     private void AddInventoryDetailText(List<InventoryDetailLine> lines, string text, mFont font)
     {
         if (string.IsNullOrEmpty(text)) return;
-        int width = Mathf.Max(10, (int)HudLayout.GetRect(InventoryFrame.Detail).width - 12);
+        int width = Mathf.Max(10, (int)HudLayout.GetRect(InventoryFrame.Detail).width - 20);
         foreach (string line in font.splitFontArray(text.Replace("$", ""), width)) lines.Add(new InventoryDetailLine { Text = line, Font = font });
     }
     private static bool IsInventorySetOption(int id)
@@ -207,8 +207,8 @@ public partial class Panel
     }
     private void ScrollInventoryDetail(Vector2 point, int delta)
     {
-        if (HudLayout.GetRect(InventoryFrame.DetailUpper).Contains(point)) inventoryDetailTopScroll = Mathf.Clamp(inventoryDetailTopScroll + delta, 0, Mathf.Max(0, inventoryDetailInfo.Count * 12 - (int)InventoryDetailUpperBounds.height));
-        else if (HudLayout.GetRect(InventoryFrame.DetailLower).Contains(point)) inventoryDetailBottomScroll = Mathf.Clamp(inventoryDetailBottomScroll + delta, 0, Mathf.Max(0, inventoryDetailDescription.Count * 12 - (int)InventoryDetailLowerBounds.height));
+        if (HudLayout.GetRect(InventoryFrame.DetailUpper).Contains(point)) inventoryDetailTopScroll = Mathf.Clamp(inventoryDetailTopScroll + delta, 0, Mathf.Max(0, inventoryDetailInfo.Count * 12 + 8 - (int)InventoryDetailUpperBounds.height));
+        else if (HudLayout.GetRect(InventoryFrame.DetailLower).Contains(point)) inventoryDetailBottomScroll = Mathf.Clamp(inventoryDetailBottomScroll + delta, 0, Mathf.Max(0, inventoryDetailDescription.Count * 12 + 8 - (int)InventoryDetailLowerBounds.height));
     }
     private void UpdateInventoryBagDetailDrag()
     {
@@ -219,7 +219,7 @@ public partial class Panel
         int delta = GameCanvas.py - inventoryDragY;
         if (System.Math.Abs(delta) > 4) { inventoryDragging = true; inventoryBagDoubleTap.Reset(); inventoryEquipmentDoubleTap.Reset(); }
         if (!inventoryDragging) return;
-        int limit = Mathf.Max(0, (upper ? inventoryDetailInfo.Count : inventoryDetailDescription.Count) * 12 - (int)(upper ? InventoryDetailUpperBounds.height : InventoryDetailLowerBounds.height));
+        int limit = Mathf.Max(0, (upper ? inventoryDetailInfo.Count : inventoryDetailDescription.Count) * 12 + 8 - (int)(upper ? InventoryDetailUpperBounds.height : InventoryDetailLowerBounds.height));
         int position = Mathf.Clamp(inventoryDetailDragScroll - delta, 0, limit);
         if (upper) inventoryDetailTopScroll = position; else inventoryDetailBottomScroll = position;
     }
@@ -227,9 +227,10 @@ public partial class Panel
     {
         InventoryFrame.Clip(g, bounds);
         for (int i = 0; i < lines.Count; i++) {
-            int y = (int)bounds.y + i * 12 - scroll;
+            int y = (int)bounds.y + 6 + i * 12 - scroll;
             if (y + 12 < bounds.y || y > bounds.yMax) continue;
-            var line = lines[i]; line.Font.drawString(g, line.Text, (int)bounds.x, y, mFont.LEFT);
+            // Native setTypePaint shifts text left; keep glyphs inside the clip on both sides.
+            var line = lines[i]; line.Font.drawString(g, line.Text, (int)bounds.x + 4, y, mFont.LEFT);
             if (line.Meter == 6) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.Value);
             else if (line.Meter == 7) for (int n = 0; n < 7; n++) {
                 int x = (int)(bounds.xMax - 45 + n * 6);

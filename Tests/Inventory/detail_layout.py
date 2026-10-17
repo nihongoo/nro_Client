@@ -49,6 +49,9 @@ check('Nâng cấp / Gắn sao: đến NPC như trước' in detail and '6000' n
 check('IsInventorySetOption(id) && (item.template.type < 0 || item.template.type > 4)' in detail, 'set section applied to non-set gear')
 check('delta > 0 ? mFont.tahoma_7_green2 : delta < 0 ? mFont.tahoma_7_red' in detail, 'comparison direction colors absent')
 check('if (Char.myCharz().statusMe == 14)' in detail and 'SyncInventoryBag();' in detail, 'dead/stale action guards missing')
+check('InventoryBag.SameDetailItem(inventoryBagDetailItem, current)' in bag and 'inventoryBagDetailItem = currItem = current' in bag, 'unchanged server refresh loses detail or retains stale item')
+check('inventoryDetailTopScroll = top; inventoryDetailBottomScroll = bottom' in bag, 'passive refresh resets reader position')
+check('(int)bounds.x + 4' in detail and '(int)bounds.y + 6' in detail and '.width - 20' in detail, 'native glyph clip padding lost')
 
 # Formula model matches source constants above. Font-dependent left-panel minimum
 # uses a range of plausible native-font widths; actual semantic analysis is separate.
@@ -88,14 +91,18 @@ for mobile, w, h in [(True,422,195),(True,585,270),(True,844,390),(True,1560,720
                 check(all(not overlap(button,old) for old in buttons),'footer buttons overlap')
                 buttons.append(button)
             for quick,discard in ((False,False),(True,False),(True,True)):
-                controls=(26 if quick else 0)+(26 if discard else 0)
+                controls=26 if quick else 0
                 upper=(w-dw+6,27,max(0,dw-12),max(0,h/2-30-controls))
+                lower=(w-dw+6,h/2+5,max(0,dw-12),max(0,h/2-13-rows*26-(26 if discard else 0)))
                 if quick:
                     quick_buttons=[native_button((w-dw+6+i*((dw-16)/3+2),h/2-controls,max(0,(dw-16)/3),24)) for i in range(3)]
                     check(all(not overlap(b,upper) for b in quick_buttons),'quick buttons overlap scrolling info')
                 if discard:
-                    toggle=native_button((w-dw+6,h/2-26,max(0,dw-12),24))
+                    toggle=native_button((w-dw+6,h-5-rows*26-26,max(0,dw-12),24))
                     check(not overlap(toggle,upper),'discard toggle overlaps scrolling info')
                     check(all(not overlap(toggle,b) for b in quick_buttons),'discard toggle overlaps assignments')
+                    check(toggle[1]>=h/2,'discard toggle not in lower half')
+                    check(not overlap(toggle,lower),'discard toggle overlaps description')
+                    check(all(not overlap(toggle,b) for b in buttons),'discard toggle overlaps footer actions')
 
 print(f'PASS: {checks} C source/layout-model checks; no build/Unity/compiler')
