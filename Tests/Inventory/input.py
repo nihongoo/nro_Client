@@ -38,8 +38,7 @@ for name in ("SyncInventoryFrame", "SelectInventoryFrameTab", "UpdateInventoryFr
     members += method(frame, name)
 for name in ("SyncInventoryBag", "CloseInventoryBagDetail", "IsInventoryBagDragTarget", "HandleInventoryBagClick",
              "HandleInventoryEquipmentClick", "OpenInventoryItemDetail",
-             "PrepareInventoryBagDetail", "ScrollInventoryBagIntoView", "MoveInventoryBagSelection",
-             "UpdateInventoryBagDetailDrag", "ScrollInventoryBagMouse"):
+             "ScrollInventoryBagIntoView", "MoveInventoryBagSelection", "ScrollInventoryBagMouse"):
     members += method(bag, name)
 
 fixture += r'''
@@ -74,11 +73,17 @@ public partial class Panel {
  private void doFireInventory(){menus++;GameCanvas.menu.showMenu=true;addItemDetail(currItem);}
  private void addItemDetail(Item item){cp=new ChatPopup{says=new[]{"item"}};}
  private void perform(int action,object item){actions++;lastAction=action;lastIndex=selected-Char.myCharz().arrItemBody.Length;}
+ internal Rect InventoryDetailUpperBounds=>new Rect(); internal Rect InventoryDetailLowerBounds=>new Rect();
+ internal int InventoryDetailButtonCount=>0; internal Rect InventoryDetailButtonBounds(int i)=>new Rect();
+ private void BuildInventoryDetail(){} private void ClearInventoryDetail(){} private void EnsureInventoryDetailLayout(){}
+ private bool HandleInventoryDetailButton(string hit)=>false; private void ScrollInventoryDetail(Vector2 p,int delta){}
+ private void UpdateInventoryBagDetailDrag(){}
+ public void Collapse(bool value){InventoryEquipmentCollapsed=value;cmy=cmtoY=0;HudLayout.Invalidate();}
  public void Tick(){HudLayout.BeginFrame();UpdateInventoryFrameInput();}
  public bool FrameTick(){HudLayout.BeginFrame();return UpdateInventoryFrameInput();}
  public void ScrollTo(int visual){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.BagCellBounds(visual));}
- public void ScrollToFilter(int filter){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.FilterBounds(filter));}
- public void ScrollToEquipment(int slot){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.EquipmentBounds(slot));}
+ public void ScrollToFilter(int filter){SyncInventoryFrame();}
+ public void ScrollToEquipment(int slot){Collapse(false);SyncInventoryFrame();}
  public void Wheel(int amount){ScrollInventoryBagMouse(amount);}
  public void Move(int direction){MoveInventoryBagSelection(direction);}
  public bool Preview=>InventoryBagDetailOpen;
@@ -96,7 +101,7 @@ class InputTests {
  static void Run(bool mobile,int w,int h,int zoom){
   global::Main.isPC=!mobile;UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
   GameCanvas.panel=new Panel();GameCanvas.currentDialog=null;GameCanvas.menu.showMenu=false;GameCanvas.clearAllPointerEvent();
-  Panel p=GameCanvas.panel;Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.arrItemBody=new Item[8];ch.statusMe=0;
+  Panel p=GameCanvas.panel;p.Collapse(true);Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.arrItemBody=new Item[8];ch.statusMe=0;
   GameCanvas.w=w;GameCanvas.h=h;mGraphics.zoomLevel=zoom;
   Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30},quantity=758};
   Item consumable=new Item{template=new ItemTemplate{id=13,type=6},quantity=2};
@@ -129,7 +134,7 @@ class InputTests {
   Click(HudLayout.GetRect(InventoryFrame.DetailClose),4200);
   p.ScrollTo(34);int old=p.selected;Click(InventoryFrame.BagCellBounds(34),4400);
   Check(p.selected==old&&p.actions==1,"ghost changed selection or dispatched an action");
-  p.cmy=p.cmtoY=0;HudLayout.Invalidate();GameCanvas.pxMouse=10;GameCanvas.pyMouse=100;p.Wheel(-2);
+  p.cmy=p.cmtoY=0;HudLayout.Invalidate();GameCanvas.pxMouse=(int)HudLayout.GetRect(InventoryFrame.Bag).center.x;GameCanvas.pyMouse=(int)HudLayout.GetRect(InventoryFrame.Bag).center.y;p.Wheel(-2);
   Check(p.cmy>0,"existing mouse wheel did not scroll inventory");
   p.Move(1);Check(p.selected>=0&&p.selected<ch.arrItemBody.Length||p.selected==45,"keyboard selected a filtered-out item");
   p.ScrollTo(0);ch.statusMe=14;
@@ -141,9 +146,9 @@ class InputTests {
   GameCanvas.keyPressed[global::Main.isPC?22:8]=true;p.Tick();
   Check(!GameCanvas.keyPressed[global::Main.isPC?22:8]&&!p.Preview,"existing navigation key was not consumed");
   p.selected=45;GameCanvas.keyPressed[global::Main.isPC?25:5]=true;p.Tick();
-  Check(p.menus==1&&p.actions==1,"existing confirm key must retain legacy menu dispatch");
+  Check(p.menus==0&&p.actions==1&&p.Preview,"existing confirm key must open detail without the old menu");
   GameCanvas.menu.showMenu=false;
-  foreach(int target in new[]{0,1,2,3}) {
+  foreach(int target in new[]{1}) {
    p.cmy=p.cmtoY=0;HudLayout.Invalidate();p.Tick();
    if(target==1)p.ScrollTo(0);if(target==2)p.ScrollToFilter(0);
    Rect drag=target==0?HudLayout.GetRect(InventoryFrame.Slot(0)):

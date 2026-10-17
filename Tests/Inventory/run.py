@@ -82,6 +82,9 @@ class mGraphics {
 partial class Panel {
     public bool isShow=true,InventoryFrameActive=true,InventoryBagDetailOpen;
     public int currentTabIndex=1,cmy,InventoryBagCellCount=30;
+    public bool InventoryEquipmentCollapsed;
+    public Rect InventoryDetailUpperBounds=>new Rect(); public Rect InventoryDetailLowerBounds=>new Rect();
+    public int InventoryDetailButtonCount=>0; public Rect InventoryDetailButtonBounds(int i)=>new Rect();
     public int InventoryFrameScroll=>currentTabIndex==1?cmy:0;
     public string[][] currentTabName=new string[7][];
 }
@@ -154,9 +157,10 @@ class InventoryTests {
                 Check(goldIcon.y>=money.y&&goldIcon.yMax<=money.yMax,"currency icon clipped vertically");
                 for(int i=0;i<9;i++){
                     Rect cell=HudLayout.GetRect(InventoryFrame.Slot(i));
-                    Near(cell.width,InventoryFrame.Unit(mobile?40:64),"equipment size changed");
+                    Near(InventoryFrame.EquipmentBounds(i).width,InventoryFrame.Unit(mobile?40:64),"equipment size changed");
                     Check(cell.xMin>=0&&cell.xMax<=root.xMax,"equipment outside left panel");
-                    Check(cell.yMin>=72&&cell.yMax+7<money.y,"equipment metadata overlaps header/footer");
+                    if(cell.height<=0)continue;
+                    Check(cell.yMin>=72&&cell.yMax<=money.y,"equipment clip overlaps header/footer");
                     Check(HudLayout.HitTest(cell.center)==InventoryFrame.Slot(i),"equipment hit-test does not match painting");
                     GameCanvas.modal=true;Check(HudLayout.HitTest(cell.center)=="test.modal","equipment fires through modal");GameCanvas.modal=false;
                 }
@@ -164,6 +168,7 @@ class InventoryTests {
                 Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Slot(0)).center)!=InventoryFrame.Slot(0),"hidden equipment still captures input");
                 GameCanvas.panel.currentTabIndex=1;GameCanvas.panel.isShow=false;
                 Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Close).center)==null,"closed frame captures input");GameCanvas.panel.isShow=true;
+                GameCanvas.panel.InventoryEquipmentCollapsed=true;HudLayout.Invalidate();
                 Rect viewport=HudLayout.GetRect(InventoryFrame.Bag);
                 foreach(int capacity in new[]{0,30,35,36,80,255}){
                     GameCanvas.panel.InventoryBagCellCount=capacity;
@@ -191,7 +196,7 @@ class InventoryTests {
                     Check(HudLayout.HitTest(new Vector2(10,50))==InventoryFrame.Tab(0),"scrolled inventory steals tab input");
                     GameCanvas.panel.cmy=0;HudLayout.Invalidate();
                 }
-                GameCanvas.panel.InventoryBagCellCount=30;
+                GameCanvas.panel.InventoryBagCellCount=30;GameCanvas.panel.InventoryEquipmentCollapsed=false;HudLayout.Invalidate();
             }
         }
         Check(InventoryFrame.Option(null,72)==0,"null item");

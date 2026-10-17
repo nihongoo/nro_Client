@@ -15,7 +15,7 @@ public partial class Panel
     private Item inventoryBagDetailItem;
     private static readonly string[] inventoryBagFilters = { "Tất cả", "Trang bị", "Tiêu hao", "Nguyên liệu" };
     internal int InventoryBagCellCount => inventoryBagMap.Count;
-    internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && currentTabIndex == 1 && cp != null;
+    internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && currentTabIndex == 1 && inventoryBagDetailItem?.template != null;
 
     private void SyncInventoryBag()
     {
@@ -34,6 +34,7 @@ public partial class Panel
     private void CloseInventoryBagDetail()
     {
         inventoryBagDetailOpen = false; inventoryBagDetailItem = null; cp = null;
+        ClearInventoryDetail();
         inventoryBagDoubleTap.Reset(); HudLayout.Invalidate();
         inventoryEquipmentDoubleTap.Reset();
     }
@@ -45,10 +46,7 @@ public partial class Panel
     {
         if (currentTabIndex != 1 || hit == null) return false;
         if (hit == InventoryFrame.DetailClose) { CloseInventoryBagDetail(); return true; }
-        if (hit == InventoryFrame.DetailActions) {
-            if (inventoryBagDetailItem != null) { doFireInventory(); PrepareInventoryBagDetail(); }
-            return true;
-        }
+        if (HandleInventoryDetailButton(hit)) return true;
         if (hit.StartsWith("inventory.filter.")) {
             inventoryBagFilter = (InventoryBagFilter)int.Parse(hit.Substring("inventory.filter.".Length));
             CloseInventoryBagDetail(); selected = -1; waitToPerform = -1;
@@ -85,42 +83,16 @@ public partial class Panel
             } else OpenInventoryItemDetail(item);
             return;
         }
-        CloseInventoryBagDetail(); doFireInventory();
+        if (item != null) OpenInventoryItemDetail(item); else CloseInventoryBagDetail();
     }
 
     private void OpenInventoryItemDetail(Item item)
     {
         currItem = item; inventoryBagDetailItem = item; inventoryBagDetailOpen = true;
-        int menuY = GameCanvas.menu.menuY;
-        addItemDetail(item);
-        GameCanvas.menu.menuY = menuY;
-        PrepareInventoryBagDetail(); HudLayout.Invalidate();
+        cp = null; // Detail C replaces the legacy popup, including its mutating getCompare().
+        BuildInventoryDetail(); HudLayout.Invalidate();
     }
 
-    private void PrepareInventoryBagDetail()
-    {
-        if (cp?.says == null || inventoryBagDetailItem == null) return;
-        Rect bounds = HudLayout.GetRect(InventoryFrame.Detail);
-        string text = string.Join("\n", cp.says) + "\n|0|1|Số lượng: " + inventoryBagDetailItem.quantity;
-        cp.says = mFont.tahoma_7_red.splitFontArray(text, Mathf.Max(20, (int)bounds.width - 28));
-        ChatPopup.cmyText = 0;
-    }
-    private void PaintInventoryBagDetail(mGraphics g)
-    {
-        Rect bounds = HudLayout.GetRect(InventoryFrame.Detail), actions = HudLayout.GetRect(InventoryFrame.DetailActions);
-        // Dock the existing item popup; the C layout/bonus/compare/actions are a later cluster.
-        cp.cx = (int)bounds.x; cp.cy = 0; cp.sayWidth = (int)bounds.width - 2;
-        cp.ch = (int)bounds.height; cp.isClip = true; cp.sayRun = 23;
-        cp.lim = Mathf.Max(0, cp.says.Length * 12 + 45 - (int)bounds.height);
-        paintDetail(g); GameScr.resetTranslate(g);
-        InventoryFrame.Clip(g, bounds);
-        InventoryFrame.Rounded(g, actions, InventoryFrame.EquipmentBackground);
-        mFont.tahoma_7b_dark.drawString(g, "Thao tác", (int)actions.center.x, (int)actions.y + 3, mFont.CENTER);
-        Rect close = HudLayout.GetRect(InventoryFrame.DetailClose);
-        InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
-        g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
-        InventoryFrame.Clip(g, HudLayout.ScreenBounds);
-    }
     private void ScrollInventoryBagIntoView(Rect cell)
     {
         Rect viewport = HudLayout.GetRect(InventoryFrame.Bag);
@@ -144,22 +116,13 @@ public partial class Panel
         selected = inventoryBagKeyboardSlots[next];
         if (inventoryBagDetailOpen) CloseInventoryBagDetail();
     }
-    private void UpdateInventoryBagDetailDrag()
-    {
-        if (GameCanvas.isPointerJustDown && inventoryPressed == InventoryFrame.Detail)
-            inventoryDetailDragScroll = ChatPopup.cmyText;
-        if (inventoryPressed != InventoryFrame.Detail || !(GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease) || cp == null) return;
-        int delta = GameCanvas.py - inventoryDragY;
-        if (System.Math.Abs(delta) > 4) inventoryDragging = true;
-        if (inventoryDragging) ChatPopup.cmyText = Mathf.Clamp(inventoryDetailDragScroll - delta, 0, cp.lim);
-    }
     private bool ScrollInventoryBagMouse(int amount)
     {
         if (!InventoryFrameActive || currentTabIndex != 1) return false;
         if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
         if (InventoryBagDetailOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point))
-            ChatPopup.cmyText = Mathf.Clamp(ChatPopup.cmyText - amount * 24, 0, cp.lim);
+            ScrollInventoryDetail(point, -amount * 24);
         else if (HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
             inventoryBagDoubleTap.Reset();
             inventoryEquipmentDoubleTap.Reset();
@@ -171,13 +134,14 @@ public partial class Panel
     private void PaintInventoryBag(mGraphics g)
     {
         Rect viewport = HudLayout.GetRect(InventoryFrame.Bag), filter = InventoryFrame.FilterBounds(0);
-        InventoryFrame.Clip(g, viewport);
+        Rect filterViewport = new Rect(3, 73, W - 6, Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - 75));
+        InventoryFrame.Clip(g, filterViewport);
         mFont.tahoma_7b_dark.drawString(g, "Túi đồ (" + (Char.myCharz().arrItemBag?.Length ?? 0) + " ô)",
             W / 2, (int)filter.y - 13, mFont.CENTER);
         for (int i = 0; i < inventoryBagFilters.Length; i++) {
             Rect chip = InventoryFrame.FilterBounds(i);
-            if (chip.yMax < viewport.y || chip.y > viewport.yMax) continue;
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(chip, viewport));
+            if (chip.yMax < filterViewport.y || chip.y > filterViewport.yMax) continue;
+            InventoryFrame.Clip(g, InventoryFrame.Intersection(chip, filterViewport));
             PopUp.paintPopUp(g, (int)chip.x, (int)chip.y, (int)chip.width, (int)chip.height,
                 i == (int)inventoryBagFilter ? 1 : 0, true);
             mFont font = i == (int)inventoryBagFilter ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey;
@@ -190,6 +154,7 @@ public partial class Panel
                 font.drawString(g, string.Join(" ", words, 1, words.Length - 1), (int)chip.center.x, (int)chip.y + 11, mFont.CENTER);
             }
         }
+        if (viewport.height <= 0) return;
         int cells = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns;
         Item[] bag = Char.myCharz().arrItemBag;
         for (int visual = 0; visual < cells; visual++) {

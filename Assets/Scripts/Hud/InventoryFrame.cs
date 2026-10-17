@@ -7,8 +7,8 @@ namespace Hud
     internal static class InventoryFrame
     {
         internal const string Root = "inventory.frame", Close = "inventory.close", Tabs = "inventory.tabs",
-            Bag = "inventory.bag", Money = "inventory.money",
-            Detail = "inventory.detail", DetailClose = "inventory.detail.close", DetailActions = "inventory.detail.actions";
+            Bag = "inventory.bag", Money = "inventory.money", Equipment = "inventory.equipment.bounds", EquipmentToggle = "inventory.equipment.toggle",
+            Detail = "inventory.detail", DetailClose = "inventory.detail.close", DetailUpper = "inventory.detail.upper", DetailLower = "inventory.detail.lower";
         private static readonly string[] bagCells = new string[256];
         internal static string BagCell(int index) => bagCells[index];
         internal static string Filter(int index) => "inventory.filter." + index;
@@ -51,16 +51,22 @@ namespace Hud
             }
             for (int i = 0; i < 9; i++) {
                 int slot = i;
-                HudLayout.Register(Slot(i), () => Intersection(EquipmentBounds(slot), HudLayout.GetRect(Bag)), HudLayout.OverlayOrder + 12,
-                    () => Visible && GameCanvas.panel.currentTabIndex == 1);
+                HudLayout.Register(Slot(i), () => Intersection(EquipmentBounds(slot), HudLayout.GetRect(Equipment)), HudLayout.OverlayOrder + 12,
+                    () => Visible && GameCanvas.panel.currentTabIndex == 1 && !GameCanvas.panel.InventoryEquipmentCollapsed);
             }
+            HudLayout.Register(Equipment, () => new Rect(3, 73, HudLayout.GetRect(Root).width - 6,
+                Mathf.Max(0, Mathf.Min(EquipmentBottom, HudLayout.GetRect(Money).y - 2) - 73)),
+                HudLayout.OverlayOrder + 11, () => Visible && GameCanvas.panel.currentTabIndex == 1);
+            HudLayout.Register(EquipmentToggle, () => new Rect(HudLayout.GetRect(Root).xMax - 56, 73, 52, 22),
+                HudLayout.OverlayOrder + 13, () => Visible && GameCanvas.panel.currentTabIndex == 1);
             HudLayout.Register(Money, () => {
                 Rect panel = HudLayout.GetRect(Root);
                 return new Rect(1, panel.yMax - 20, panel.width - 2, 19);
             }, HudLayout.OverlayOrder + 11, () => Visible);
             HudLayout.Register(Bag, () => {
                 Rect panel = HudLayout.GetRect(Root), money = HudLayout.GetRect(Money);
-                return new Rect(3, 73, panel.width - 6, Mathf.Max(0, money.y - 75));
+                float top = FilterBounds(0).yMax + 6;
+                return new Rect(3, top, panel.width - 6, Mathf.Max(0, money.y - top - 2));
             }, HudLayout.OverlayOrder + 11, () => Visible && GameCanvas.panel.currentTabIndex == 1);
             for (int i = 0; i < bagCells.Length; i++) {
                 int slot = i;
@@ -74,27 +80,32 @@ namespace Hud
             }
             for (int i = 0; i < 4; i++) {
                 int filter = i;
-                HudLayout.Register(Filter(i), () => Intersection(FilterBounds(filter), HudLayout.GetRect(Bag)),
+                HudLayout.Register(Filter(i), () => Intersection(FilterBounds(filter), new Rect(3, 73, HudLayout.GetRect(Root).width - 6, Mathf.Max(0, HudLayout.GetRect(Money).y - 75))),
                     HudLayout.OverlayOrder + 13, () => Visible && GameCanvas.panel.currentTabIndex == 1);
             }
             HudLayout.Register(Detail, () => HudLayout.Anchor(HorizontalAnchor.Right, VerticalAnchor.Top,
-                new Vector2(Unit(HudLayout.IsMobileLayout ? 250 : 320), GameCanvas.h), Vector2.zero),
+                new Vector2(Mathf.Min(Unit(HudLayout.IsMobileLayout ? 250 : 320), Mathf.Max(0, GameCanvas.w - HudLayout.GetRect(Root).width - 8)), GameCanvas.h), Vector2.zero),
                 HudLayout.OverlayOrder + 14, () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
             HudLayout.Register(DetailClose, () => new Rect(HudLayout.GetRect(Detail).xMax - 21, 3, 18, 18),
                 HudLayout.OverlayOrder + 15, () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
-            HudLayout.Register(DetailActions, () => {
-                Rect detail = HudLayout.GetRect(Detail);
-                return new Rect(detail.x + 4, detail.yMax - 24, detail.width - 8, 20);
-            }, HudLayout.OverlayOrder + 15, () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
+            HudLayout.Register(DetailUpper, () => GameCanvas.panel.InventoryDetailUpperBounds, HudLayout.OverlayOrder + 15,
+                () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
+            HudLayout.Register(DetailLower, () => GameCanvas.panel.InventoryDetailLowerBounds, HudLayout.OverlayOrder + 15,
+                () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
+            for (int i = 0; i < 12; i++) {
+                int button = i;
+                HudLayout.Register("inventory.detail.button." + i, () => GameCanvas.panel.InventoryDetailButtonBounds(button), HudLayout.OverlayOrder + 16,
+                    () => Visible && GameCanvas.panel.InventoryBagDetailOpen && button < GameCanvas.panel.InventoryDetailButtonCount);
+            }
         }
         internal static Rect EquipmentBounds(int slot)
         {
             float size = Unit(HudLayout.IsMobileLayout ? 40 : 64);
             float gap = Mathf.Max(4, Unit(12));
             float left = (HudLayout.GetRect(Root).width - size * 3 - gap * 2) / 2;
-            return new Rect(left + slot % 3 * (size + gap), 86 + slot / 3 * (size + 9)
-                - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
+            return new Rect(left + slot % 3 * (size + gap), 95 + slot / 3 * (size + 9), size, size);
         }
+        internal static float EquipmentBottom => GameCanvas.panel != null && GameCanvas.panel.InventoryEquipmentCollapsed ? 97 : EquipmentBounds(8).yMax + 10;
         internal static Rect Intersection(Rect a, Rect b) => Rect.MinMaxRect(Mathf.Max(a.xMin, b.xMin),
             Mathf.Max(a.yMin, b.yMin), Mathf.Max(Mathf.Max(a.xMin, b.xMin), Mathf.Min(a.xMax, b.xMax)),
             Mathf.Max(Mathf.Max(a.yMin, b.yMin), Mathf.Min(a.yMax, b.yMax)));
@@ -102,14 +113,14 @@ namespace Hud
         internal static float BagGap => Mathf.Max(6, Unit(12));
         internal static Rect FilterBounds(int index)
         {
-            Rect panel = HudLayout.GetRect(Root), last = EquipmentBounds(8);
-            return new Rect(4 + index * (panel.width - 8) / 4, last.yMax + 26, (panel.width - 8) / 4 - 1, 22);
+            Rect panel = HudLayout.GetRect(Root);
+            return new Rect(4 + index * (panel.width - 8) / 4, EquipmentBottom + 15, (panel.width - 8) / 4 - 1, 22);
         }
         internal static Rect BagCellBounds(int index)
         {
             float left = (HudLayout.GetRect(Root).width - BagSize * InventoryBag.Columns - BagGap * (InventoryBag.Columns - 1)) / 2;
             return new Rect(left + index % InventoryBag.Columns * (BagSize + BagGap),
-                FilterBounds(0).yMax + 6 + index / InventoryBag.Columns * (BagSize + BagGap), BagSize, BagSize);
+                FilterBounds(0).yMax + 6 + index / InventoryBag.Columns * (BagSize + BagGap) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), BagSize, BagSize);
         }
         internal static int Option(Item item, int id)
         {
@@ -187,11 +198,14 @@ public partial class Panel
     private string inventoryPressed;
     private int inventoryDragY, inventoryDragScroll;
     private bool inventoryDragging;
+    private bool inventoryAppearanceFromSettings;
+    internal bool InventoryEquipmentCollapsed { get; private set; }
     internal int InventoryFrameScroll => InventoryFrameActive && currentTabIndex == 1 ? cmy : 0;
 
     private void OpenInventoryAppearanceSettings()
     {
         setTypeMain();
+        inventoryAppearanceFromSettings = true;
         SelectInventoryFrameTab(4);
         cmx = cmtoX = 0;
     }
@@ -199,11 +213,12 @@ public partial class Panel
     private void CloseInventoryFrame()
     {
         CloseInventoryBagDetail();
-        if (currentTabName.Length >= 7 && currentTabIndex == 4) {
+        if (currentTabName.Length >= 7 && currentTabIndex == 4 && inventoryAppearanceFromSettings) {
             lastTabIndex[0] = 6;
             setTypeOption();
             HudLayout.Invalidate();
-        } else hide();
+        } else if (currentTabIndex == 4 || currentTabIndex == 5) SelectInventoryFrameTab(6);
+        else hide();
     }
 
     private void SyncInventoryFrame()
@@ -227,6 +242,9 @@ public partial class Panel
             int previousScroll = cmy;
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
             if (cmy != previousScroll) HudLayout.Invalidate();
+        } else if (currentTabIndex == 4 || currentTabIndex == 5 || currentTabIndex == 6) {
+            cmyLim = Mathf.Max(0, currentListLength * ITEM_HEIGHT - hScroll);
+            cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
         }
     }
 
@@ -250,6 +268,7 @@ public partial class Panel
     private bool UpdateInventoryFrameInput()
     {
         SyncInventoryFrame();
+        EnsureInventoryDetailLayout();
         if (isClose || cmtoX > 0) return true;
         if (!isShow || (chatTField != null && chatTField.isShow) || InfoDlg.isShow
             || tabIcon != null && tabIcon.isShow || GameCanvas.currentDialog != null || GameCanvas.menu.showMenu) return false;
@@ -273,11 +292,18 @@ public partial class Panel
                 inventoryDragging = true; inventoryBagDoubleTap.Reset();
                 inventoryEquipmentDoubleTap.Reset();
             }
-            if (inventoryDragging) { cmy = cmtoY = Mathf.Clamp(inventoryDragScroll - delta, 0, cmyLim); HudLayout.Invalidate(); }
+            if (inventoryDragging && (inventoryPressed == InventoryFrame.Bag || inventoryPressed.StartsWith("inventory.bag.cell."))) {
+                cmy = cmtoY = Mathf.Clamp(inventoryDragScroll - delta, 0, cmyLim); HudLayout.Invalidate();
+            }
         }
         if (GameCanvas.isPointerJustRelease) {
             bool click = GameCanvas.isPointerClick && !inventoryDragging && hit == inventoryPressed;
             inventoryPressed = null;
+            if (click && hit == InventoryFrame.EquipmentToggle) {
+                InventoryEquipmentCollapsed = !InventoryEquipmentCollapsed; cmy = cmtoY = 0;
+                inventoryBagDoubleTap.Reset(); inventoryEquipmentDoubleTap.Reset();
+                HudLayout.Invalidate(); SyncInventoryFrame(); GameCanvas.clearAllPointerEvent(); return true;
+            }
             if (click && HandleInventoryBagClick(hit)) { GameCanvas.clearAllPointerEvent(); return true; }
             if (click && hit == InventoryFrame.Close) { CloseInventoryFrame(); GameCanvas.clearAllPointerEvent(); return true; }
             if (click && hit != null && hit.StartsWith("inventory.tab.")) {
@@ -314,10 +340,6 @@ public partial class Panel
                 int visual = inventoryBagMap.IndexOf(selected - (Char.myCharz().arrItemBody?.Length ?? 0));
                 if (visual >= 0) ScrollInventoryBagIntoView(InventoryFrame.BagCellBounds(visual));
             }
-            else {
-                int slot = Array.IndexOf(inventoryBodySlots, selected);
-                if (slot >= 0) ScrollInventoryBagIntoView(InventoryFrame.EquipmentBounds(slot));
-            }
             GameCanvas.keyPressed[up] = GameCanvas.keyPressed[down] = false;
         }
         if (GameCanvas.keyPressed[12] || GameCanvas.keyPressed[fire]) {
@@ -325,8 +347,9 @@ public partial class Panel
             inventoryBagDoubleTap.Reset();
             inventoryEquipmentDoubleTap.Reset();
             if (selected >= 0 && selected < currentListLength) {
-                doFireInventory();
-                if (InventoryBagDetailOpen) PrepareInventoryBagDetail();
+                Item[] body = Char.myCharz().arrItemBody, bag = Char.myCharz().arrItemBag;
+                Item item = selected < (body?.Length ?? 0) ? body[selected] : bag[selected - (body?.Length ?? 0)];
+                if (item != null) OpenInventoryItemDetail(item);
             }
         }
         return true;
@@ -352,7 +375,7 @@ public partial class Panel
         InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
         g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
         int[] ids = InventoryFrameTabIds;
-        int activeTab = currentTabName.Length >= 7 && currentTabIndex == 4 ? 6 : currentTabIndex;
+        int activeTab = currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5) ? 6 : currentTabIndex;
         for (int i = 0; i < ids.Length; i++) {
             Rect tab = HudLayout.GetRect(InventoryFrame.Tab(i));
             InventoryFrame.Clip(g, tab);
@@ -367,15 +390,18 @@ public partial class Panel
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
-                InventoryFrame.Rounded(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.FilterBounds(0).y - 73 + cmy - 13),
-                    InventoryFrame.EquipmentBackground);
-                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 - cmy, mFont.CENTER);
-                for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
+                InventoryFrame.Rounded(g, HudLayout.GetRect(InventoryFrame.Equipment), InventoryFrame.EquipmentBackground);
+                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2 - 15, 76, mFont.CENTER);
+                if (!InventoryEquipmentCollapsed) for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
+                Rect toggle = HudLayout.GetRect(InventoryFrame.EquipmentToggle);
+                InventoryFrame.Clip(g, toggle); InventoryFrame.Rounded(g, toggle, InventoryFrame.SlotBackground);
+                mFont.tahoma_7_white.drawString(g, InventoryEquipmentCollapsed ? "Mở" : "Thu", (int)toggle.center.x, (int)toggle.y + 5, mFont.CENTER);
                 PaintInventoryBag(g);
                 break;
             case 2: paintSkill(g); break;
             case 3: paintClans(g); break;
             case 4: paintModTabs(g); break;
+            case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
@@ -386,7 +412,7 @@ public partial class Panel
 
     private void PaintInventoryEquipment(mGraphics g, int slot)
     {
-        Rect rect = InventoryFrame.EquipmentBounds(slot), viewport = HudLayout.GetRect(InventoryFrame.Bag);
+        Rect rect = InventoryFrame.EquipmentBounds(slot), viewport = HudLayout.GetRect(InventoryFrame.Equipment);
         if (rect.yMax + 9 < viewport.y || rect.y > viewport.yMax) return;
         InventoryFrame.Clip(g, viewport);
         int index = inventoryBodySlots[slot]; Item[] body = Char.myCharz().arrItemBody;
