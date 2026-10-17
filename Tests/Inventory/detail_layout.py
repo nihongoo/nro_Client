@@ -17,6 +17,10 @@ def check(condition, message):
     assert condition, message
 
 
+def native_button(a):
+    return (round(a[0]),round(a[1]),math.floor(a[2]),24)
+
+
 def overlap(a, b):
     return min(a[0]+a[2], b[0]+b[2]) > max(a[0], b[0]) and min(a[1]+a[3], b[1]+b[3]) > max(a[1], b[1])
 
@@ -32,13 +36,15 @@ check('item.quantity =' not in detail and 'option.param =' not in detail, 'view 
 check('getCompare(' not in detail and 'addItemDetail(item)' not in bag, 'C uses legacy mutating comparison')
 check('inventoryAppearanceFromSettings = false; SelectInventoryFrameTab(4)' in panel and 'setTabBox(); Hud.HudLayout.Invalidate()' in panel, 'old function entries missing')
 check('case 5: paintBox(g)' in frame, 'old chest renderer missing')
-check('InventoryEquipmentCollapsed = !InventoryEquipmentCollapsed' in frame, 'manual collapse missing')
-check('95 + slot / 3 * (size + 9)' in frame, 'equipment model origin changed')
+check('InventoryEquipmentCollapsed' not in frame and 'EquipmentToggle' not in frame, 'removed collapse control still exists')
+check('86 + slot / 3 * (size + 9)' in frame, 'equipment model origin changed')
 equipment_method = frame[frame.index('internal static Rect EquipmentBounds'):frame.index('internal static float EquipmentBottom')]
-check('InventoryFrameScroll' not in equipment_method and 'cmy' not in equipment_method, 'equipment geometry depends on scroll')
+check('InventoryFrameScroll' in equipment_method, 'equipment no longer shares bag scroll')
 check('FilterBounds(0).yMax + 6 + index / InventoryBag.Columns' in frame, 'bag model origin changed')
 check('if (frameGesture) GameCanvas.isPointerJustDown = false' in frame, 'legacy tab pointer regression')
-check('inventoryPressed == InventoryFrame.Bag || inventoryPressed.StartsWith("inventory.bag.cell.")' in frame, 'equipment/filter drag can scroll bag')
+check('if (inventoryDragging) {' in frame, 'shared drag does not update scroll')
+check('Command.paintOngMau' in detail and 'Command.btn0left' in detail and 'Command.btn1left' in detail, 'confirmation button assets not reused')
+check('mFont.tahoma_7b_dark' in detail and 'mFont.tahoma_7b_green2' in detail, 'confirmation button fonts missing')
 check('Nâng cấp / Gắn sao: đến NPC như trước' in detail and '6000' not in detail, 'inventory bypasses NPC combine')
 check('IsInventorySetOption(id) && (item.template.type < 0 || item.template.type > 4)' in detail, 'set section applied to non-set gear')
 check('delta > 0 ? mFont.tahoma_7_green2 : delta < 0 ? mFont.tahoma_7_red' in detail, 'comparison direction colors absent')
@@ -58,37 +64,37 @@ for mobile, w, h in [(True,422,195),(True,585,270),(True,844,390),(True,1560,720
         left=(0,0,root_width,h); right=(w-dw,0,dw,h); footer=(1,h-20,root_width-2,19)
         check(not overlap(left,right),'detail overlaps bag/money panel')
         check(not overlap(footer,right),'detail overlaps currency footer')
-        for collapsed in (False,True):
-            equip_bottom=97 if collapsed else 95+2*(cell+9)+cell+10
-            filter_y=equip_bottom+15
-            bag_top=filter_y+22+6
-            bag_height=max(0,h-20-bag_top-2)
-            if collapsed:
-                check(bag_height>=bag_cell,'manual collapse does not expose one usable bag row')
-            for count in (0,30,35,36,50,80,255):
-                rows=max(7,math.ceil(count/5))
-                last=bag_top+(rows-1)*(bag_cell+gap)+bag_cell
-                limit=max(0,int(last+5-(bag_top+bag_height)))
-                if bag_height>=bag_cell:
-                    check(last-limit<=bag_top+bag_height,'last row cannot scroll into viewport')
+        equip_bottom=86+2*(cell+9)+cell+10
+        filter_y=equip_bottom+16
+        first_row=filter_y+22+6
+        bag_top=73
+        bag_height=h-20-bag_top-2
+        check(bag_height>=bag_cell,'shared viewport cannot expose a bag row')
+        for count in (0,30,35,36,50,80,255):
+            rows=max(7,math.ceil(count/5))
+            last=first_row+(rows-1)*(bag_cell+gap)+bag_cell
+            limit=max(0,int(last+5-(bag_top+bag_height)))
+            check(last-limit<=bag_top+bag_height,'last row cannot scroll into viewport')
+            check(first_row-limit<first_row,'bag content did not move with shared scroll')
         for bottom_count in (1,2,3):
             rows=(bottom_count+1)//2
             lower=(w-dw+6,h/2+5,max(0,dw-12),max(0,h/2-13-rows*26))
             buttons=[]
             for i in range(bottom_count):
                 button=(w-dw+6+(i%2)*((dw-16)/2+4),h-5-rows*26+(i//2)*26,max(0,dw-12 if bottom_count==1 else (dw-16)/2),24)
+                button=native_button(button)
                 check(button[1]+button[3]<=h-5,'action not anchored to bottom')
                 check(not overlap(button,lower),'description intersects footer button')
                 check(all(not overlap(button,old) for old in buttons),'footer buttons overlap')
                 buttons.append(button)
             for quick,discard in ((False,False),(True,False),(True,True)):
-                controls=(25 if quick else 0)+(22 if discard else 0)
+                controls=(26 if quick else 0)+(26 if discard else 0)
                 upper=(w-dw+6,27,max(0,dw-12),max(0,h/2-30-controls))
                 if quick:
-                    quick_buttons=[(w-dw+6+i*((dw-16)/3+2),h/2-controls,max(0,(dw-16)/3),23) for i in range(3)]
+                    quick_buttons=[native_button((w-dw+6+i*((dw-16)/3+2),h/2-controls,max(0,(dw-16)/3),24)) for i in range(3)]
                     check(all(not overlap(b,upper) for b in quick_buttons),'quick buttons overlap scrolling info')
                 if discard:
-                    toggle=(w-dw+6,h/2-23,max(0,dw-12),21)
+                    toggle=native_button((w-dw+6,h/2-26,max(0,dw-12),24))
                     check(not overlap(toggle,upper),'discard toggle overlaps scrolling info')
                     check(all(not overlap(toggle,b) for b in quick_buttons),'discard toggle overlaps assignments')
 

@@ -78,12 +78,11 @@ public partial class Panel {
  private void BuildInventoryDetail(){} private void ClearInventoryDetail(){} private void EnsureInventoryDetailLayout(){}
  private bool HandleInventoryDetailButton(string hit)=>false; private void ScrollInventoryDetail(Vector2 p,int delta){}
  private void UpdateInventoryBagDetailDrag(){}
- public void Collapse(bool value){InventoryEquipmentCollapsed=value;cmy=cmtoY=0;HudLayout.Invalidate();}
  public void Tick(){HudLayout.BeginFrame();UpdateInventoryFrameInput();}
  public bool FrameTick(){HudLayout.BeginFrame();return UpdateInventoryFrameInput();}
  public void ScrollTo(int visual){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.BagCellBounds(visual));}
- public void ScrollToFilter(int filter){SyncInventoryFrame();}
- public void ScrollToEquipment(int slot){Collapse(false);SyncInventoryFrame();}
+ public void ScrollToFilter(int filter){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.FilterBounds(filter));}
+ public void ScrollToEquipment(int slot){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.EquipmentBounds(slot));}
  public void Wheel(int amount){ScrollInventoryBagMouse(amount);}
  public void Move(int direction){MoveInventoryBagSelection(direction);}
  public bool Preview=>InventoryBagDetailOpen;
@@ -101,7 +100,7 @@ class InputTests {
  static void Run(bool mobile,int w,int h,int zoom){
   global::Main.isPC=!mobile;UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
   GameCanvas.panel=new Panel();GameCanvas.currentDialog=null;GameCanvas.menu.showMenu=false;GameCanvas.clearAllPointerEvent();
-  Panel p=GameCanvas.panel;p.Collapse(true);Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.arrItemBody=new Item[8];ch.statusMe=0;
+  Panel p=GameCanvas.panel;Char ch=Char.myCharz();ch.arrItemBag=new Item[80];ch.arrItemBody=new Item[8];ch.statusMe=0;
   GameCanvas.w=w;GameCanvas.h=h;mGraphics.zoomLevel=zoom;
   Item equipment=new Item{template=new ItemTemplate{id=1,type=0}},material=new Item{template=new ItemTemplate{id=442,type=30},quantity=758};
   Item consumable=new Item{template=new ItemTemplate{id=13,type=6},quantity=2};
@@ -148,7 +147,7 @@ class InputTests {
   p.selected=45;GameCanvas.keyPressed[global::Main.isPC?25:5]=true;p.Tick();
   Check(p.menus==0&&p.actions==1&&p.Preview,"existing confirm key must open detail without the old menu");
   GameCanvas.menu.showMenu=false;
-  foreach(int target in new[]{1}) {
+  foreach(int target in new[]{0,1,2,3}) {
    p.cmy=p.cmtoY=0;HudLayout.Invalidate();p.Tick();
    if(target==1)p.ScrollTo(0);if(target==2)p.ScrollToFilter(0);
    Rect drag=target==0?HudLayout.GetRect(InventoryFrame.Slot(0)):

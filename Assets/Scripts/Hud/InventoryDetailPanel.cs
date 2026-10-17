@@ -18,6 +18,7 @@ public partial class Panel
         internal Command Action;
         internal int Group, Position;
         internal string[] Lines;
+        internal string HitTarget;
     }
     private MyVector inventoryDetailCommands;
     private readonly List<InventoryDetailLine> inventoryDetailInfo = new List<InventoryDetailLine>();
@@ -32,7 +33,7 @@ public partial class Panel
     {
         get { int count = 0; foreach (var button in inventoryDetailButtons) if (button.Group == 0) count++; return count; }
     }
-    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 25 : 0) + (inventoryDetailDiscard ? 22 : 0);
+    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 26 : 0) + (inventoryDetailDiscard ? 26 : 0);
     internal Rect InventoryDetailUpperBounds
     {
         get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, 27, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 30 - InventoryDetailControlsHeight)); }
@@ -48,13 +49,15 @@ public partial class Panel
         var button = inventoryDetailButtons[index];
         if (button.Group == 1) {
             float w = Mathf.Max(0, (r.width - 16) / 3);
-            return new Rect(r.x + 6 + button.Position * (w + 2), r.height / 2 - InventoryDetailControlsHeight, w, 23);
+            return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), r.height / 2 - InventoryDetailControlsHeight, w);
         }
-        if (button.Group == 2) return new Rect(r.x + 6, r.height / 2 - 23, Mathf.Max(0, r.width - 12), 21);
+        if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height / 2 - 26, r.width - 12);
         float width = Mathf.Max(0, InventoryDetailBottomCount == 1 ? r.width - 12 : (r.width - 16) / 2);
         int rows = (InventoryDetailBottomCount + 1) / 2;
-        return new Rect(r.x + 6 + button.Position % 2 * (width + 4), r.height - 5 - rows * 26 + button.Position / 2 * 26, width, 24);
+        return InventoryDetailNativeButtonRect(r.x + 6 + button.Position % 2 * (width + 4), r.height - 5 - rows * 26 + button.Position / 2 * 26, width);
     }
+    private static Rect InventoryDetailNativeButtonRect(float x, float y, float width)
+        => new Rect(Mathf.Round(x), Mathf.Round(y), Mathf.Floor(Mathf.Max(0, width)), 24);
     private void ClearInventoryDetail()
     {
         inventoryDetailCommands = null; inventoryDetailButtons.Clear(); inventoryDetailInfo.Clear(); inventoryDetailDescription.Clear();
@@ -64,7 +67,8 @@ public partial class Panel
     }
     private void AddInventoryDetailButton(string text, Command command, int group, int position)
     {
-        inventoryDetailButtons.Add(new InventoryDetailButton { Text = text, Action = command, Group = group, Position = position });
+        inventoryDetailButtons.Add(new InventoryDetailButton { Text = text, Action = command, Group = group, Position = position,
+            HitTarget = "inventory.detail.button." + inventoryDetailButtons.Count });
     }
     private void BuildInventoryDetail()
     {
@@ -164,7 +168,7 @@ public partial class Panel
         if (inventoryDetailDescription.Count == 0) AddInventoryDetailText(inventoryDetailDescription, "Không có mô tả", mFont.tahoma_7_grey);
         for (int i = 0; i < inventoryDetailButtons.Count; i++) {
             var button = inventoryDetailButtons[i];
-            mFont font = button.Action == null ? mFont.tahoma_7_grey : mFont.tahoma_7_white;
+            mFont font = button.Action == null ? mFont.tahoma_7_grey : mFont.tahoma_7b_dark;
             button.Lines = font.splitFontArray(button.Text, Mathf.Max(10, (int)InventoryDetailButtonBounds(i).width - 4));
         }
     }
@@ -244,8 +248,12 @@ public partial class Panel
         PaintInventoryDetailLines(g, InventoryDetailLowerBounds, inventoryDetailDescription, inventoryDetailBottomScroll);
         for (int i = 0; i < inventoryDetailButtons.Count; i++) {
             Rect button = InventoryDetailButtonBounds(i); var entry = inventoryDetailButtons[i];
-            InventoryFrame.Clip(g, button); InventoryFrame.Rounded(g, button, entry.Action == null ? InventoryFrame.MoneyBackground : InventoryFrame.SlotBackground);
-            mFont font = entry.Action == null ? mFont.tahoma_7_grey : mFont.tahoma_7_white;
+            InventoryFrame.Clip(g, button);
+            bool focused = entry.Action != null && inventoryPressed == entry.HitTarget && GameCanvas.isPointerDown && !inventoryDragging;
+            Command.paintOngMau(focused ? Command.btn1left : Command.btn0left,
+                focused ? Command.btn1mid : Command.btn0mid, focused ? Command.btn1right : Command.btn0right,
+                (int)button.x, (int)button.y, (int)button.width, g);
+            mFont font = entry.Action == null ? mFont.tahoma_7_grey : focused ? mFont.tahoma_7b_green2 : mFont.tahoma_7b_dark;
             string[] text = entry.Lines ?? Array.Empty<string>();
             for (int row = 0; row < System.Math.Min(2, text.Length); row++) font.drawString(g, text[row], (int)button.center.x, (int)button.center.y - System.Math.Min(2, text.Length) * 5 + row * 10, mFont.CENTER);
         }
