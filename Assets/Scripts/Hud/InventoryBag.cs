@@ -11,6 +11,8 @@ namespace Hud
     internal static class InventoryBag
     {
         internal const int Columns = 5, MinimumRows = 7, DoubleTapMillis = 350;
+        internal static int EquippedPorataIndex(Item[] body) => body != null && body.Length > 7
+            && body[7]?.template != null && body[7].template.id == 454 ? 7 : -1;
         internal static bool CanEquip(Item item) => item?.template != null && (item.isTypeBody()
             || item.template.type == 24 || item.template.type == 27
                 && (item.template.id == 454 || item.template.id == 921 || item.template.id == 1819));

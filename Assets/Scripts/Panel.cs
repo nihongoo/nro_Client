@@ -7555,7 +7555,15 @@ public partial class Panel : IActionListener, IChatable
                 }
                 else if (GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody))
                 {
-                    myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    if (currItem.template.id == 454)
+                    {
+                        myVector.addElement(new Command(mResources.USE, this, 2001, currItem));
+                        Hud.MobileQuickItems.AddAssignmentCommands(myVector, currItem);
+                    }
+                    else
+                    {
+                        myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    }
                 }
                 else if (GameCanvas.panel.type == 21)
                 {

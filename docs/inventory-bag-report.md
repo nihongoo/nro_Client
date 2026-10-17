@@ -1,5 +1,21 @@
 # Cụm B — túi đồ dạng lưới
 
+## Porata [454] tự chuyển thật sang ô Tai
+
+Theo lựa chọn mới, không làm icon đại diện cho món còn trong túi: server chuyển **chính món Porata [454]** từ túi sang `itemsBody[7]`, trả ô túi về trống. Không cấp thêm sức chứa hay che món còn chiếm slot. Việc chuyển xảy ra trước gói đăng nhập trong `Service.player` (`src/nro/models/services/Service.java:816`) và trước đồng bộ túi trong `InventoryService.sendItemBags` (`src/nro/models/services/InventoryService.java:603`). Chi tiết server tại `docs/porata-equipment-report.md` trong repo server.
+
+- `InventoryBag.EquippedPorataIndex`, `Assets/Scripts/Hud/InventoryBag.cs:14`: nhận đúng ID454 ở vị trí7, chịu được null/danh sách chưa đủ. Ô Tai vốn đọc vị trí này nên không cần đổi layout hoặc hit-test.
+- `Panel.doFireInventory`, `Assets/Scripts/Panel.cs:7519`, nhánh tại7558: Porata đã mặc có **Dùng** thay **Lấy ra**, tái dùng `perform(2001, ...)` gửi `useItem(0, 0, 7, -1)` để hợp thể/tách. Có thể gán ô nhanh như trước.
+- `MobileQuickItems.Get:52` / `Use:75`, `Assets/Scripts/Hud/MobileQuickItems.cs`: ô nhanh lấy đúng Porata trên người và gửi nguồn body; nếu món còn trong túi thì giữ đường bag. Thả nút vẫn giải lại nguồn/index hiện tại, không giữ index túi cũ.
+- `MainMod.UseItem`, `Assets/Scripts/Mod.CuongLe/MainMod.cs:1159`: ưu tiên Porata trên người; phím F tại887 nhận nguồn này. `Yardat.AutoPotaraFusion`, `Assets/Scripts/Mod.CuongLe/Yardat.cs:69`, dùng lại hàm này để tránh dereference `FindItemBag(454)` khi món đã rời túi.
+- Không tự xoá bông tai921/1819. Nếu ô Tai đã có món khác, server không thay thế; nếu nhiều bản454, chỉ một món chuyển, bản dư vẫn còn. Giữ kiểm tra giới tính/sức mạnh template và option21. Porata đang ở rương vẫn ở rương, lấy ra túi sẽ được xét tự mặc khi đồng bộ.
+
+Kiểm tra riêng `python Tests/Inventory/porata.py`: **15 kiểm tra qua** với code routing thực cho phím tắt, ô nhanh, `Panel.perform` action2001, thiếu món, đổi nguồn, gán lại ô, và bông tai921 vẫn dùng đường túi. Registry/model34.061, input60 và compile C# client/Editor độc lập qua. Server có26 kiểm tra chuyển đồ/routing thực và compile Java toàn bộ nguồn trong thư mục kiểm tra riêng qua; chưa chạy server/DB/Unity, không chuyển runtime đang chọn. Test tích hợp vẫn cần người dùng thực hiện.
+
+Test sau khi dùng bản server và client mới: đăng nhập acc có454/ô Tai trống/đủ sức mạnh; Tai phải hiện icon, túi giảm một ô bị chiếm nhưng tổng sức chứa giữ nguyên. Bấm Tai → Dùng để hợp thể/tách; thử F, auto hợp thể và ô nhanh; đăng xuất/đăng nhập lại kiểm tra món ở Tai được lưu và không nhân đôi. Thử ô Tai có món khác, thiếu sức mạnh, nhiều bản454 và921/1819 để kiểm tra không mất đồ.
+
+Code thừa trong phạm vi: bỏ đường gọi packet trực tiếp kèm dereference `FindItemBag(454).indexUI` ở `Yardat.AutoPotaraFusion`, thay bằng đường dùng chung. Không xoá hàm `FindItemBag`, vì vẫn có caller khác. Ghi nhận chưa sửa: `InventoryService.itemBodyToBox` có kiểm tra index ngược ở repo server; không nằm trong thay đổi này. Các biến/khối không dùng đã ghi trước vẫn giữ.
+
 ## Điều chỉnh góc Lv và giới hạn số lượng hiển thị
 
 - `InventoryItemVisuals.LevelBounds`, `Assets/Scripts/Hud/InventoryItemVisuals.cs:23`: đưa badge Lv túi ra góc trên trái, nhô 3 đơn vị logic theo cả hai trục, cân với badge trang bị nhô 3 đơn vị ở góc dưới phải. Giữ nguyên khung, icon, aura, hit-test và vị trí badge số lượng.
