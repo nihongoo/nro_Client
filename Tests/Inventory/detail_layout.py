@@ -91,17 +91,21 @@ for mobile, w, h in [(True,422,195),(True,585,270),(True,844,390),(True,1560,720
                 check(all(not overlap(button,old) for old in buttons),'footer buttons overlap')
                 buttons.append(button)
             for quick,discard in ((False,False),(True,False),(True,True)):
-                controls=26 if quick else 0
-                upper=(w-dw+6,27,max(0,dw-12),max(0,h/2-30-controls))
-                lower=(w-dw+6,h/2+5,max(0,dw-12),max(0,h/2-13-rows*26-(26 if discard else 0)))
+                controls=(26 if quick else 0)+(26 if discard else 0)
+                action_top=h-5-rows*26-controls
+                divider=min(h/2,action_top-20)
+                upper=(w-dw+6,27,max(0,dw-12),max(0,divider-30))
+                lower=(w-dw+6,divider+5,max(0,dw-12),max(0,action_top-divider-8))
                 if quick:
-                    quick_buttons=[native_button((w-dw+6+i*((dw-16)/3+2),h/2-controls,max(0,(dw-16)/3),24)) for i in range(3)]
+                    quick_buttons=[native_button((w-dw+6+i*((dw-16)/3+2),action_top,max(0,(dw-16)/3),24)) for i in range(3)]
                     check(all(not overlap(b,upper) for b in quick_buttons),'quick buttons overlap scrolling info')
+                    check(all(not overlap(b,lower) for b in quick_buttons),'quick buttons overlap description')
+                    check(all(not overlap(b,f) for b in quick_buttons for f in buttons),'quick buttons overlap footer')
                 if discard:
                     toggle=native_button((w-dw+6,h-5-rows*26-26,max(0,dw-12),24))
                     check(not overlap(toggle,upper),'discard toggle overlaps scrolling info')
                     check(all(not overlap(toggle,b) for b in quick_buttons),'discard toggle overlaps assignments')
-                    check(toggle[1]>=h/2,'discard toggle not in lower half')
+                    check(toggle[1]>divider,'discard toggle not below divider')
                     check(not overlap(toggle,lower),'discard toggle overlaps description')
                     check(all(not overlap(toggle,b) for b in buttons),'discard toggle overlaps footer actions')
 

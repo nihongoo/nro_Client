@@ -33,14 +33,17 @@ public partial class Panel
     {
         get { int count = 0; foreach (var button in inventoryDetailButtons) if (button.Group == 0) count++; return count; }
     }
-    private float InventoryDetailControlsHeight => inventoryDetailQuick ? 26 : 0;
+    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 26 : 0) + (inventoryDetailDiscard ? 26 : 0);
+    private float InventoryDetailActionTop => HudLayout.GetRect(InventoryFrame.Detail).height - 5
+        - ((InventoryDetailBottomCount + 1) / 2) * 26 - InventoryDetailControlsHeight;
+    private float InventoryDetailDividerY => Mathf.Min(HudLayout.GetRect(InventoryFrame.Detail).height / 2, InventoryDetailActionTop - 20);
     internal Rect InventoryDetailUpperBounds
     {
-        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, 27, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 30 - InventoryDetailControlsHeight)); }
+        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, 27, Mathf.Max(0, r.width - 12), Mathf.Max(0, InventoryDetailDividerY - 30)); }
     }
     internal Rect InventoryDetailLowerBounds
     {
-        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, r.height / 2 + 5, Mathf.Max(0, r.width - 12), Mathf.Max(0, r.height / 2 - 13 - ((InventoryDetailBottomCount + 1) / 2) * 26 - (inventoryDetailDiscard ? 26 : 0))); }
+        get { Rect r = HudLayout.GetRect(InventoryFrame.Detail); return new Rect(r.x + 6, InventoryDetailDividerY + 5, Mathf.Max(0, r.width - 12), Mathf.Max(0, InventoryDetailActionTop - InventoryDetailDividerY - 8)); }
     }
     internal Rect InventoryDetailButtonBounds(int index)
     {
@@ -49,7 +52,7 @@ public partial class Panel
         var button = inventoryDetailButtons[index];
         if (button.Group == 1) {
             float w = Mathf.Max(0, (r.width - 16) / 3);
-            return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), r.height / 2 - InventoryDetailControlsHeight, w);
+            return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), InventoryDetailActionTop, w);
         }
         if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height - 5 - ((InventoryDetailBottomCount + 1) / 2) * 26 - 26, r.width - 12);
         float width = Mathf.Max(0, InventoryDetailBottomCount == 1 ? r.width - 12 : (r.width - 16) / 2);
@@ -244,7 +247,7 @@ public partial class Panel
         Rect r = HudLayout.GetRect(InventoryFrame.Detail);
         InventoryFrame.Clip(g, r); InventoryFrame.Rounded(g, r, InventoryFrame.EquipmentBackground);
         SmallImage.drawSmallImage(g, inventoryBagDetailItem.template.iconID, (int)r.x + 17, 14, 0, mGraphics.HCENTER | mGraphics.VCENTER);
-        g.setColor(InventoryFrame.Border); g.fillRect((int)r.x + 4, (int)r.height / 2, (int)r.width - 8, 1);
+        g.setColor(InventoryFrame.Border); g.fillRect((int)r.x + 4, (int)InventoryDetailDividerY, (int)r.width - 8, 1);
         PaintInventoryDetailLines(g, InventoryDetailUpperBounds, inventoryDetailInfo, inventoryDetailTopScroll);
         PaintInventoryDetailLines(g, InventoryDetailLowerBounds, inventoryDetailDescription, inventoryDetailBottomScroll);
         for (int i = 0; i < inventoryDetailButtons.Count; i++) {

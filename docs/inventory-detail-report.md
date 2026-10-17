@@ -66,12 +66,12 @@ Không giảm ô40/64 hoặc44/56, không đổi zoom/font. S22 thấp vẫn xem
 
 Các rect nút cao24 logical đúng native asset, căn tọa độ nguyên qua `InventoryDetailNativeButtonRect:59`; phần gán/danh sách vứt mỗi hàng26 để không cắt đỉnh/nền. Rect vẽ và hit-test là một. Chữ đen đậm `mFont.tahoma_7b_dark`, khi nhấn `tahoma_7b_green2` như `Command.paint`; nút không áp dụng dùng chữ xám và không dispatch. Cache nhãn theo bề rộng; không split chữ mỗi frame.
 
-Trên S22 thấp, nửa trên dành một hàng cho gán ô nhanh; danh sách vứt nằm ở nửa dưới theo cập nhật bên dưới. Hai vùng nội dung vẫn cuộn riêng và footer không di chuyển. Cần xác nhận bằng mắt chữ/độ dễ bấm và safe-area trên máy thật; chưa chạy Unity hoặc chụp lại UI.
+Theo chỉnh sửa mới nhất, hàng gán ô nhanh và danh sách vứt cùng nằm trong cụm nút đáy, theo cập nhật bên dưới. Hai vùng nội dung vẫn cuộn riêng và footer không di chuyển. Cần xác nhận bằng mắt chữ/độ dễ bấm và safe-area trên máy thật; chưa chạy Unity hoặc chụp lại UI.
 
 ## Cập nhật lề chữ, danh sách vứt và tự đóng khi treo
 
 - `Assets/Scripts/Hud/InventoryDetailPanel.cs:226` (`PaintInventoryDetailLines`): chừa thêm 4 logical ngang và 6 logical trên trong vùng clip; `AddInventoryDetailText:121` giảm bề rộng wrap tương ứng 8 logical. Font gốc `mFont.setTypePaint` tại `Assets/Scripts/mFont.cs:368` có `x--` tại dòng375 và dịch y theo font; vẽ ngay mép clip trước đây có thể cắt glyph. Giới hạn cuộn cộng 8 logical để vẫn xem hết dòng cuối sau khi thêm đệm. Không đổi renderer font chung.
-- `InventoryDetailButtonBounds:45`: nút thêm/xoá danh sách vứt chuyển xuống nửa dưới, ngay trên nhóm Sử dụng/Auto/Bỏ ra; vẫn dùng Command `AutoVutDo` cũ và cùng asset vàng. `InventoryDetailLowerBounds:41` trừ thêm một hàng26 logical, tránh nút che mô tả. Gán ô nhanh giữ ở nửa trên.
+- Nút thêm/xoá danh sách vứt chuyển xuống nửa dưới, ngay trên nhóm Sử dụng/Auto/Bỏ ra; vẫn dùng Command `AutoVutDo` cũ và cùng asset vàng. Hàng gán ô nhanh cũng đã chuyển xuống cùng cụm theo sửa tiếp dưới đây.
 - Không có timer đóng panel chi tiết C. `Panel.timeShow` trong `Assets/Scripts/Panel.cs:3623` đếm ngược để khoá đóng tạm thời (`hideNow:6815`, `hide:6859`), không tự gọi đóng khi hết giờ. Đường gây đóng khi đồng bộ: `SyncInventoryBag` trước đây dùng khác reference → đóng. Trong khi đó `Controller` packet -36 tại `Assets/Scripts/Controller.cs:1855` tạo lại `arrItemBag`/`Item` (dòng1862/1873), dù nội dung món không đổi; packet -37 cũng tạo lại trang bị. Đây là nguyên nhân xác định từ code, chưa ghi packet của phiên treo thực tế để xác nhận trigger cụ thể.
 - `Assets/Scripts/Hud/InventoryBagPanel.cs:21` (`SyncInventoryBag`) và `Assets/Scripts/Hud/InventoryBag.cs:16` (`SameDetailItem`): chỉ giữ panel nếu món tại **đúng ô đang chọn** có cùng template, info/content và danh sách option/param. Quantity được phép đổi. Khi reference mới: thay `currItem`/item đang xem, dựng lại Command bằng hàm cũ, giữ vị trí cuộn và reset double-tap. Quantity đổi trên cùng object cũng cập nhật chữ. Khi ô trống hoặc nội dung món đổi vẫn đóng để tránh thao tác nhầm.
 
@@ -82,6 +82,14 @@ Kiểm tra lần này: **1.370** kiểm tra source/mô hình bố cục qua; ph�
 Test cần xác nhận: PC/S22 mở Taiyaki và món có tên/mô tả dài, xem lề trái/phải và dấu dòng đầu/cuối khi cuộn; nút danh sách vứt ở dưới không che mô tả/nhóm đáy. Treo khi đang Auto dùng vật phẩm để phát sinh cập nhật túi: panel còn mở và số lượng cập nhật; thử dùng/hết món, đổi món cùng ô, mặc/tháo sau refresh và double-tap để bảo đảm chỉ gửi một thao tác. Trên S22 thấp nửa mô tả có thể rất ít chỗ, vẫn cuộn được; chưa xác nhận render thực tế.
 
 Code thừa lần này: bỏ đường đóng vô điều kiện chỉ vì khác reference và vị trí/nới chỗ danh sách vứt cũ ở nửa trên. Không xoá thêm hàm/handler ngoài phạm vi; các mục legacy ghi bên dưới vẫn giữ nguyên.
+
+### Chỉnh tiếp: gom toàn bộ nút xuống đáy
+
+`Assets/Scripts/Hud/InventoryDetailPanel.cs:36` (`InventoryDetailControlsHeight`, `InventoryDetailActionTop`, `InventoryDetailDividerY`) và `InventoryDetailButtonBounds:48`: gom nút thành một cụm liên tục từ dưới lên: Sử dụng/Auto/Bỏ ra → danh sách vứt → hàng 1 trái/2 giữa/3 phải. Khoảng cách các hàng2 logical, giữ nguyên asset/nội dung/hành động và kích thước nút. Không còn hàng gán ô nhanh nằm lẻ phía trên đường chia.
+
+Vùng mô tả dừng trước cụm nút. Trên viewport thấp, đường chia được nâng vừa đủ để còn vùng mô tả cuộn tối thiểu12 logical; màn đủ cao vẫn chia ở giữa. Không giảm kích thước ô/nút. Đã bỏ phép đặt hàng gán theo giữa màn và phép trừ chỗ của hàng này ở vùng thông tin phía trên. Không xoá thêm code legacy.
+
+Kiểm tra cập nhật: **1.658** kiểm tra source/mô hình hình học qua, gồm hàng gán không chồng mô tả/nút đáy tại cả8 viewport; **255** file C# qua phân tích ngữ nghĩa, không Emit/build/Unity. Cần xem lại bằng mắt PC/S22: cả cụm nút nằm sát nhau ở đáy và mô tả cuộn phía trên. Các bước test refresh và thao tác món của lần trước vẫn áp dụng.
 
 ## Code thừa đã bỏ / giữ lại
 
