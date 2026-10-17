@@ -260,9 +260,12 @@ public partial class Panel
             inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
+        bool frameGesture = currentTabIndex == 1 || inventoryPressed == InventoryFrame.Close
+            || inventoryPressed != null && inventoryPressed.StartsWith("inventory.tab.");
         // The legacy pointer stream keeps JustDown set until a handler consumes it.
         // Capture the origin once, including when panel.updateKey runs twice per tick.
-        GameCanvas.isPointerJustDown = false;
+        // Other tabs still need their original pointer stream for legacy list handlers.
+        if (frameGesture) GameCanvas.isPointerJustDown = false;
         if (IsInventoryBagDragTarget(inventoryPressed) && (GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease)) {
             int delta = GameCanvas.py - inventoryDragY;
             if (System.Math.Abs(delta) > 4 || System.Math.Abs(GameCanvas.px - inventoryDragX) > 4) {
@@ -288,7 +291,7 @@ public partial class Panel
                     GameCanvas.clearAllPointerEvent(); return true;
                 }
             }
-            GameCanvas.clearAllPointerEvent();
+            if (frameGesture) GameCanvas.clearAllPointerEvent();
         }
         int previousTab = Main.isPC ? 23 : 4, nextTab = Main.isPC ? 24 : 6;
         if (GameCanvas.keyPressed[previousTab] || GameCanvas.keyPressed[nextTab]) {

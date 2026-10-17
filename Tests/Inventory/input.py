@@ -74,6 +74,7 @@ public partial class Panel {
  private void addItemDetail(Item item){cp=new ChatPopup{says=new[]{"item"}};}
  private void perform(int action,object item){actions++;lastAction=action;lastIndex=selected-Char.myCharz().arrItemBody.Length;}
  public void Tick(){HudLayout.BeginFrame();UpdateInventoryFrameInput();}
+ public bool FrameTick(){HudLayout.BeginFrame();return UpdateInventoryFrameInput();}
  public void ScrollTo(int visual){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.BagCellBounds(visual));}
  public void ScrollToFilter(int filter){SyncInventoryFrame();ScrollInventoryBagIntoView(InventoryFrame.FilterBounds(filter));}
  public void Wheel(int amount){ScrollInventoryBagMouse(amount);}
@@ -159,6 +160,18 @@ class InputTests {
    Check(!GameCanvas.isPointerJustRelease&&p.actions==actions&&p.menus==menus,"swipe dispatched click/menu or left release pending");
    Check(HudLayout.GetRect(InventoryFrame.Tabs).y==header.y&&HudLayout.GetRect(InventoryFrame.Money).y==footer.y,"swipe moved fixed header/footer");
   }
+  foreach(int tab in new[]{0,2,3,6}) {
+   p.currentTabIndex=tab;p.selected=-1;GameCanvas.clearAllPointerEvent();
+   GameCanvas.pointerPressed(10,95);
+   Check(!p.FrameTick()&&GameCanvas.isPointerJustDown&&GameCanvas.isPointerDown,"frame swallowed legacy tab press");
+   GameCanvas.pointerReleased(10,95);
+   Check(!p.FrameTick()&&GameCanvas.isPointerJustRelease&&GameCanvas.isPointerClick,"frame swallowed legacy tab click release");
+   GameCanvas.clearAllPointerEvent();
+  }
+  Click(HudLayout.GetRect(InventoryFrame.Tab(1)),7000);
+  Check(p.currentTabIndex==1,"tab header stopped switching from legacy tab to inventory");
+  Click(HudLayout.GetRect(InventoryFrame.Tab(4)),7400);
+  Check(p.currentTabIndex==6,"function tab header did not select existing function tab");
  }
  static void Main(){
   Run(false,640,360,2);Run(false,1280,720,4);Run(true,422,195,2);Run(true,844,390,4);

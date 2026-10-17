@@ -1,5 +1,15 @@
 # Cụm B — túi đồ dạng lưới
 
+## Sửa chọn mục Chức năng và ưu tiên tự mặc454
+
+- Lỗi Chức năng do bản sửa cuộn trước: `UpdateInventoryFrameInput`, `Assets/Scripts/Hud/InventoryFrame.cs:250`, trả về false để chuyển nội dung tab khác cho handler cũ, nhưng lại xoá `isPointerJustDown` / release trước khi chuyển. `Panel.updateKeyTool`, `Assets/Scripts/Panel.cs:2064`, gọi `updateKeyScrollView`, cần các sự kiện này để chọn mục. Bản sửa thêm `frameGesture` tại263: chỉ tiêu thụ pointer cho Hành trang hoặc gesture bắt đầu ở nút đóng/hàng tab. Nội dung Nhiệm vụ/Kỹ năng/Bang hội/Chức năng giữ nguyên pointer cho handler cũ; cuộn Trang bị + Túi vẫn nhận điểm nhấn một lần.
+- `Tests/Inventory/input.py`: **196 kiểm tra qua**, thêm kiểm tra chuyển tiếp press/release nguyên vẹn cho tab0/2/3/6 và đổi qua lại header Hành trang/Chức năng trên bốn viewport. Tái áp dụng cách xoá cờ vô điều kiện trong source đưa vào harness thì test thất bại tại `frame swallowed legacy tab press`. Compile C# client/Editor độc lập qua. Chưa test menu thực trong Unity.
+- Theo xác nhận người dùng, **chỉ tự mặc454**, không đổi ID hoặc xoá bông tai mod. Server `InventoryService.autoEquipPorata`, `src/nro/models/services/InventoryService.java:290`, trước đây bỏ qua mọi ô Tai đã có món. Nay nếu Tai đang chứa921/1819 và túi có454 đủ điều kiện, đổi chỗ:454 lên Tai, món cũ về đúng ô túi vừa chứa454. Kể cả túi đầy vẫn không mất món hoặc cần thêm slot. Bông tai mod chỉ nằm trong túi không chặn454. Tai có món khác hoặc đã mặc454 thì giữ nguyên. Acc chỉ có cấp cao, không có454 trong túi thì không được tự cấp hoặc chuyển đổi thành454.
+- Server **33 kiểm tra qua**, gồm đổi chỗ921/1819, túi đầy, lặp lại không chuyển hai lần, món khác giữ nguyên, không sở hữu454 thì không tạo món. Báo cáo server cập nhật tại `docs/porata-equipment-report.md`.
+- Code thừa: không xoá thêm hàm/biến game; chỉ thu hẹp việc tiêu thụ sự kiện quá phạm vi. Các mục thừa/rủi ro đã ghi bên dưới giữ nguyên.
+
+Test thực: vào Chức năng, chạm từng mục và cuộn danh sách; quay Hành trang vuốt Trang bị + Túi và tap đúp mặc đồ. Với acc có cả454 trong túi và921/1819 trên Tai, đăng nhập lại bằng server mới:454 ở Tai, món cũ còn trong túi; thử hợp thể/tách và đăng xuất/đăng nhập để kiểm tra lưu. Nếu acc không có454 thì cần đưa đúng454 vào túi, không trông chờ client tự sinh món.
+
 ## Sửa kéo cuộn Trang bị + Túi trên mobile
 
 Nguyên nhân xác nhận từ code: `GameCanvas.pointerPressed` (`Assets/Scripts/GameCanvas.cs:2150`) bật `isPointerJustDown`; `pointerDragged:2123` không tắt cờ. `Panel.UpdateInventoryFrameInput` (`Assets/Scripts/Hud/InventoryFrame.cs:250`) trước đây khởi tạo lại `inventoryDragY` / `inventoryDragScroll` mỗi lần thấy cờ đó, nên delta bị về0 trong lúc giữ kéo. `GameCanvas.update` còn có thể gọi `panel.updateKey` hai lần mỗi tick (`GameCanvas.cs:654`, `:666`). Bộ test cũ tự tắt cờ sau lần nhấn nên chưa bắt được lỗi này.
