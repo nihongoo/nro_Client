@@ -936,14 +936,6 @@ namespace Assets.src.f
 					}
 					break;
 				}
-				case -101:
-				{
-					GameCanvas.loginScr.isLogin2 = true;
-					string text = msg.reader().readUTF();
-					Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, text);
-					GameCanvas.loginScr.doGuestLogin(text, true);
-					break;
-				}
 				case -100:
 				{
 					InfoDlg.hide();

@@ -2632,25 +2632,16 @@ public class Service
 		}
 	}
 
-	public void login2(string user)
-	{
-		Res.outz("Login 2");
-		Message message = null;
-		try
-		{
-			message = new Message((sbyte)(-101));
-			message.writer().writeUTF(user);
-			message.writer().writeByte(1);
-			session.sendMessage(message);
-		}
-		catch (Exception)
-		{
-		}
-		finally
-		{
-			message.cleanup();
-		}
-	}
+    public void guestLogin(string secret, string device)
+    {
+        Message message = new Message(GuestCredentials.Command);
+        try {
+            message.writer().writeByte(0);
+            message.writer().writeUTF(secret);
+            message.writer().writeUTF(device);
+            session.sendMessage(message);
+        } finally { message.cleanup(); }
+    }
 
 	public void getMagicTree(sbyte action)
 	{

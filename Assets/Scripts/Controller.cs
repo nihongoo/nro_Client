@@ -125,6 +125,9 @@ public class Controller : IMessageHandler
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
+                case GuestCredentials.Command:
+                    if (msg.reader().readByte() == 1) GuestCredentials.Accepted(msg.reader().readBool());
+                    break;
 			case Notifications.NotificationProtocol.Command:
 				Notifications.NotificationProtocol.Read(msg);
 				break;
@@ -1157,7 +1160,7 @@ public class Controller : IMessageHandler
 					Service.gI().getResource(3, null);
 					SmallImage.loadBigRMS();
 					SplashScr.imgLogo = null;
-					if (Rms.loadRMSString("acc") != null || Rms.loadRMSString("userAo" + ServerListScreen.ipSelect) != null)
+					if (Rms.loadRMSString("acc") != null || GuestCredentials.HasToken)
 					{
 						LoginScr.isContinueToLogin = true;
 					}
@@ -1669,7 +1672,6 @@ public class Controller : IMessageHandler
 					break;
 				}
 				GameCanvas.loginScr.isLogin2 = false;
-				Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, string.Empty);
 				GameCanvas.endDlg();
 				GameCanvas.loginScr.doLogin();
 				break;
@@ -5098,10 +5100,6 @@ public class Controller : IMessageHandler
 				{
 					Rms.saveRMSString("acc", string.Empty);
 					Rms.saveRMSString("pass", string.Empty);
-				}
-				else
-				{
-					Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, string.Empty);
 				}
 				if (GameScr.vsData != GameScr.vcData)
 				{
