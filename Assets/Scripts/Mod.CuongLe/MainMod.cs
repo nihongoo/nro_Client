@@ -884,6 +884,11 @@ namespace Mod.CuongLe
     		}
     		if (GameCanvas.keyAsciiPress == Hotkeys.F)
     		{
+                if (Hud.InventoryBag.EquippedPorataIndex(Char.myCharz().arrItemBody) >= 0)
+                {
+                    UseItem(454);
+                    return true;
+                }
     			if (ModProCuongLe.ExistItemBag(921))
     			{
                     UseItem(921);
@@ -1153,6 +1158,12 @@ namespace Mod.CuongLe
 
     	public static void UseItem(int templateId)
     	{
+            int bodyIndex = templateId == 454 ? Hud.InventoryBag.EquippedPorataIndex(Char.myCharz().arrItemBody) : -1;
+            if (bodyIndex >= 0)
+            {
+                Service.gI().useItem(0, 0, (sbyte)bodyIndex, -1);
+                return;
+            }
     		for (int i = 0; i < Char.myCharz().arrItemBag.Length; i++)
     		{
     			Item item = Char.myCharz().arrItemBag[i];

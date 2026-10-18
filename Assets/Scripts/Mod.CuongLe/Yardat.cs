@@ -72,7 +72,7 @@ namespace Mod.CuongLe
             {
                 if (!Char.myCharz().meDead)
                 {
-                    Service.gI().useItem(0, 1, (sbyte)ModProCuongLe.FindItemBag(454).indexUI, -1);
+                    MainMod.UseItem(454);
                     if (Char.myCharz().isNhapThe)
                     {
                         Char.myCharz().isNhapThe = false;

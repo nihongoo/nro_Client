@@ -51,7 +51,10 @@ namespace Hud
         }
         internal static Item Get(int slot)
         {
-            int index = BagIndex(Template(slot));
+            int template = Template(slot);
+            int bodyIndex = template == 454 ? InventoryBag.EquippedPorataIndex(Char.myCharz().arrItemBody) : -1;
+            if (bodyIndex >= 0) return Char.myCharz().arrItemBody[bodyIndex];
+            int index = BagIndex(template);
             return index < 0 ? null : Char.myCharz().arrItemBag[index];
         }
         private static int CooldownGroup(Item item) => item.template.type == 6 ? -1 : item.template.id;
@@ -73,12 +76,13 @@ namespace Hud
         {
             // Resolve again on release: a moved/depleted/reassigned slot cannot use another item.
             if (pressedTemplate < 0 || Template(slot) != pressedTemplate) return;
-            int index = BagIndex(pressedTemplate);
+            int bodyIndex = pressedTemplate == 454 ? InventoryBag.EquippedPorataIndex(Char.myCharz().arrItemBody) : -1;
+            int index = bodyIndex >= 0 ? bodyIndex : BagIndex(pressedTemplate);
             if (index < 0) return;
-            Item item = Char.myCharz().arrItemBag[index];
+            Item item = bodyIndex >= 0 ? Char.myCharz().arrItemBody[index] : Char.myCharz().arrItemBag[index];
             long now = mSystem.currentTimeMillis();
             if (RemainingAt(item,now) > 0) return;
-            Service.gI().useItem(0,1,(sbyte)index,-1); // Same bag-use call as Panel action 2001.
+            Service.gI().useItem(0,bodyIndex >= 0 ? (sbyte)0 : (sbyte)1,(sbyte)index,-1);
             expired.Clear();
             foreach (KeyValuePair<int,long> entry in readyAt) if (entry.Value <= now) expired.Add(entry.Key);
             foreach (int key in expired) readyAt.Remove(key);

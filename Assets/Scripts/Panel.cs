@@ -2631,6 +2631,7 @@ public partial class Panel : IActionListener, IChatable
 
     public void updateScroolMouse(int a)
     {
+        if (ScrollInventoryBagMouse(a)) return;
         bool flag = false;
         if (GameCanvas.pxMouse > wScroll)
         {
@@ -3246,7 +3247,7 @@ public partial class Panel : IActionListener, IChatable
     private void setTabTool()
     {
         SoundMn.gI().getSoundOption();
-        currentListLength = strTool.Length;
+        currentListLength = strTool.Length + (InventoryFrameActive ? 2 : 0);
         ITEM_HEIGHT = 24;
         selected = (GameCanvas.isTouch ? (-1) : 0);
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -4534,7 +4535,7 @@ public partial class Panel : IActionListener, IChatable
     {
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
-        for (int i = 0; i < strTool.Length; i++)
+        for (int i = 0; i < currentListLength; i++)
         {
             int num = xScroll;
             int num2 = yScroll + i * ITEM_HEIGHT;
@@ -4546,8 +4547,9 @@ public partial class Panel : IActionListener, IChatable
             }
             g.setColor((i != selected) ? 15196114 : 16383818);
             g.fillRect(num, num2, num3, h);
-            mFont.tahoma_7b_dark.drawString(g, strTool[i], xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
-            if (!strTool[i].Equals(mResources.gameInfo))
+            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : "Rương đồ";
+            mFont.tahoma_7b_dark.drawString(g, label, xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
+            if (!label.Equals(mResources.gameInfo))
             {
                 continue;
             }
@@ -5596,19 +5598,19 @@ public partial class Panel : IActionListener, IChatable
         paintScrollArrow(g);
     }
 
-    private void paintInventory(mGraphics g, bool bagOnly = false)
+    private void paintInventory(mGraphics g)
     {
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
         Item[] arrItemBody = Char.myCharz().arrItemBody;
         Item[] arrItemBag = Char.myCharz().arrItemBag;
-        for (int i = bagOnly ? arrItemBody.Length : 0; i < arrItemBody.Length + arrItemBag.Length; i++)
+        for (int i = 0; i < arrItemBody.Length + arrItemBag.Length; i++)
         {
             bool flag = i < arrItemBody.Length;
             int num = i;
             int num2 = i - arrItemBody.Length;
             int num3 = xScroll + 36;
-            int num4 = yScroll + (bagOnly ? i - arrItemBody.Length : i) * ITEM_HEIGHT;
+            int num4 = yScroll + i * ITEM_HEIGHT;
             int num5 = wScroll - 36;
             int h = ITEM_HEIGHT - 1;
             int num6 = xScroll;
@@ -5620,13 +5622,8 @@ public partial class Panel : IActionListener, IChatable
                 continue;
             }
             Item item = ((!flag) ? arrItemBag[num2] : arrItemBody[num]);
-            if (bagOnly)
-                Hud.InventoryFrame.Rounded(g, new Rect(num6, num4, wScroll - 1, h), (i == selected) ? 16383818 : 15723751);
-            else
-            {
-                g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
-                g.fillRect(num3, num4, num5, h);
-            }
+            g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
+            g.fillRect(num3, num4, num5, h);
             int iconColor = (i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045);
             if (item != null)
             {
@@ -5643,13 +5640,8 @@ public partial class Panel : IActionListener, IChatable
                     iconColor = (i != selected) ? color1[2] : color2[2];
                 }
             }
-            if (bagOnly)
-                Hud.InventoryFrame.Rounded(g, new Rect(num6, num7, num8, num9), iconColor);
-            else
-            {
-                g.setColor(iconColor);
-                g.fillRect(num6, num7, num8, num9);
-            }
+            g.setColor(iconColor);
+            g.fillRect(num6, num7, num8, num9);
             if (item != null && item.isSelect && GameCanvas.panel.type == 12)
             {
                 g.setColor((i != selected) ? 6047789 : 7040779);
@@ -7525,10 +7517,10 @@ public partial class Panel : IActionListener, IChatable
         }
     }
 
-    private void doFireInventory()
+    private void doFireInventory(bool detailOnly = false)
     {
         Res.outz("fire inventory");
-        if (Char.myCharz().statusMe == 14)
+        if (Char.myCharz().statusMe == 14 && !detailOnly)
         {
             GameCanvas.startOKDlg(mResources.can_not_do_when_die);
         }
@@ -7564,7 +7556,15 @@ public partial class Panel : IActionListener, IChatable
                 }
                 else if (GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody))
                 {
-                    myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    if (currItem.template.id == 454)
+                    {
+                        myVector.addElement(new Command(mResources.USE, this, 2001, currItem));
+                        Hud.MobileQuickItems.AddAssignmentCommands(myVector, currItem);
+                    }
+                    else
+                    {
+                        myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    }
                 }
                 else if (GameCanvas.panel.type == 21)
                 {
@@ -7643,6 +7643,8 @@ public partial class Panel : IActionListener, IChatable
                         myVector.addElement(new Command(mResources.SALE, this, 3002, currItem));
                     }
                 }
+                if (detailOnly) { inventoryDetailCommands = myVector; return; }
+                if (InventoryFrameActive && currentTabIndex == 1) { OpenInventoryItemDetail(currItem); return; }
                 GameCanvas.menu.startAt(myVector, X, (selected + 1) * ITEM_HEIGHT - cmy + yScroll);
                 addItemDetail(currItem);
             }
@@ -7671,6 +7673,14 @@ public partial class Panel : IActionListener, IChatable
     {
         if (selected < 0)
         {
+            return;
+        }
+        if (InventoryFrameActive && selected >= strTool.Length) {
+            if (selected == strTool.Length) { CloseInventoryBagDetail(); inventoryAppearanceFromSettings = false; SelectInventoryFrameTab(4); }
+            else if (selected == strTool.Length + 1) {
+                if (Char.myCharz().arrItemBox == null) { GameCanvas.startOKDlg("Chưa có dữ liệu rương. Hãy mở rương tại NPC."); return; }
+                CloseInventoryBagDetail(); currentTabIndex = 5; selected = -1; cp = null; setTabBox(); Hud.HudLayout.Invalidate();
+            }
             return;
         }
         if (SoundMn.IsDelAcc && selected == strTool.Length - 1)
