@@ -33,7 +33,7 @@ namespace Hud
         internal static bool Visible => !HudLayout.IsMobileLayout && GameScr.instance != null
             && GameCanvas.currentScreen == GameScr.instance && GameScr.isPaint && !GameScr.isPaintOther
             && GameScr.isPaintRada == 1 && GameScr.instance.mobCapcha == null
-            && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId != 0;
+            && !HudLayout.IsPlayerDead && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId != 0;
         internal static bool CanInput => Visible && GameCanvas.currentDialog == null && !GameCanvas.panel.isShow
             && !GameCanvas.menu.showMenu && !ChatTextField.gI().isShow && !InfoDlg.isShow && !InfoDlg.isLock
             && ChatPopup.currChatPopup == null && ChatPopup.serverChatPopUp == null
@@ -41,7 +41,7 @@ namespace Hud
             && !GameScr.instance.isPaintPopup() && !GameScr.instance.isOpenUI()
             && !GameScr.instance.isLockKey && !Char.isLockKey && !Controller.isStopReadMessage
             && !Char.isLoadingMap && !GameCanvas.isLoading && !Char.myCharz().isTeleport
-            && !Char.myCharz().isPaintNewSkill && Char.myCharz().statusMe != 14;
+            && !Char.myCharz().isPaintNewSkill;
 
         internal static void Register()
         {
@@ -125,7 +125,7 @@ namespace Hud
                 else CircularCombatIcon.PaintPcItem(g,rect,Context == "pc-combat.context.capsule4" ? 1088 : 1087);
             }
             // Old PC only drew this when the saved analog mode was enabled; keep that policy.
-            if (GameScr.isAnalog != 0 && Char.myCharz().statusMe != 14) GameScr.gamePad?.paint(g);
+            if (GameScr.isAnalog != 0) GameScr.gamePad?.paint(g);
             // Tutorial compatibility only; these fields no longer place or hit-test controls.
             Rect hint = HudLayout.GetRect(ItemName(0));
             GameScr.xHP = (int)hint.x; GameScr.yHP = (int)hint.y;
