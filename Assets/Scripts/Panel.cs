@@ -107,7 +107,6 @@ public partial class Panel : IActionListener, IChatable
 
     public static Image imgStar8;
 
-    public static Image imgStar9;
 
     public static Image imgStarCuongHoa;
 
@@ -149,11 +148,8 @@ public partial class Panel : IActionListener, IChatable
 
     private int[] currClanOption;
 
-    public int mainTabPos = 4;
 
-    public int shopTabPos = 50;
 
-    public int boxTabPos = 50;
 
     public string[][] mainTabName;
 
@@ -238,7 +234,6 @@ public partial class Panel : IActionListener, IChatable
 
     public int hasUse;
 
-    public int hasUseBag;
 
     public int currentListLength;
 
@@ -472,7 +467,6 @@ public partial class Panel : IActionListener, IChatable
 
     private int tt;
 
-    private int currentButtonPress;
 
     public static long[] t_tiemnang;
 
@@ -488,11 +482,9 @@ public partial class Panel : IActionListener, IChatable
 
     private int sellectInventory;
 
-    private Item itemInvenNew;
 
     private Effect eBanner;
 
-    private static FrameImage screenTab6;
 
     private bool isUp;
 
@@ -720,7 +712,6 @@ public partial class Panel : IActionListener, IChatable
         imgStar = GameCanvas.loadImage("/mainImage/star.png");
         imgMaxStar = GameCanvas.loadImage("/mainImage/starE.png");
         imgStar8 = GameCanvas.loadImage("/mainImage/star8.png");
-        imgStar9 = mSystem.loadImage("/mainImage/star9.png");
         imgStarCuongHoa = mSystem.loadImage("/mainImage/starCH.png");
         imgNew = GameCanvas.loadImage("/mainImage/new.png");
         imgTicket = GameCanvas.loadImage("/mainImage/ticket12.png");
@@ -2770,11 +2761,6 @@ public partial class Panel : IActionListener, IChatable
                 getCurrClanOtion();
             }
         }
-        if (isnewInventory && GameCanvas.keyPressed[5] && itemInvenNew != null)
-        {
-            pointerDownTime = 0;
-            waitToPerform = 2;
-        }
         if (flag)
         {
             cmtoY = selected * ITEM_HEIGHT - hScroll / 2;
@@ -2915,11 +2901,6 @@ public partial class Panel : IActionListener, IChatable
         pointerIsDowning = false;
         pointerDownTime = 0;
         GameCanvas.isPointerJustRelease = false;
-    }
-
-    public string subArray(string[] str)
-    {
-        return null;
     }
 
     private void updateKeyInTabBar()
@@ -10636,11 +10617,6 @@ public partial class Panel : IActionListener, IChatable
         mFont result;
         if (type == 0)
         {
-            bool flag = false;
-            bool flag2 = false;
-            if (1 == 0)
-            {
-            }
             mFont2 = id switch
             {
                 0 => mFont.bigNumber_While,
@@ -10651,19 +10627,9 @@ public partial class Panel : IActionListener, IChatable
                 6 => mFont.bigNumber_red,
                 _ => mFont.bigNumber_While,
             };
-            if (1 == 0)
-            {
-            }
             mFont3 = mFont2;
-            bool flag3 = false;
             result = mFont3;
-            bool flag4 = false;
             return result;
-        }
-        bool flag5 = false;
-        bool flag6 = false;
-        if (1 == 0)
-        {
         }
         mFont2 = id switch
         {
@@ -10676,13 +10642,8 @@ public partial class Panel : IActionListener, IChatable
             7 => mFont.tahoma_7b_dark,
             _ => mFont.tahoma_7b_white,
         };
-        if (1 == 0)
-        {
-        }
         mFont3 = mFont2;
-        bool flag7 = false;
         result = mFont3;
-        bool flag8 = false;
         return result;
     }
 
