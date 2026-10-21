@@ -324,6 +324,44 @@ public class Main : MonoBehaviour
 	{
 	}
 
+    private bool HandleAccountKeyboard()
+    {
+        if (!isPC || !(GameCanvas.currentScreen is LoginScr
+            || GameCanvas.currentScreen is Assets.src.g.ClientInput)) return false;
+
+        Event keyEvent = Event.current;
+        if (keyEvent.type == EventType.KeyDown) {
+            if (string.IsNullOrEmpty(Input.compositionString)) {
+                int code = 0;
+                if (!keyEvent.control && !keyEvent.command && keyEvent.character >= ' ') {
+                    // Unity may emit a physical KeyDown with no character, then a
+                    // separate text event. Only committed text may insert a letter.
+                    code = keyEvent.character;
+                } else {
+                    switch (keyEvent.keyCode) {
+                        case KeyCode.Backspace: code = -8; break;
+                        case KeyCode.Return:
+                        case KeyCode.KeypadEnter: code = -5; break;
+                        case KeyCode.Tab: code = -26; break;
+                        case KeyCode.LeftArrow: code = 14; break;
+                        case KeyCode.RightArrow: code = 15; break;
+                        case KeyCode.UpArrow: code = -1; break;
+                        case KeyCode.DownArrow: code = -2; break;
+                        case KeyCode.F1: code = -21; break;
+                        case KeyCode.F2: code = -22; break;
+                    }
+                }
+                if (code != 0) GameMidlet.gameCanvas.keyPressedz(code);
+            }
+            keyEvent.Use();
+        } else if (keyEvent.type == EventType.KeyUp) {
+            int code = MyKeyMap.map(keyEvent.keyCode);
+            if (code != 0) GameMidlet.gameCanvas.keyReleasedz(code);
+            keyEvent.Use();
+        }
+        return true;
+    }
+
 	private void checkInput()
 	{
 		Vector2 rawPoint = new Vector2(Input.mousePosition.x, Screen.height - Input.mousePosition.y);
@@ -370,7 +408,8 @@ public class Main : MonoBehaviour
             return;
         }
         Input.imeCompositionMode = IMECompositionMode.Auto;
-		if (Input.anyKeyDown && Event.current.type == EventType.KeyDown)
+        bool accountKeyboard = HandleAccountKeyboard();
+		if (!accountKeyboard && Input.anyKeyDown && Event.current.type == EventType.KeyDown)
 		{
 			int num = MyKeyMap.map(Event.current.keyCode);
 			if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
@@ -390,7 +429,7 @@ public class Main : MonoBehaviour
 				GameMidlet.gameCanvas.keyPressedz(num);
 			}
 		}
-		if (Event.current.type == EventType.KeyUp)
+		if (!accountKeyboard && Event.current.type == EventType.KeyUp)
 		{
 			int num2 = MyKeyMap.map(Event.current.keyCode);
 			if (num2 != 0)
