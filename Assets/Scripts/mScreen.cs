@@ -103,6 +103,10 @@ public class mScreen
 		{
 			return false;
 		}
+		if (GameCanvas.currentScreen == GameScr.instance && cmd == GameScr.instance?.cmdDead)
+		{
+			return Hud.DeadStateHud.IsButtonPressed();
+		}
 		if (cmd.x >= 0 && cmd.y != 0)
 		{
 			return cmd.isPointerPressInside();

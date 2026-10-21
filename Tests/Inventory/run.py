@@ -91,7 +91,7 @@ class Menu { public bool showMenu; }
 static class GameCanvas { public static int w=640,h=360; public static bool modal; public static object currentDialog,currentScreen=GameScr.instance; public static Menu menu=new Menu(); public static Panel panel=new Panel(); }
 namespace Notifications { public static class NotificationCenter { public static bool IsOpen; } }
 class GamePad { public Rect HudVisualBounds=>new Rect(); }
-class Char { static Char p=new Char(); public static Char myCharz()=>p; public int statusMe; }
+class Char { static Char p=new Char(); public static Char myCharz()=>p; public int statusMe; public bool meDead; public int cHP=1; }
 static class CombatMobileHud { public const string JoystickTouch="stick"; }
 static class CombatPcHud { public static bool Visible=>false; }
 class GameScr {

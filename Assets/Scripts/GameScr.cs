@@ -668,17 +668,10 @@ public class GameScr : mScreen, IChatable
         Hud.CombatMobileHud.Register();
         // The broad optional analog zone goes before the individual PC controls.
         Hud.HudLayout.Register("pc-analog.touch", () => Hud.HudLayout.IsMobileLayout || Hud.HudLayout.IsPlayerDead ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
-            ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
+            ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder,
+            () => Hud.CombatPcHud.Visible);
         Hud.CombatPcHud.Register();
-        Hud.HudLayout.Register("dead-state.button", () => Hud.HudLayout.Anchor(
-            Hud.HorizontalAnchor.Center, Hud.VerticalAnchor.Bottom, new Vector2(76, 24),
-            new Vector2(0, Mathf.Max(48, Hud.HudLayout.PixelsToLogical(104)))), Hud.HudLayout.ControlsOrder,
-            () => GameCanvas.currentScreen == instance && Hud.HudLayout.IsPlayerDead && instance.cmdDead != null && instance.center == instance.cmdDead);
-        Hud.HudLayout.Register("dead-state.menu", () => Hud.HudLayout.Anchor(
-            Hud.HorizontalAnchor.Center, Hud.VerticalAnchor.Center,
-            new Vector2(GameCanvas.menu.w, GameCanvas.menu.menuH), Vector2.zero), Hud.HudLayout.MenuOrder,
-            () => GameCanvas.currentScreen == instance && Hud.HudLayout.IsPlayerDead && GameCanvas.menu.showMenu,
-            false);
+        Hud.DeadStateHud.Register();
         Hud.InventoryFrame.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
@@ -2542,14 +2535,7 @@ public class GameScr : mScreen, IChatable
 
     private void SyncDeadHudCommand()
     {
-        if (!Hud.HudLayout.IsPlayerDead) {
-            if (cmdDead != null && center == cmdDead) center = null;
-            return;
-        }
-        if (cmdDead == null || center != cmdDead) return;
-        Rect bounds = Hud.HudLayout.GetRect("dead-state.button");
-        cmdDead.x = (int)bounds.x; cmdDead.y = (int)bounds.y;
-        cmdDead.w = (int)bounds.width; cmdDead.h = (int)bounds.height;
+        Hud.DeadStateHud.SyncCommand();
     }
 
     public override void updateKey()
@@ -6014,10 +6000,7 @@ public class GameScr : mScreen, IChatable
         myVector.addElement(new Command(mResources.DIES[1], 110381));
         myVector.addElement(new Command(mResources.DIES[2], 110382));
         myVector.addElement(new Command(mResources.DIES[3], 110383));
-        GameCanvas.menu.startAt(myVector, 3);
-        Rect bounds = Hud.HudLayout.GetRect("dead-state.menu");
-        GameCanvas.menu.menuX = (int)bounds.x;
-        GameCanvas.menu.menuY = (int)bounds.y;
+        Hud.DeadStateHud.OpenMenu(myVector);
     }
 
     public void getFlagImage(int charID, sbyte cflag)
