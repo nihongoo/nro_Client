@@ -100,6 +100,18 @@ public partial class Panel
                 AddInventoryDetailButton(command.idAction == 8 ? "[x] Danh sách vứt" : "[ ] Thêm vào danh sách vứt", command, 2, 0);
             }
         }
+        // Keep Auto in place; exchange Use and Discard so Use owns the wide last row.
+        InventoryDetailButton useButton = null, discardButton = null;
+        foreach (var button in inventoryDetailButtons) {
+            if (button.Group != 0 || button.Action?.actionListener != this) continue;
+            if (button.Action.idAction == 2001) useButton = button;
+            else if (button.Action.idAction == 2003) discardButton = button;
+        }
+        if (useButton != null && discardButton != null) {
+            int usePosition = useButton.Position;
+            useButton.Position = discardButton.Position;
+            discardButton.Position = usePosition;
+        }
         if (consumable) {
             inventoryDetailQuick = true;
             for (int slot = 0; slot < 3; slot++) {
