@@ -14,6 +14,8 @@ internal static class GuestCredentials
     internal static bool IsGuest { get; private set; }
     internal static bool StatusKnown { get; private set; }
     internal static bool IsPermanent => StatusKnown && !IsGuest;
+    internal static string AccountMenuLabel => !StatusKnown ? "Đang đồng bộ tài khoản"
+        : IsGuest ? "Liên kết email" : "Tài khoản vĩnh viễn";
     internal static bool HasToken => !string.IsNullOrEmpty(Rms.loadRMSString(SecretKey));
     internal static bool Preferred => Rms.loadRMSString(PreferredKey) == "guest";
 
@@ -74,7 +76,14 @@ internal static class GuestCredentials
         IsGuest = IsDev = false;
     }
 
-
+    internal static void Linked(string email) {
+        // Persist the replacement login before retiring the local guest credential.
+        Rms.saveRMSString("acc", email);
+        Rms.saveRMSString("pass", string.Empty);
+        NormalLogin();
+        Confirmed(false, false);
+        Rms.saveRMSString(SecretKey, string.Empty);
+    }
 
     // Merely replaces a local test credential. Production UNIQUE still rejects a second guest.
     internal static void NewDevGuest()
