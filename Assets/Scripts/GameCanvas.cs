@@ -1013,6 +1013,7 @@ public class GameCanvas : IActionListener
 		LoginScr.requireManualLogin();
 		// Cancels endpoint deadlines and advances the network generation before clearing callbacks.
 		CustomServerAddress.CloseConnection();
+        GuestCredentials.BeginLogin();
 		resetToLoginScr = false;
 		Char.isLoadingMap = false;
 		isLoading = false;

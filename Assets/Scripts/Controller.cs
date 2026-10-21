@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Assets.src.e;
 using Assets.src.f;
 using Assets.src.g;
@@ -122,12 +122,16 @@ public class Controller : IMessageHandler
 			MyVector myVector = new MyVector();
 			int num = 0;
 			GameCanvas.timeLoading = 15;
+            // Consume account packets before legacy handlers and only once.
+            if (msg.command == GuestCredentials.Command) {
+                int action = msg.reader().readByte();
+                if (action == 1) GuestCredentials.Accepted(msg.reader().readBool());
+                else if (action == 7) GuestCredentials.Confirmed(msg.reader().readBool(), msg.reader().readBool());
+                return;
+            }
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
-                case GuestCredentials.Command:
-                    if (msg.reader().readByte() == 1) GuestCredentials.Accepted(msg.reader().readBool());
-                    break;
 			case Notifications.NotificationProtocol.Command:
 				Notifications.NotificationProtocol.Read(msg);
 				break;
@@ -5083,6 +5087,7 @@ public class Controller : IMessageHandler
 			{
 				GameCanvas.debug("SA8", 2);
 				LoginScr.authenticationAccepted();
+                Service.gI().requestAccountState();
 				GameCanvas.loginScr.savePass();
 				GameScr.isAutoPlay = false;
 				GameScr.canAutoPlay = false;

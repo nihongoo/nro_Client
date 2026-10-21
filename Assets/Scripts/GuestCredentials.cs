@@ -8,8 +8,12 @@ internal static class GuestCredentials
 {
     private const string SecretKey = "guestSecretV1";
     private const string PreferredKey = "guestPreferredV1";
-    internal const sbyte Command = -124;
+    // -124 belongs to HOLD/effects in Controller2 and must not carry account data.
+    internal const sbyte Command = -48;
     internal static bool IsDev { get; private set; }
+    internal static bool IsGuest { get; private set; }
+    internal static bool StatusKnown { get; private set; }
+    internal static bool IsPermanent => StatusKnown && !IsGuest;
     internal static bool HasToken => !string.IsNullOrEmpty(Rms.loadRMSString(SecretKey));
     internal static bool Preferred => Rms.loadRMSString(PreferredKey) == "guest";
 
@@ -38,14 +42,39 @@ internal static class GuestCredentials
         return device;
     }
 
-    internal static void Accepted(bool dev) {
+    internal static void Accepted(bool dev)
+    {
+        StatusKnown = true;
+        IsGuest = true;
         IsDev = dev;
         Rms.saveRMSString(PreferredKey, "guest");
     }
-    internal static void NormalLogin() {
-        IsDev = false;
+    internal static void NormalLogin()
+    {
+        BeginLogin();
         Rms.saveRMSString(PreferredKey, "account");
     }
+
+    internal static void BeginLogin() {
+        StatusKnown = false;
+        IsGuest = IsDev = false;
+    }
+
+    internal static void SaveAccountChoice(string username, string password) {
+        Rms.saveRMSString("acc", username.Trim());
+        Rms.saveRMSString("pass", password);
+        // Saving credentials is an explicit choice of normal login, even when a
+        // guest token from a previous session remains on this device.
+        NormalLogin();
+    }
+
+    internal static void Confirmed(bool guest, bool dev) {
+        if (guest) { Accepted(dev); return; }
+        StatusKnown = true;
+        IsGuest = IsDev = false;
+    }
+
+
 
     // Merely replaces a local test credential. Production UNIQUE still rejects a second guest.
     internal static void NewDevGuest()

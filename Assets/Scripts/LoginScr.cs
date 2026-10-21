@@ -172,6 +172,7 @@ public class LoginScr : mScreen, IActionListener
 		if (isLoggingIn) return;
 		isLoggingIn = true;
 		isLogin2 = true;
+        GuestCredentials.BeginLogin();
 		try { GuestCredentials.GetSecret(); GuestCredentials.GetDevice(); }
         catch (Exception e) { isLoggingIn = false; GameCanvas.startOKDlg(e.Message); return; }
         pendingGuestLogin = true;
@@ -651,7 +652,7 @@ public class LoginScr : mScreen, IActionListener
 		{
 			Rms.saveRMSInt("check", 1);
 			Rms.saveRMSString("acc", tfUser.getText().ToLower().Trim());
-			Rms.saveRMSString("pass", tfPass.getText().ToLower().Trim());
+			Rms.saveRMSString("pass", tfPass.getText().Trim());
 		}
 		else
 		{
@@ -796,7 +797,7 @@ public class LoginScr : mScreen, IActionListener
 		if (!Main.isPC && !TouchScreenKeyboard.visible && !Main.isMiniApp && !Main.isWindowsPhone)
 		{
 			string text = tfUser.getText().ToLower().Trim();
-			string text2 = tfPass.getText().ToLower().Trim();
+			string text2 = tfPass.getText().Trim();
 			if (!text.Equals(string.Empty) && !text2.Equals(string.Empty))
 			{
 				doLogin();
@@ -1131,8 +1132,7 @@ public class LoginScr : mScreen, IActionListener
 					GameCanvas.startOKDlg(mResources.passwordBlank);
 					return;
 				}
-				Rms.saveRMSString("acc", tfUser.getText().Trim());
-				Rms.saveRMSString("pass", tfPass.getText());
+				GuestCredentials.SaveAccountChoice(tfUser.getText(), tfPass.getText());
 				editingSwitchedAccount = false;
 				GameCanvas.endDlg();
 				GameCanvas.serverScreen.switchToMe();

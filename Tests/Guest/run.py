@@ -19,6 +19,7 @@ class GuestTests {
  static void Check(bool value,string text){checks++;if(!value)throw new Exception(text);}
  static void Reject(Action action,string text){bool rejected=false;try{action();}catch(InvalidOperationException){rejected=true;}Check(rejected,text);}
  static void Main(){
+  Check(!GuestCredentials.StatusKnown&&!GuestCredentials.IsPermanent,"unknown account reported permanent");
   string token=GuestCredentials.GetSecret();
   Check(token.Length==64&&System.Text.RegularExpressions.Regex.IsMatch(token,"\\A[0-9a-f]{64}\\z"),"token entropy/encoding");
   for(int i=0;i<100;i++)Check(GuestCredentials.GetSecret()==token,"retry regenerated token");
@@ -26,6 +27,16 @@ class GuestTests {
   GuestCredentials.Accepted(false);Check(GuestCredentials.Preferred,"guest preference not persisted over legacy RMS account");GuestCredentials.NewDevGuest();Check(GuestCredentials.GetSecret()==token,"production silently created another guest");
   GuestCredentials.Accepted(true);GuestCredentials.NewDevGuest();Check(GuestCredentials.GetSecret()!=token,"dev credential did not change");
   GuestCredentials.NormalLogin();Check(!GuestCredentials.IsDev&&!GuestCredentials.Preferred,"normal login retained guest permission/preference");
+  Check(!GuestCredentials.StatusKnown&&!GuestCredentials.IsPermanent,"normal login attempt marked permanent before server accepted");
+  string savedGuestToken=GuestCredentials.GetSecret();
+  GuestCredentials.Accepted(false);GuestCredentials.SaveAccountChoice("  admin  ","AdminPassword9");
+  Check(!GuestCredentials.Preferred&&GuestCredentials.HasToken&&GuestCredentials.GetSecret()==savedGuestToken,"saving admin credentials resumed guest or discarded guest token");
+  Check(Rms.loadRMSString("acc")=="admin"&&Rms.loadRMSString("pass")=="AdminPassword9","account switch lost username/password case");
+  Check(!GuestCredentials.StatusKnown&&!GuestCredentials.IsPermanent,"saved credentials treated as verified account state");
+  GuestCredentials.Confirmed(false,false);
+  Check(GuestCredentials.IsPermanent,"normal account state not confirmed");
+  GuestCredentials.Accepted(false);
+  GuestCredentials.Accepted(true);Check(GuestCredentials.IsGuest,"guest state missing");
   Rms.data["guestSecretV1"]="corrupt";int before=Rms.writes;Reject(()=>GuestCredentials.GetSecret(),"corrupt token accepted");Check(Rms.writes==before,"corrupt token overwritten");
   Rms.data.Clear();Rms.fail=true;Reject(()=>GuestCredentials.GetSecret(),"unsaved credential could reach server");
   Rms.fail=false;Check(GuestCredentials.GetDevice()=="s22","wrong device sent");
