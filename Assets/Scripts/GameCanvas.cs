@@ -190,8 +190,6 @@ public class GameCanvas : IActionListener
 
 	public static MyVector debugSession;
 
-	private static bool isShowErrorForm = false;
-
 	public static bool paintBG;
 
 	public static int gsskyHeight;
@@ -293,8 +291,6 @@ public class GameCanvas : IActionListener
 	public static int keyAsciiPress;
 
 	public static int pXYScrollMouse;
-
-	private static Image imgSignal;
 
 	public static MyVector flyTexts = new MyVector();
 
@@ -1090,14 +1086,6 @@ public class GameCanvas : IActionListener
 		ServerListScreen.countDieConnect = 0;
 		ServerListScreen.testConnect = -1;
 		ServerListScreen.loadScreen = true;
-	}
-
-	public static void showErrorForm(int type, string moreInfo)
-	{
-	}
-
-	public static void paintCloud(mGraphics g)
-	{
 	}
 
 	public static void updateBG()
