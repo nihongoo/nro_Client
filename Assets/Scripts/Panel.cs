@@ -480,7 +480,6 @@ public partial class Panel : IActionListener, IChatable
 
     public static int[] color2;
 
-    private int sellectInventory;
 
 
 
@@ -6238,11 +6237,6 @@ public partial class Panel : IActionListener, IChatable
 
     private string getStatus(int status)
     {
-        bool flag = false;
-        bool flag2 = false;
-        if (1 == 0)
-        {
-        }
         string text = status switch
         {
             0 => mResources.follow,
@@ -6251,13 +6245,8 @@ public partial class Panel : IActionListener, IChatable
             3 => mResources.gohome,
             _ => "aaa",
         };
-        if (1 == 0)
-        {
-        }
         string text2 = text;
-        bool flag3 = false;
         string result = text2;
-        bool flag4 = false;
         return result;
     }
 
@@ -10285,11 +10274,6 @@ public partial class Panel : IActionListener, IChatable
 
     public static int GetColor_ItemBg(int id)
     {
-        bool flag = false;
-        bool flag2 = false;
-        if (1 == 0)
-        {
-        }
         int num = id switch
         {
             1 => 2786816,
@@ -10300,13 +10284,8 @@ public partial class Panel : IActionListener, IChatable
             6 => 11599872,
             _ => -1,
         };
-        if (1 == 0)
-        {
-        }
         int num2 = num;
-        bool flag3 = false;
         int result = num2;
-        bool flag4 = false;
         return result;
     }
 

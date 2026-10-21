@@ -180,9 +180,7 @@ namespace Mod.CuongLe
 
     	public static bool isAutoBomPicPoc;
 
-    	private static string pathfile;
 
-    	private static string resetLoadMapFile;
 
     	private static bool RunningGoMapQLTK;
 
@@ -216,7 +214,6 @@ namespace Mod.CuongLe
 
     	private static int stopMap = 0;
 
-    	private static bool checkSkill = false;
 
         private static string statusCapcha;
 
@@ -252,45 +249,6 @@ namespace Mod.CuongLe
                 GameScr.info1.addInfo("Mod: Phím X mở menu, Phím V mở menu Pro, [ Shift + A, Shift + Z ], thay set đồ, Shift + U để dừng bất kỳ auto nào", 0);
                 thongBao = false;
     		}
-    		//if (File.Exists(pathfile) && !RunningGoMapQLTK && GameCanvas.gameTick % 40 == 0)
-    		//{
-    		//	string[] array = File.ReadAllText(pathfile).Split('|');
-    		//	try
-    		//	{
-    		//		if (array.Length > 1 && array[0] == "T" && int.TryParse(array[1], out var mapId))
-    		//		{
-    		//			RunningGoMapQLTK = true;
-    		//			new Thread((ThreadStart)delegate
-    		//			{
-    		//				if (mapId == -99)
-    		//				{
-    		//					if (Char.myCharz().getGender().Equals("NM"))
-    		//					{
-    		//						mapId = 22;
-    		//					}
-    		//					else if (Char.myCharz().getGender().Equals("XD"))
-    		//					{
-    		//						mapId = 23;
-    		//					}
-    		//					else
-    		//					{
-    		//						mapId = 21;
-    		//					}
-    		//				}
-    		//				AutoMap.StartRunToMapId(mapId);
-    		//				while (TileMap.mapID != mapId)
-    		//				{
-    		//					Thread.Sleep(1000);
-    		//				}
-    		//				File.WriteAllText(pathfile, resetLoadMapFile);
-    		//				RunningGoMapQLTK = false;
-    		//			}).Start();
-    		//		}
-    		//	}
-    		//	catch
-    		//	{
-    		//	}
-    		//}
     		if ((!MobCapcha.isAttack || !MobCapcha.explode) && GameScr.gI().mobCapcha != null && AutoCapCha)
     		{
     			if (!isSlovingCapcha && GameCanvas.gameTick % 100 == 0)
@@ -1214,8 +1172,6 @@ namespace Mod.CuongLe
     		listFlagColor = new List<Color>();
     		listCharsInMap = new List<Char>();
     		string_0 = "https://www.facebook.com/cuongle1002/";
-    		pathfile = "Data/LoadMap.ini";
-    		resetLoadMapFile = "F|-1";
     		thongBao = true;
     		GoldCurrent = 0L;
     		GoldUpdate = 0L;
