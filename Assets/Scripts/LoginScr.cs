@@ -172,6 +172,7 @@ public class LoginScr : mScreen, IActionListener
 		if (isLoggingIn) return;
 		isLoggingIn = true;
 		isLogin2 = true;
+        EmailLinkFlow.ResetForLogin();
         GuestCredentials.BeginLogin();
 		try { GuestCredentials.GetSecret(); GuestCredentials.GetDevice(); }
         catch (Exception e) { isLoggingIn = false; GameCanvas.startOKDlg(e.Message); return; }
@@ -311,7 +312,7 @@ public class LoginScr : mScreen, IActionListener
 		tfUser.setIputType(TField.INPUT_TYPE_ANY);
 		tfUser.loginInput = true;
 		tfUser.cmdDoneAction = new Command("Next", this, 2101, null);
-		tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
+		tfUser.name = "Username / Email";
 		tfPass = new TField();
 		tfPass.y = GameCanvas.hh - 4;
 		tfPass.setIputType(TField.INPUT_TYPE_PASSWORD);
@@ -591,6 +592,7 @@ public class LoginScr : mScreen, IActionListener
 		if (isLoggingIn || timeLogin > 0) return;
         if (isLogin2 || (GameCanvas.currentScreen != this && GuestCredentials.HasToken
                 && (GuestCredentials.Preferred || string.IsNullOrEmpty(Rms.loadRMSString("acc"))))) { doGuestLogin(); return; }
+        EmailLinkFlow.ResetForLogin();
         GuestCredentials.NormalLogin();
 		isLoggingIn = true;
 		string text = Rms.loadRMSString("acc");
@@ -694,7 +696,7 @@ public class LoginScr : mScreen, IActionListener
 		}
 		if (isLogin2 && !isRes)
 		{
-			tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
+			tfUser.name = "Username / Email";
 			tfPass.name = mResources.password;
 			tfUser.isPaintCarret = false;
 			tfPass.isPaintCarret = false;
@@ -703,7 +705,7 @@ public class LoginScr : mScreen, IActionListener
 		}
 		else
 		{
-			tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
+			tfUser.name = "Username / Email";
 			tfPass.name = mResources.password;
 			tfUser.update();
 			tfPass.update();
@@ -766,7 +768,7 @@ public class LoginScr : mScreen, IActionListener
 		}
 		else
 		{
-			tfUser.name = ((mResources.language != 2) ? (mResources.phone + "/") : string.Empty) + mResources.email;
+			tfUser.name = "Username / Email";
 			tfPass.name = mResources.password;
 			tfUser.update();
 			tfPass.update();
@@ -797,7 +799,7 @@ public class LoginScr : mScreen, IActionListener
 		if (!Main.isPC && !TouchScreenKeyboard.visible && !Main.isMiniApp && !Main.isWindowsPhone)
 		{
 			string text = tfUser.getText().ToLower().Trim();
-			string text2 = tfPass.getText().Trim();
+			string text2 = tfPass.getText().ToLower().Trim();
 			if (!text.Equals(string.Empty) && !text2.Equals(string.Empty))
 			{
 				doLogin();

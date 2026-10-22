@@ -519,6 +519,7 @@ public class GameCanvas : IActionListener
 
 	public void update()
 	{
+        EmailLinkFlow.Update();
 		Mod.CuongLe.MainMod.ShowAccountManagerNotice();
 		Mod.CuongLe.MainMod.UpdateAccountManager();
 		LoginScr.updateLoginAttempt();
@@ -1013,7 +1014,8 @@ public class GameCanvas : IActionListener
 		LoginScr.requireManualLogin();
 		// Cancels endpoint deadlines and advances the network generation before clearing callbacks.
 		CustomServerAddress.CloseConnection();
-        GuestCredentials.BeginLogin();
+		EmailLinkFlow.ResetForLogin();
+		GuestCredentials.BeginLogin();
 		resetToLoginScr = false;
 		Char.isLoadingMap = false;
 		isLoading = false;

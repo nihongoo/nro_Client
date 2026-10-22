@@ -20,8 +20,11 @@ namespace Assets.src.g
 
 		private int nTf;
 
+        private Command passwordToggle;
+
 		private void init(string t)
 		{
+            passwordToggle = null;
 			w = GameCanvas.w - 20;
 			if (w > 320)
 			{
@@ -86,6 +89,17 @@ namespace Assets.src.g
 			switchToMe();
 		}
 
+        // One button reveals both password entries; keep their input type and validation.
+        public void enablePasswordToggle() {
+            TField last = tf[tf.Length - 1];
+            if (passwordToggle != null || last.getIputType() != TField.INPUT_TYPE_PASSWORD) return;
+            last.width -= 82;
+            passwordToggle = new Command("Hiện MK", this, 3, null);
+            passwordToggle.x = last.x + last.width + 4;
+            passwordToggle.y = last.y;
+            passwordToggle.w = 76;
+        }
+
 		public override void paint(mGraphics g)
 		{
 			GameScr.gI().paint(g);
@@ -98,12 +112,20 @@ namespace Assets.src.g
 			{
 				tf[j].paint(g);
 			}
+            if (passwordToggle != null) {
+                g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+                passwordToggle.paint(g);
+            }
 			base.paint(g);
 		}
 
 		public override void update()
 		{
 			GameScr.gI().update();
+            // TField normally drops focus on an outside click. Retain the password
+            // focus/keyboard when this click only changes password visibility.
+            if (passwordToggle != null && GameCanvas.isPointerJustRelease
+                && GameCanvas.isPointerHoldIn(passwordToggle.x, passwordToggle.y, passwordToggle.w, passwordToggle.h)) return;
 			for (int i = 0; i < tf.Length; i++)
 			{
 				tf[i].update();
@@ -125,6 +147,11 @@ namespace Assets.src.g
 
 		public override void updateKey()
 		{
+            if (passwordToggle != null && passwordToggle.isPointerPressInside()) {
+                passwordToggle.performAction();
+                GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyPressed();
+                return;
+            }
 			if (GameCanvas.keyPressed[2])
 			{
 				focus--;
@@ -169,13 +196,33 @@ namespace Assets.src.g
 			GameCanvas.clearKeyPressed();
 		}
 
+
+
 		public void clearScreen()
 		{
+            foreach (TField field in tf) field.revealPassword = false;
+            passwordToggle = null;
 			instance = null;
 		}
 
 		public void perform(int idAction, object p)
 		{
+            if (idAction == 3 && passwordToggle != null) {
+                bool show = !tf[tf.Length - 1].revealPassword;
+                TField active = TField.currentTField;
+                bool reopen = TField.kb != null && active != null && active.getIputType() == TField.INPUT_TYPE_PASSWORD;
+                foreach (TField field in tf) {
+                    if (field.getIputType() != TField.INPUT_TYPE_PASSWORD) continue;
+                    field.revealPassword = show;
+                    field.setText(field.getText());
+                }
+                passwordToggle.caption = show ? "Ẩn MK" : "Hiện MK";
+                if (reopen) {
+                    TField.kb.active = false; TField.kb = null;
+                    active.setFocusWithKb(true);
+                }
+                return;
+            }
 			if (idAction == 1)
 			{
 				GameScr.instance.switchToMe();

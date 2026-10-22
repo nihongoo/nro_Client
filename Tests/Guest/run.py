@@ -20,6 +20,7 @@ class GuestTests {
  static void Reject(Action action,string text){bool rejected=false;try{action();}catch(InvalidOperationException){rejected=true;}Check(rejected,text);}
  static void Main(){
   Check(!GuestCredentials.StatusKnown&&!GuestCredentials.IsPermanent,"unknown account reported permanent");
+  Check(GuestCredentials.AccountMenuLabel=="Đang đồng bộ tài khoản","unknown account displayed as guest");
   string token=GuestCredentials.GetSecret();
   Check(token.Length==64&&System.Text.RegularExpressions.Regex.IsMatch(token,"\\A[0-9a-f]{64}\\z"),"token entropy/encoding");
   for(int i=0;i<100;i++)Check(GuestCredentials.GetSecret()==token,"retry regenerated token");
@@ -34,9 +35,13 @@ class GuestTests {
   Check(Rms.loadRMSString("acc")=="admin"&&Rms.loadRMSString("pass")=="AdminPassword9","account switch lost username/password case");
   Check(!GuestCredentials.StatusKnown&&!GuestCredentials.IsPermanent,"saved credentials treated as verified account state");
   GuestCredentials.Confirmed(false,false);
-  Check(GuestCredentials.IsPermanent,"normal account state not confirmed");
+  Check(GuestCredentials.IsPermanent&&GuestCredentials.AccountMenuLabel=="Tài khoản vĩnh viễn","normal/admin account required email to become permanent");
   GuestCredentials.Accepted(false);
+  Check(!GuestCredentials.IsPermanent&&GuestCredentials.AccountMenuLabel=="Liên kết email","guest with stored admin credentials was promoted");
   GuestCredentials.Accepted(true);Check(GuestCredentials.IsGuest,"guest state missing");
+  GuestCredentials.Linked("player@example.com");
+  Check(!GuestCredentials.IsGuest&&!GuestCredentials.IsDev&&!GuestCredentials.Preferred&&!GuestCredentials.HasToken,"converted account retained guest state");
+  Check(Rms.loadRMSString("acc")=="player@example.com"&&Rms.loadRMSString("pass")=="","linked login not persisted / password saved");
   Rms.data["guestSecretV1"]="corrupt";int before=Rms.writes;Reject(()=>GuestCredentials.GetSecret(),"corrupt token accepted");Check(Rms.writes==before,"corrupt token overwritten");
   Rms.data.Clear();Rms.fail=true;Reject(()=>GuestCredentials.GetSecret(),"unsaved credential could reach server");
   Rms.fail=false;Check(GuestCredentials.GetDevice()=="s22","wrong device sent");
