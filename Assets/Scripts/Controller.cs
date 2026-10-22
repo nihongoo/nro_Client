@@ -5976,6 +5976,7 @@ public class Controller : IMessageHandler
 
 	private void useSkill(Skill skill)
 	{
+        if (skill == null || skill.template == null || Skill.isDisabled(skill.template.id)) return;
 		if (Char.myCharz().myskill == null)
 		{
 			Char.myCharz().myskill = skill;
