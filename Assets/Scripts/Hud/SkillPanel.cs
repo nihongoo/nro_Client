@@ -21,11 +21,12 @@ namespace Hud
         internal const int PotentialPadding=3, PotentialGap=1;
         internal static int RowHeight => 2*LineHeight+2*PotentialPadding;
         internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
+        internal static float ColumnGap => (Content.width-4*Size)/5;
+        internal static float RowGap => Mathf.Max(Gap+3,InventoryFrame.Unit(14));
         internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+Gap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-Gap));
         internal static Rect CellBounds(int i)
         {
-            float left=Content.center.x-(4*Size+3*Gap)/2;
-            return new Rect(left+i%4*(Size+Gap),Content.y+i/4*(Size+Gap),Size,Size);
+            return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
         }
         internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(LineHeight,20)+2*Margin);
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);

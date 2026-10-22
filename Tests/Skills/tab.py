@@ -176,6 +176,8 @@ class SkillTabTests {
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
    Check(SkillPanelLayout.ScrollBounds.height>=2*SkillPanelLayout.LineHeight,"low S22 cannot show both stat text lines");
    Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");
+   for(int i=0;i<3;i++)Near(SkillPanelLayout.CellBounds(i+1).x-SkillPanelLayout.CellBounds(i).xMax,SkillPanelLayout.CellBounds(0).x-SkillPanelLayout.Content.x,"skill columns not spread evenly across panel");
+   Check(SkillPanelLayout.CellBounds(4).y-SkillPanelLayout.CellBounds(0).yMax>=7,"row gap crowds Lv badges");
    Near(SkillPanelLayout.DetailContent.x-SkillPanelLayout.DetailBounds.x,InventoryFrame.Padding,"right panel padding");
    Near(SkillPanelLayout.Content.x-SkillPanelLayout.Frame.x,InventoryFrame.Padding,"left panel padding");
    for(int i=0;i<5;i++)Check(SkillPanelLayout.PotentialBounds(i).height>=2*SkillPanelLayout.LineHeight+2*SkillPanelLayout.PotentialPadding,"stat row clips two lines/padding");
