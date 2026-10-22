@@ -207,12 +207,11 @@ public partial class Panel
         Rect intrinsicIcon=new Rect(intrinsic.x,intrinsic.center.y-SkillPanelLayout.Size/2,SkillPanelLayout.Size,SkillPanelLayout.Size);
         InventoryItemVisuals.PaintSkillIcon(g,spearcialImage,intrinsicIcon,viewport);
         Rect intrinsicText=new Rect(intrinsicIcon.xMax+SkillPanelLayout.Gap,intrinsic.y,SkillPanelLayout.IntrinsicTextWidth,intrinsic.height);
-        InventoryFrame.Clip(g,viewport);g.setColor(16765060);
-        g.fillRect((int)intrinsicText.x,(int)intrinsicText.y,(int)intrinsicText.width,(int)intrinsicText.height);
         string[] lines=SkillIntrinsicLines;
         float textY=intrinsicText.center.y-lines.Length*SkillPanelLayout.LineHeight/2f;
-        foreach(string line in lines) {
-            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,line,new Rect(intrinsicText.x,textY,intrinsicText.width,SkillPanelLayout.LineHeight),viewport,0x00552D);
+        for(int i=0;i<lines.Length;i++) {
+            // Let the panel provide the surface; distinguish status from supporting text by typography.
+            InventoryItemVisuals.PaintCompactText(g,i==0?mFont.tahoma_7b_dark:mFont.tahoma_7,lines[i],new Rect(intrinsicText.x,textY,intrinsicText.width,SkillPanelLayout.LineHeight),viewport,i==0?0x00552D:0x6E5A3D);
             textY+=SkillPanelLayout.LineHeight;
         }
         Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,intrinsic.yMax+SkillPanelLayout.Gap,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
