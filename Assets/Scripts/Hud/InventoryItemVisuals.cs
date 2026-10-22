@@ -26,6 +26,9 @@ namespace Hud
             return new Rect(bag ? cell.x - 3 : cell.xMax - width + 3, bag ? cell.y - 3 : cell.yMax - 9, width, 12);
         }
 
+        internal static Rect CompactLevelBounds(Rect cell,float width)
+            => LevelBounds(cell,System.Math.Min(width,cell.width),false);
+
         // Rounded alpha comes from the native corner sprite. The center stays transparent.
         internal static Color32[] AuraPixels(int color, Color32[] corner, int cw, int ch, int size)
         {
@@ -218,8 +221,7 @@ namespace Hud
             if (levelFont != font.myFont || levelZoom != zoom || levelWidth <= 0) {
                 levelFont = font.myFont; levelZoom = zoom; levelWidth = font.getWidth("Lv7") + 6; levelStyles.Clear();
             }
-            float compactWidth=Mathf.Min(18,cell.width*.8f);
-            Rect badge = compact ? new Rect(cell.xMax-compactWidth,cell.yMax-7,compactWidth,7) : LevelBounds(cell, levelWidth, bag);
+            Rect badge = compact ? CompactLevelBounds(cell,levelWidth) : LevelBounds(cell, levelWidth, bag);
             InventoryFrame.Clip(g, viewport);
             InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
             string label = "Lv" + Mathf.Clamp(level, 0, 7);
@@ -238,6 +240,7 @@ namespace Hud
                     || style.CalcSize(new GUIContent("Lv7")).y > badge.height * zoom - 2)) style.fontSize--;
                 style.normal.textColor = style.hover.textColor = Color.black;
                 style.active.textColor = style.focused.textColor = Color.black;
+                style.onNormal.textColor = style.onHover.textColor = style.onActive.textColor = style.onFocused.textColor = Color.black;
                 if (levelStyles.Count >= 8) levelStyles.Clear();
                 levelStyles.Add(key, style);
             }

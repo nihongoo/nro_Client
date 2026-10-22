@@ -18,7 +18,8 @@ namespace Hud
         internal static Rect Frame => new Rect(InventoryFrame.FrameInset,73,HudLayout.GetRect(InventoryFrame.Root).width-2*InventoryFrame.FrameInset,Mathf.Max(0,HudLayout.GetRect(InventoryFrame.Money).y-Gap-73));
         internal static Rect Content => InventoryFrame.Inset(Frame);
         internal static int LineHeight => Mathf.Max(12,Mathf.Max(mFont.tahoma_7b_blue.getHeight(),mFont.tahoma_7_green2.getHeight()));
-        internal static int RowHeight => 2*LineHeight+2*Margin;
+        internal const int PotentialPadding=3, PotentialGap=1;
+        internal static int RowHeight => 2*LineHeight+2*PotentialPadding;
         internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
         internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+Gap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-Gap));
         internal static Rect CellBounds(int i)
@@ -31,7 +32,7 @@ namespace Hud
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
         internal static int TitleHeight => (CombinedTitle?1:2)*LineHeight+2*Gap;
-        internal static Rect PotentialBounds(int i) => new Rect(Content.x,IntrinsicBounds.yMax+Gap+TitleHeight+i*(RowHeight+Gap),Content.width,RowHeight);
+        internal static Rect PotentialBounds(int i) => new Rect(Content.x,IntrinsicBounds.yMax+Gap+TitleHeight+i*(RowHeight+PotentialGap),Content.width,RowHeight);
         internal static Rect DetailBounds => InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
         internal static Rect DetailContent => InventoryFrame.Inset(DetailBounds);
         internal static float ControlsTop => DetailContent.yMax-100;
@@ -195,8 +196,6 @@ public partial class Panel
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
             InventoryItemVisuals.PaintSkillIcon(g,t.iconId,cell,viewport,skillDetailOpen&&skillSelectedId==t.id);
-            int boundSlot=SkillTabState.SlotFor(t.id);
-            if(boundSlot>=0)mFont.tahoma_7b_white.drawString(g,(boundSlot+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
@@ -218,7 +217,6 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,InventoryFrame.Border);
         }
         PaintSkillPotential(g,viewport);
-        PaintSkillFade(g,viewport,cmy<cmyLim);
     }
     private static string CleanSkillText(string text) => string.IsNullOrWhiteSpace(text)||string.Equals(text.Trim(),"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text.Trim();
     private static void PaintSkillFade(mGraphics g,Rect viewport,bool more)
@@ -244,7 +242,7 @@ public partial class Panel
             Rect row=SkillPanelLayout.PotentialBounds(i);InventoryFrame.Clip(g,viewport);
             InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
             InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x+InventoryFrame.Padding,row.center.y-10,20,20),viewport);
-            Rect line=new Rect(row.x+20+2*InventoryFrame.Padding,row.y+InventoryFrame.Padding,row.width-20-3*InventoryFrame.Padding-30,SkillPanelLayout.LineHeight);
+            Rect line=new Rect(row.x+20+2*InventoryFrame.Padding,row.y+SkillPanelLayout.PotentialPadding,row.width-20-3*InventoryFrame.Padding-30,SkillPanelLayout.LineHeight);
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),line,viewport,0x536DCC);
             line.y+=SkillPanelLayout.LineHeight;
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,line,viewport,0x00552D);
