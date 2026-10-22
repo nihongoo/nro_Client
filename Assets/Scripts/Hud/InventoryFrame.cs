@@ -229,7 +229,7 @@ public partial class Panel
         cmdClose.x = (int)close.x; cmdClose.y = (int)close.y;
         cmdClose.w = (int)close.width; cmdClose.h = (int)close.height;
         if (currentTabIndex == 1) {
-            isnewInventory = false; newSelected = 0; size_tab = 0; ITEM_HEIGHT = 24;
+            newSelected = 0; size_tab = 0; ITEM_HEIGHT = 24;
             SyncInventoryBag();
             currentListLength = (Char.myCharz().arrItemBody?.Length ?? 0) + (Char.myCharz().arrItemBag?.Length ?? 0);
             int last = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns - 1;
@@ -349,6 +349,33 @@ public partial class Panel
         return true;
     }
 
+    // Header ownership follows the active tab; body rendering never paints over it.
+    private void PaintInventoryHeader(mGraphics g)
+    {
+        Char character = Char.myCharz();
+        if (currentTabIndex == 0) {
+            mFont.tahoma_7b_white.drawString(g, character.cName, 46, 1, 0);
+            mFont.tahoma_7_yellow.drawString(g, mResources.vitality + ": " + character.cStamina + "/" + character.cMaxStamina, 46, 12, 0);
+            mFont.tahoma_7_yellow.drawString(g, character.me ? character.getStrLevel() : character.currStrLevel, 46, 23, 0);
+            mFont.tahoma_7_yellow.drawString(g, mResources.power + ": " + NinjaUtil.getMoneys(character.cPower), 46, 34, 0);
+        } else if (currentTabIndex == 2) {
+            // Reuse the original skill header, including the current potential value.
+            paintSkillInfo(g);
+        } else if (currentTabIndex == 1) {
+            mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
+            mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
+            mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
+            mFont.tahoma_7_yellow.drawString(g, mResources.giamsatthuong + ": " + character.cGiamST + "%  " + mResources.critdame + ": " + character.cCritDameFull + "%", 46, 34, 0);
+        } else if (currentTabIndex == 3) {
+            if (mainTabName.Length == 7) paintClanInfo(g);
+            else paintToolInfo(g);
+        } else if (currentTabIndex == 4 || currentTabIndex == 5) {
+            paintToolInfoMod(g);
+        } else {
+            paintToolInfo(g);
+        }
+    }
+
     private void PaintInventoryFrame(mGraphics g)
     {
         SyncInventoryFrame(); GameScr.resetTranslate(g);
@@ -358,12 +385,8 @@ public partial class Panel
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
         SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
-        Char character = Char.myCharz();
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
-        mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
-        mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
-        mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
-        mFont.tahoma_7_yellow.drawString(g, mResources.giamsatthuong + ": " + character.cGiamST + "%  " + mResources.critdame + ": " + character.cCritDameFull + "%", 46, 34, 0);
+        PaintInventoryHeader(g);
         Rect close = HudLayout.GetRect(InventoryFrame.Close);
         InventoryFrame.Clip(g, root);
         InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);

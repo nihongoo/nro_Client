@@ -799,7 +799,7 @@ public class LoginScr : mScreen, IActionListener
 		if (!Main.isPC && !TouchScreenKeyboard.visible && !Main.isMiniApp && !Main.isWindowsPhone)
 		{
 			string text = tfUser.getText().ToLower().Trim();
-			string text2 = tfPass.getText().ToLower().Trim();
+			string text2 = tfPass.getText().Trim();
 			if (!text.Equals(string.Empty) && !text2.Equals(string.Empty))
 			{
 				doLogin();

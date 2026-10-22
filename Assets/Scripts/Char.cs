@@ -2694,7 +2694,15 @@ public class Char : IMapObject
                 if (cur - last > seconds || cur - last > 10000)
                 {
                     Res.outz("<*> 8  namekLazer gong xong " + cName);
-                    stopUseChargeSkill();
+                    bool isTuSatCharge = me && myskill != null && myskill.template.id == 14;
+                    if (isTuSatCharge)
+                    {
+                        finishTuSatCharge(flag6 ? 1 : 0);
+                    }
+                    else
+                    {
+                        stopUseChargeSkill();
+                    }
                     isStandAndCharge = false;
                     int skillId = myskill.skillId;
                     if (me)
@@ -2702,7 +2710,10 @@ public class Char : IMapObject
                         if (cgender == 2)
                         {
                             Res.outz("<*> 9 [me] xay da xong  " + myCharz().myskill.skillId);
-                            myCharz().setSkillPaint(GameScr.sks[myCharz().myskill.skillId], flag6 ? 1 : 0);
+                            if (!isTuSatCharge)
+                            {
+                                myCharz().setSkillPaint(GameScr.sks[myCharz().myskill.skillId], flag6 ? 1 : 0);
+                            }
                         }
                         if (cgender == 1)
                         {
@@ -5065,6 +5076,25 @@ public class Char : IMapObject
             EffecMn.addEff(new Effect(23, cx, cy + ch / 2, 3, 2, 1));
         }
         setAutoSkillPaint(skillPaint, sType);
+    }
+
+    private void finishTuSatCharge(int sType)
+    {
+        if (!me || myskill == null || myskill.template.id != 14 || !isStandAndCharge)
+        {
+            return;
+        }
+        // Consume the charge before sending, so later frames cannot send another explosion.
+        stopUseChargeSkill();
+        if (stone || sleepEff || blindEff || statusMe == 14 || statusMe == 5 || TileMap.isOfflineMap())
+        {
+            return;
+        }
+        // Starting setSkillPaint already paid the local KI/stamina and started cooldown.
+        // Finishing this cast must neither pay again nor re-enter its cooldown check.
+        hasSendAttack = false;
+        Service.gI().skill_not_focus(7);
+        setAutoSkillPaint(GameScr.sks[myskill.skillId], sType);
     }
 
     public void useSkillNotFocus()

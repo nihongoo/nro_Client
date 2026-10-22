@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Assets.src.e;
 using Assets.src.f;
 using Assets.src.g;
