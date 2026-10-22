@@ -19,7 +19,7 @@ namespace Hud
         internal static Rect Content => InventoryFrame.Inset(Frame);
         internal static int LineHeight => Mathf.Max(12,Mathf.Max(mFont.tahoma_7b_blue.getHeight(),mFont.tahoma_7_green2.getHeight()));
         internal static int RowHeight => 2*LineHeight+2*Margin;
-        internal static float Size => Mathf.Max(12,Mathf.Min(Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 36 : 48),(Content.width-3*Gap)/4),(Content.height-RowHeight-2*Gap)/2));
+        internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
         internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+Gap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-Gap));
         internal static Rect CellBounds(int i)
         {
@@ -195,7 +195,8 @@ public partial class Panel
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
             InventoryItemVisuals.PaintSkillIcon(g,t.iconId,cell,viewport,skillDetailOpen&&skillSelectedId==t.id);
-            mFont.tahoma_7b_white.drawString(g,(i+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
+            int boundSlot=SkillTabState.SlotFor(t.id);
+            if(boundSlot>=0)mFont.tahoma_7b_white.drawString(g,(boundSlot+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
@@ -267,14 +268,14 @@ public partial class Panel
         Rect r=SkillPanelLayout.DetailBounds,upper=SkillPanelLayout.UpperBounds,lower=upper;
         SkillTemplate t=SelectedSkillTemplate;Skill current=CurrentPanelSkill;int level=current?.point??0;
         InventoryFrame.Clip(g,r);InventoryFrame.PaintSection(g,r,InventoryFrame.EquipmentBackground);
-        int slot=0;SkillTemplate[] templates=SkillTabState.Templates();for(int i=0;i<templates.Length;i++)if(templates[i].id==t.id)slot=i;
+        int slot=SkillTabState.SlotFor(t.id);
         InventoryFrame.Clip(g,upper);
         Rect icon=new Rect(upper.x+1,upper.y+1-skillTopScroll,32,32);
         InventoryItemVisuals.PaintSkillIcon(g,t.iconId,icon,upper,true);
         string[] nameLines=mFont.tahoma_7b_dark.splitFontArray(t.name,Mathf.Max(1,(int)(upper.xMax-icon.xMax-25)));
         InventoryFrame.Clip(g,upper);
         for(int i=0;i<nameLines.Length;i++)mFont.tahoma_7b_dark.drawString(g,nameLines[i],(int)icon.xMax+5,(int)icon.y+i*12,0);
-        SkillLabel(g,mFont.tahoma_7,"Cấp "+level+" / "+t.maxPoint+" · ô "+(slot+1),InventoryFrame.Intersection(new Rect(icon.xMax+5,icon.y+nameLines.Length*12,Mathf.Max(0,upper.xMax-icon.xMax-5),15),upper));
+        SkillLabel(g,mFont.tahoma_7,"Cấp "+level+" / "+t.maxPoint+" · "+(slot>=0?"ô "+(slot+1):"chưa gán"),InventoryFrame.Intersection(new Rect(icon.xMax+5,icon.y+nameLines.Length*12,Mathf.Max(0,upper.xMax-icon.xMax-5),15),upper));
         int headingHeight=Mathf.Max(39,nameLines.Length*12+17);
         Skill display=current!=null&&current.point>0?current:(t.skills.Length>0?t.skills[0]:null);
         var top=new List<SkillLine>();

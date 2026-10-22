@@ -13,7 +13,7 @@ namespace Hud
         internal static int LearningTemplate = -1, LearningLevel, QuickPrice;
         private static long readAt, nextRequest, firstRequest = -1;
         internal static bool Waiting => !Ready && firstRequest >= 0 && mSystem.currentTimeMillis()-firstRequest < 2000;
-        private static SkillTemplate[] orderedTemplates;
+        private static SkillTemplate[] panelTemplates;
         private static NClass templateClass;
         private static int teacherMap = -1, teacherId;
         private static long navigationStarted, nextWalk;
@@ -22,7 +22,7 @@ namespace Hud
         internal static void Reset()
         {
             Ready = false; FinishToken = -1; LearningBook = -1; LearningTemplate = -1;
-            teacherMap = -1; nextRequest = 0; firstRequest = -1; orderedTemplates = null; templateClass = null;
+            teacherMap = -1; nextRequest = 0; firstRequest = -1; panelTemplates = null; templateClass = null;
             for (int i = 0; i < 8; i++) Order[i] = -1;
         }
         internal static void Read(Message message)
@@ -36,7 +36,7 @@ namespace Hud
             FinishToken = token; RemainingAtRead = remaining; Duration = duration; LearningBook = book;
             LearningTemplate = template; LearningLevel = level; QuickPrice = price; readAt = mSystem.currentTimeMillis();
             Array.Copy(order, Order, 8); Ready = true;
-            if (changed) { orderedTemplates = null; ApplyOrder(); }
+            if (changed) { panelTemplates = null; ApplyOrder(); }
             HudLayout.Invalidate();
         }
         internal static void ApplyOrder()
@@ -72,18 +72,19 @@ namespace Hud
         internal static SkillTemplate[] Templates()
         {
             NClass currentClass = Char.myCharz().nClass;
-            if (orderedTemplates != null && ReferenceEquals(templateClass, currentClass)) return orderedTemplates;
+            if (panelTemplates != null && ReferenceEquals(templateClass, currentClass)) return panelTemplates;
             SkillTemplate[] available = currentClass?.availableSkillTemplates ?? new SkillTemplate[0];
-            var result = new SkillTemplate[System.Math.Min(8, available.Length)]; int count = 0;
-            if (Ready) foreach (int id in Order) foreach (SkillTemplate t in available)
-                if (t.id == id && Array.IndexOf(result, t) < 0 && count < result.Length) result[count++] = t;
-            // A fresh character may not have a shortcut snapshot yet.
-            Skill[] hud = Main.isPC ? GameScr.keySkill : GameScr.onScreenSkill;
-            if (!Ready && hud != null) foreach (Skill s in hud) if (s != null)
-                foreach (SkillTemplate t in available) if (t.id == s.template.id && Array.IndexOf(result,t) < 0 && count < result.Length) result[count++] = t;
-            foreach (SkillTemplate t in available) if (Array.IndexOf(result,t) < 0 && count < result.Length) result[count++] = t;
-            templateClass = currentClass; orderedTemplates = result;
+            var result = new SkillTemplate[System.Math.Min(8, available.Length)];
+            Array.Copy(available,result,result.Length);
+            templateClass = currentClass; panelTemplates = result;
             return result;
+        }
+        internal static int SlotFor(int templateId)
+        {
+            if(Ready)return Array.IndexOf(Order,(sbyte)templateId);
+            Skill[] hud=Main.isPC?GameScr.keySkill:GameScr.onScreenSkill;
+            if(hud!=null)for(int i=0;i<System.Math.Min(8,hud.Length);i++)if(hud[i]?.template?.id==templateId)return i;
+            return -1;
         }
         internal static int BookId(int template, int level)
         {

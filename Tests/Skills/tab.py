@@ -146,6 +146,7 @@ class SkillTabTests {
    Rect root=HudLayout.GetRect(InventoryFrame.Root),detail=HudLayout.GetRect(SkillPanelLayout.Detail),money=HudLayout.GetRect(InventoryFrame.Money);
    Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h-2*InventoryFrame.FrameInset,"detail frame inset");
    Check(root.xMax<detail.x,"panels overlap");
+   Near(SkillPanelLayout.Size,Math.Min(InventoryFrame.Unit(mobile?44:60),(SkillPanelLayout.Content.width-3*SkillPanelLayout.Gap)/4),"skill frames smaller than design");
    for(int i=0;i<8;i++){
     Rect cell=HudLayout.GetRect(SkillPanelLayout.Cell(i));Check(cell.width>0&&cell.height>0,"missing grid cell");
     Check(HudLayout.HitTest(cell.center)==SkillPanelLayout.Cell(i),"cell not clickable");
@@ -157,7 +158,8 @@ class SkillTabTests {
    Service.gI().requests.Clear();Click(SkillPanelLayout.CellBounds(1));Click(SkillPanelLayout.KeyBounds(6));
    var req=Service.gI().requests[0];Check(req[0]==2&&req[1]==1&&req[2]==6,"swap selected wrong template or slot");
    var swapped=(int[])ids.Clone();swapped[1]=ids[6];swapped[6]=1;State(swapped);
-   Check(SkillTabState.Templates()[6].id==1&&GameScr.onScreenSkill[6].template.id==1&&GameScr.keySkill[1].template.id==22,"grid/mobile/PC order diverged");
+   for(int i=0;i<8;i++)Check(SkillTabState.Templates()[i].id==ids[i],"shortcut swap reordered original skill grid");
+   Check(SkillTabState.SlotFor(1)==6&&SkillTabState.SlotFor(22)==1&&GameScr.onScreenSkill[6].template.id==1&&GameScr.keySkill[1].template.id==22,"actual slot highlight/number diverged from HUD");
    c.arrItemBag[3]=new Item{template=new ItemTemplate{id=95},quantity=1};
    Service.gI().requests.Clear();Click(SkillPanelLayout.ActionBounds(0));Check(Service.gI().requests[0][0]==3&&Service.gI().requests[0][1]==95,"next book action wrong");
    c.arrItemBag[3]=null;State(swapped,1);Service.gI().requests.Clear();Click(SkillPanelLayout.ActionBounds(0));
@@ -172,7 +174,7 @@ class SkillTabTests {
    HudLayout.Invalidate();Rect last=HudLayout.GetRect(SkillPanelLayout.Potential(4));Check(last.height>0&&last.yMax<=money.y,"potential rows not reachable by scrolling");
    Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
-   Check(SkillPanelLayout.ScrollBounds.height>=SkillPanelLayout.RowHeight,"low S22 cannot show a whole stat row");
+   Check(SkillPanelLayout.ScrollBounds.height>=2*SkillPanelLayout.LineHeight,"low S22 cannot show both stat text lines");
    Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");
    Near(SkillPanelLayout.DetailContent.x-SkillPanelLayout.DetailBounds.x,InventoryFrame.Padding,"right panel padding");
    Near(SkillPanelLayout.Content.x-SkillPanelLayout.Frame.x,InventoryFrame.Padding,"left panel padding");

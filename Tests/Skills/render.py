@@ -37,7 +37,7 @@ namespace UnityEngine {
  }
 }
 class Image {public Texture2D texture;public Image(int w,int h,string name){texture=new Texture2D(w,h,name);}}
-class GameScr {public static Image imgSkill=new Image(56,56,"native-orange-frame");}
+class GameScr {public static Image imgSkill=new Image(56,56,"native-orange-frame"),imgSkill2=new Image(56,56,"native-green-frame");}
 class Small {public Image img;}
 class SmallImage {
  public static Image[] imgbig;public static int[][] smallImg;public static Small[] imgNew;public static Image imgEmpty=new Image(1,1,"empty");public static int requests;
@@ -95,6 +95,8 @@ class RenderTests {
    GUI.textures.Clear();
    Hud.InventoryItemVisuals.PaintSkillIcon(g,0,bounds,viewport);
    Check(GUI.textures.Count==2&&GUI.textures[0].name=="native-orange-frame","original orange frame missing");
+   GUI.textures.Clear();Hud.InventoryItemVisuals.PaintSkillIcon(g,0,bounds,viewport,true);
+   Check(GUI.textures.Count==2&&GUI.textures[0].name=="native-green-frame","selected skill did not use original green frame");
    Check(GUI.groups==0,"rendering leaked GUI clipping group");
   }
   Console.WriteLine("PASS: "+checks+" production icon/font/button rendering checks");
