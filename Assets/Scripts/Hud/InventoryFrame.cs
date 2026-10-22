@@ -15,7 +15,10 @@ namespace Hud
         // Original Panel.paintInventory / paintBottomMoneyInfo colors.
         internal const int Border = 6702080, Accent = 16383818,
             EquipmentBackground = 15196114, SlotBackground = 9993045, MoneyBackground = 11837316;
+        internal const int Padding=6, Gap=4, FrameInset=3, FrameBorder=0xC78A36;
         internal const float MoneyIconHeight = 10, MoneyGap = 3;
+        internal static Rect Inset(Rect rect,float padding=Padding) => new Rect(rect.x+padding,rect.y+padding,Mathf.Max(0,rect.width-2*padding),Mathf.Max(0,rect.height-2*padding));
+        internal static void PaintSection(mGraphics g,Rect rect,int background) => Rounded(g,rect,background,255,FrameBorder);
         internal static bool Visible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
             && GameCanvas.panel != null && GameCanvas.panel.isShow
             && GameCanvas.panel.InventoryFrameActive && GameCanvas.panel.InventoryFrameTabIds.Length > 0
@@ -32,7 +35,7 @@ namespace Hud
             for (int i = 0; i < bagCells.Length; i++) bagCells[i] = "inventory.bag.cell." + i;
             HudLayout.Register(Root, () => HudLayout.Anchor(HorizontalAnchor.Left, VerticalAnchor.Top,
                 new Vector2(Mathf.Max(Unit(HudLayout.IsMobileLayout ? 300 : 380),
-                    mFont.tahoma_7_yellow.getWidth("99.999.999.999") + mFont.tahoma_7_yellow.getWidth("1.000.000") + 42), GameCanvas.h), Vector2.zero),
+                    mFont.tahoma_7_yellow.getWidth("99.999.999.999") + mFont.tahoma_7_yellow.getWidth("1.000.000") + 56), GameCanvas.h), Vector2.zero),
                 HudLayout.OverlayOrder + 10, () => Visible);
             HudLayout.Register(Close, () => new Rect(HudLayout.GetRect(Root).xMax - 21, 3, 18, 18),
                 HudLayout.OverlayOrder + 12, () => Visible);
@@ -58,7 +61,7 @@ namespace Hud
                 () => Visible && GameCanvas.panel.currentTabIndex == 1);
             HudLayout.Register(Money, () => {
                 Rect panel = HudLayout.GetRect(Root);
-                return new Rect(1, panel.yMax - 20, panel.width - 2, 19);
+                return new Rect(FrameInset, panel.yMax - 27, panel.width - 2*FrameInset, 24);
             }, HudLayout.OverlayOrder + 11, () => Visible);
             HudLayout.Register(Bag, () => {
                 Rect panel = HudLayout.GetRect(Root), money = HudLayout.GetRect(Money);
@@ -99,7 +102,7 @@ namespace Hud
             float size = Unit(HudLayout.IsMobileLayout ? 40 : 64);
             float gap = Mathf.Max(4, Unit(12));
             float left = (HudLayout.GetRect(Root).width - size * 3 - gap * 2) / 2;
-            return new Rect(left + slot % 3 * (size + gap), 86 + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
+            return new Rect(left + slot % 3 * (size + gap), 73 + Padding + 12 + Gap + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
         }
         internal static float EquipmentBottom => EquipmentBounds(8).yMax + 10;
         internal static Rect Intersection(Rect a, Rect b) => Rect.MinMaxRect(Mathf.Max(a.xMin, b.xMin),
@@ -176,7 +179,7 @@ namespace Hud
             => new Rect(textLeft - MoneyGap - MoneyIconHeight * aspect,
                 row.center.y - MoneyIconHeight / 2, MoneyIconHeight * aspect, MoneyIconHeight);
         internal static Rect MoneyTextBounds(Rect row, int width, bool gold, float goldAspect)
-            => new Rect(gold ? row.x + 3 + MoneyIconHeight * goldAspect + MoneyGap : row.xMax - 3 - width,
+            => new Rect(gold ? row.x + Padding + MoneyIconHeight * goldAspect + MoneyGap : row.xMax - Padding - width,
                 row.y, width, row.height);
     }
 }
@@ -407,8 +410,8 @@ public partial class Panel
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
-                InventoryFrame.Rounded(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
-                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 - cmy, mFont.CENTER);
+                InventoryFrame.PaintSection(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
+                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 + InventoryFrame.Padding - cmy, mFont.CENTER);
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 PaintInventoryBag(g);
                 break;
@@ -460,7 +463,7 @@ public partial class Panel
     private void PaintInventoryMoney(mGraphics g)
     {
         Rect row = HudLayout.GetRect(InventoryFrame.Money);
-        InventoryFrame.Clip(g, row); InventoryFrame.Rounded(g, row, InventoryFrame.MoneyBackground);
+        InventoryFrame.Clip(g, row); InventoryFrame.PaintSection(g, row, InventoryFrame.MoneyBackground);
         // Reserve the maximum text widths independently; a value never moves its neighbor.
         // getWidth truncates physical font metrics to logical integers; keep the last pixel.
         int gemWidth = mFont.tahoma_7_yellow.getWidth("1.000.000") + 1;

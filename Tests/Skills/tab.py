@@ -18,7 +18,7 @@ class ItemOptionTemplate {public int id;}
 class Image {}
 static class InventoryBag {public const int Columns=5;}
 static class InventoryFrameSkin {public static Image Corners(int a,int b,byte c)=>null;}
-static class InventoryItemVisuals {public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
+static class InventoryItemVisuals {public static void PaintNativeButton(mGraphics g,Rect r,bool enabled,bool selected){}public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
 class PopUp {public static void paintPopUp(mGraphics g,int a,int b,int c,int d,int e,bool f,Image corner=null,int border=0){} }
 class mGraphics {
  public static int zoomLevel=2,addYWhenOpenKeyBoard;public List<string> texts=new List<string>();
@@ -35,7 +35,7 @@ class mFont {
 }
 static class SmallImage {public static void drawSmallImage(mGraphics g,int id,int x,int y,int flip,int anchor){} }
 class SkillTemplate {public sbyte id;public string name="Kamejoko",damInfo="Sát thương # %";public int maxPoint=7,iconId,manaUseType=1;public string[] description={"Mô tả kỹ năng"};public Skill[] skills;}
-class Skill {public SkillTemplate template;public int point=1,manaUse=20,damage;public long powRequire=5000000000L;public string strTimeReplay()=>"8";}
+class Skill {public SkillTemplate template;public string moreInfo="Thông tin cấp từ dữ liệu game";public int point=1,manaUse=20,damage;public long powRequire=5000000000L;public string strTimeReplay()=>"8";}
 class NClass {public SkillTemplate[] availableSkillTemplates;}
 class MovePoint {public int xEnd,yEnd;public MovePoint(int x,int y){xEnd=x;yEnd=y;}}
 class Npc {public int cx,cy;}
@@ -142,9 +142,9 @@ class SkillTabTests {
    Check(fallback.texts.Contains("Đến NPC"),"missing server response has no NPC fallback");
    foreach(SkillTemplate template in c.nClass.availableSkillTemplates)template.description=new[]{"null"," ","Mô tả thật"};
    State(ids);HudLayout.BeginFrame();
-   Check(!GameCanvas.panel.SkillPanelActive||mobile||GameCanvas.panel.cmyLim==0,"tall PC unnecessarily scrolls potential");
+   Check(!GameCanvas.panel.SkillPanelActive||mobile||GameCanvas.h<540||GameCanvas.panel.cmyLim==0,"tall PC unnecessarily scrolls potential");
    Rect root=HudLayout.GetRect(InventoryFrame.Root),detail=HudLayout.GetRect(SkillPanelLayout.Detail),money=HudLayout.GetRect(InventoryFrame.Money);
-   Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h,"detail not full height");
+   Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h-2*InventoryFrame.FrameInset,"detail frame inset");
    Check(root.xMax<detail.x,"panels overlap");
    for(int i=0;i<8;i++){
     Rect cell=HudLayout.GetRect(SkillPanelLayout.Cell(i));Check(cell.width>0&&cell.height>0,"missing grid cell");
@@ -166,12 +166,21 @@ class SkillTabTests {
    Click(SkillPanelLayout.ActionBounds(0));GameCanvas.yes.Click();req=Service.gI().requests[0];Check(req[0]==1&&req[1]==94&&req[2]==5&&req[3]==456789,"confirmation lost captured quote/token");
    mSystem.now+=1000;Check(SkillTabState.Remaining==29000,"countdown uses incorrect clock");
    float fixedGridY=SkillPanelLayout.CellBounds(0).y;
-   GameCanvas.panel.Paint(new mGraphics());GameCanvas.pxMouse=(int)root.center.x;GameCanvas.pyMouse=(int)money.y-10;GameCanvas.panel.Wheel(-1000);
+   GameCanvas.panel.Paint(new mGraphics());GameCanvas.pxMouse=(int)root.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.ScrollBounds.center.y;GameCanvas.panel.Wheel(-1000);
    Near(SkillPanelLayout.CellBounds(0).y,fixedGridY,"grid scrolled with potential");
    Check(SkillPanelLayout.IntrinsicBounds.y+GameCanvas.panel.cmy>=SkillPanelLayout.CellBounds(4).yMax,"intrinsic overlaps fixed grid");
    HudLayout.Invalidate();Rect last=HudLayout.GetRect(SkillPanelLayout.Potential(4));Check(last.height>0&&last.yMax<=money.y,"potential rows not reachable by scrolling");
    Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
+   Check(SkillPanelLayout.ScrollBounds.height>=SkillPanelLayout.RowHeight,"low S22 cannot show a whole stat row");
+   Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");
+   Near(SkillPanelLayout.DetailContent.x-SkillPanelLayout.DetailBounds.x,InventoryFrame.Padding,"right panel padding");
+   Near(SkillPanelLayout.Content.x-SkillPanelLayout.Frame.x,InventoryFrame.Padding,"left panel padding");
+   for(int i=0;i<5;i++)Check(SkillPanelLayout.PotentialBounds(i).height>=2*SkillPanelLayout.LineHeight+2*InventoryFrame.Padding,"stat row clips two lines/padding");
+   foreach(SkillTemplate template in c.nClass.availableSkillTemplates)template.description=new[]{"null"};
+   GameCanvas.pxMouse=(int)detail.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.UpperBounds.center.y;GameCanvas.panel.Wheel(-1000);
+   var descriptionPaint=new mGraphics();GameCanvas.panel.Paint(descriptionPaint);
+   Check(descriptionPaint.texts.Exists(text=>text.Contains("Thông tin cấp")),"real per-level description missing");
   }
   Check(SkillTabState.BookId(2,7)==86&&SkillTabState.BookId(2,6)==84,"Demon book gap lost");
   Check(SkillTabState.Clock(90061000)=="25:01:01","long countdown wrapped at 24 hours");

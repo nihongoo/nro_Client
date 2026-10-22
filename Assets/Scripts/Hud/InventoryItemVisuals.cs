@@ -114,7 +114,9 @@ namespace Hud
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
             style.fontSize=Mathf.Max(1,font.myFont.fontSize);
             while(style.fontSize>1&&(style.CalcSize(new GUIContent(text)).x>(bounds.width-2)*zoom||style.CalcSize(new GUIContent(text)).y>bounds.height*zoom))style.fontSize--;
-            style.normal.textColor=new Color((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,1);
+            Color ink=new Color((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,1);
+            style.normal.textColor=style.hover.textColor=style.active.textColor=style.focused.textColor=ink;
+            style.onNormal.textColor=style.onHover.textColor=style.onActive.textColor=style.onFocused.textColor=ink;
             Color previous=GUI.color;
             try {
                 GUI.color=Color.white;
@@ -123,30 +125,73 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
         }
+        // Match SmallImage.drawSmallImage: entries outside the 256 atlas are separate images.
+        internal static bool TryAtlasIcon(int id,out Image image,out Rect uv)
+        {
+            image=null;uv=new Rect(0,0,1,1);
+            if(id<0||SmallImage.imgbig==null||SmallImage.smallImg==null||id>=SmallImage.smallImg.Length)return false;
+            int[] data=SmallImage.smallImg[id];
+            if(data==null||data.Length<5||data[0]<0||data[0]>=SmallImage.imgbig.Length
+                ||data[1]<0||data[2]<0||data[1]>=256||data[2]>=256||data[3]<=0||data[4]<=0||data[3]>=256||data[4]>=256)return false;
+            image=SmallImage.imgbig[data[0]];if(image?.texture==null)return false;
+            int zoom=Mathf.Max(1,mGraphics.zoomLevel);
+            float x=data[1]*zoom,y=data[2]*zoom,w=data[3]*zoom,h=data[4]*zoom;
+            if(x+w>image.texture.width||y+h>image.texture.height){image=null;return false;}
+            uv=new Rect(x/image.texture.width,1-(y+h)/image.texture.height,w/image.texture.width,h/image.texture.height);
+            return true;
+        }
         internal static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport)
         {
-            Image image=null;Rect uv=new Rect(0,0,1,1);
-            if(SmallImage.imgbig!=null&&SmallImage.smallImg!=null&&id<SmallImage.smallImg.Length) {
-                int[] data=SmallImage.smallImg[id];
-                if(data[0]<SmallImage.imgbig.Length)image=SmallImage.imgbig[data[0]];
-                if(image!=null)uv=new Rect(data[1]*mGraphics.zoomLevel/(float)image.texture.width,
-                    1-(data[2]+data[4])*mGraphics.zoomLevel/(float)image.texture.height,
-                    data[3]*mGraphics.zoomLevel/(float)image.texture.width,data[4]*mGraphics.zoomLevel/(float)image.texture.height);
+            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
+            Image image;Rect uv;
+            if(!TryAtlasIcon(id,out image,out uv)) {
+                if(id>=0&&SmallImage.imgNew!=null&&id<SmallImage.imgNew.Length) {
+                    if(SmallImage.imgNew[id]==null)SmallImage.createImage(id);
+                    image=SmallImage.imgNew[id]?.img;
+                }
+                uv=new Rect(0,0,1,1);
             }
-            if(image==null&&SmallImage.imgNew!=null&&id<SmallImage.imgNew.Length) {
-                if(SmallImage.imgNew[id]==null)SmallImage.createImage(id);
-                image=SmallImage.imgNew[id]?.img;
+            if(image?.texture==null||image==SmallImage.imgEmpty||image.texture.width<=1||image.texture.height<=1) {
+                InventoryFrame.Clip(g,clip);
+                InventoryFrame.Rounded(g,bounds,InventoryFrame.SlotBackground,255,InventoryFrame.Accent);
+                PaintCompactText(g,mFont.tahoma_7b_dark,"?",bounds,viewport,InventoryFrame.Border,true);
+                return;
             }
-            if(image==null)return;
             float aspect=image.texture.width*uv.width/(image.texture.height*uv.height);
             float width=Mathf.Min(bounds.width,bounds.height*aspect),height=width/aspect;
-            Rect clip=InventoryFrame.Intersection(bounds,viewport);int zoom=Mathf.Max(1,mGraphics.zoomLevel);
-            if(clip.width<=0||clip.height<=0)return;
-            Color previous=GUI.color;
+            int zoom=Mathf.Max(1,mGraphics.zoomLevel);Color previous=GUI.color;
             try {
                 GUI.color=Color.white;GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
                 try {GUI.DrawTextureWithTexCoords(new Rect((bounds.center.x-width/2-clip.x)*zoom,(bounds.center.y-height/2-clip.y)*zoom,width*zoom,height*zoom),image.texture,uv);}
                 finally {GUI.EndGroup();}
+            } finally {GUI.color=previous;}
+        }
+        private static readonly Dictionary<Texture2D,Image> disabledButtons=new Dictionary<Texture2D,Image>();
+        private static Image ButtonPart(Image source,bool disabled)
+        {
+            if(source?.texture==null||!disabled)return source;
+            if(!disabledButtons.TryGetValue(source.texture,out Image grey)) {
+                grey=HudButtonSkin.CopyNative(source,(pixels,width,height)=>{
+                    for(int i=0;i<pixels.Length;i++) {Color32 p=pixels[i];byte value=(byte)((p.r*30+p.g*59+p.b*11)/100);pixels[i]=new Color32(value,value,value,p.a);}
+                });disabledButtons.Add(source.texture,grey);
+            }
+            return grey;
+        }
+        internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected)
+        {
+            Image left=ButtonPart(selected?Command.btn1left:Command.btn0left,!enabled);
+            Image middle=ButtonPart(selected?Command.btn1mid:Command.btn0mid,!enabled);
+            Image right=ButtonPart(selected?Command.btn1right:Command.btn0right,!enabled);
+            if(left?.texture==null||middle?.texture==null||right?.texture==null)return;
+            // Fit all three native pieces to the hit rectangle, including their complete rounded caps.
+            int zoom=Mathf.Max(1,mGraphics.zoomLevel);
+            float cap=Mathf.Min(bounds.width/2,bounds.height*left.texture.width/left.texture.height);
+            Color previous=GUI.color;
+            try {
+                GUI.color=Color.white;
+                GUI.DrawTexture(new Rect(bounds.x*zoom,bounds.y*zoom,cap*zoom,bounds.height*zoom),left.texture);
+                GUI.DrawTexture(new Rect((bounds.x+cap)*zoom,bounds.y*zoom,Mathf.Max(0,bounds.width-2*cap)*zoom,bounds.height*zoom),middle.texture);
+                GUI.DrawTexture(new Rect((bounds.xMax-cap)*zoom,bounds.y*zoom,cap*zoom,bounds.height*zoom),right.texture);
             } finally {GUI.color=previous;}
         }
         internal static void PaintLevel(mGraphics g, Rect cell, Rect viewport, int level, bool bag, bool compact = false)
@@ -156,7 +201,8 @@ namespace Hud
             if (levelFont != font.myFont || levelZoom != zoom || levelWidth <= 0) {
                 levelFont = font.myFont; levelZoom = zoom; levelWidth = font.getWidth("Lv7") + 6; levelStyles.Clear();
             }
-            Rect badge = compact ? new Rect(cell.xMax-17,cell.yMax-8,18,9) : LevelBounds(cell, levelWidth, bag);
+            float compactWidth=Mathf.Min(18,cell.width*.8f);
+            Rect badge = compact ? new Rect(cell.xMax-compactWidth,cell.yMax-7,compactWidth,7) : LevelBounds(cell, levelWidth, bag);
             InventoryFrame.Clip(g, viewport);
             InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
             string label = "Lv" + Mathf.Clamp(level, 0, 7);
