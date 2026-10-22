@@ -3788,13 +3788,13 @@ public class Controller : IMessageHandler
 				Char char15;
 				if (num186 != -100)
 				{
-					char15 = new Char();
+					char15 = GameScr.findCharInMap(charID) ?? new Char();
 					char15.charID = charID;
 					char15.clanID = num186;
 				}
 				else
 				{
-					char15 = new Mabu();
+					char15 = GameScr.findCharInMap(charID) ?? new Mabu();
 					char15.charID = charID;
 					char15.clanID = num186;
 				}
@@ -5857,16 +5857,16 @@ public class Controller : IMessageHandler
 			case 15:
 			{
 				GameCanvas.debug("SA33", 2);
-				Char @char = GameScr.findCharInMap(msg.reader().readInt());
+				int revivedId = msg.reader().readInt();
+				Char @char = revivedId == Char.myCharz().charID ? Char.myCharz() : GameScr.findCharInMap(revivedId);
+				long hp = msg.readInt3Byte();
+				long maxHp = msg.readInt3Byte();
+				short x = msg.reader().readShort();
+				short y = msg.reader().readShort();
 				if (@char != null)
 				{
-					@char.cHP = msg.readInt3Byte();
-					@char.cHPFull = msg.readInt3Byte();
-					@char.cx = msg.reader().readShort();
-					@char.cy = msg.reader().readShort();
-					@char.statusMe = 1;
-					@char.cp3 = 3;
-					ServerEffect.addServerEffect(109, @char, 2);
+					@char.reviveAt(x, y, hp, maxHp);
+					if (!@char.me) ServerEffect.addServerEffect(109, @char, 2);
 				}
 				break;
 			}
@@ -6010,10 +6010,7 @@ public class Controller : IMessageHandler
 			c.cName = msg.reader().readUTF();
 			c.cHP = msg.readInt3Byte();
 			c.dHP = c.cHP;
-			if (c.cHP == 0)
-			{
-				c.statusMe = 14;
-			}
+			c.statusMe = c.cHP == 0 ? 14 : 1;
 			c.cHPFull = msg.readInt3Byte();
 			if (c.cy >= TileMap.pxh - 100)
 			{
@@ -6037,6 +6034,7 @@ public class Controller : IMessageHandler
 			{
 				c.setDefaultLeg();
 			}
+			c.resetRevivalMovement();
 			c.cx = msg.reader().readShort();
 			c.cy = msg.reader().readShort();
 			c.xSd = c.cx;
@@ -6044,6 +6042,7 @@ public class Controller : IMessageHandler
 			c.eff5BuffHp = msg.reader().readShort();
 			c.eff5BuffMp = msg.reader().readShort();
 			int num = msg.reader().readByte();
+			c.vEff.removeAllElements();
 			for (int i = 0; i < num; i++)
 			{
 				EffectChar effectChar = new EffectChar(msg.reader().readByte(), msg.reader().readInt(), msg.reader().readInt(), msg.reader().readShort());

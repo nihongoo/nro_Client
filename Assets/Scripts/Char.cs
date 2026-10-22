@@ -2158,7 +2158,7 @@ public class Char : IMapObject
                                     {
                                         if (abs(cx - currentMovePoint.xEnd) <= 16 && abs(cy - currentMovePoint.yEnd) <= 16)
                                         {
-                                            cx = (currentMovePoint.xEnd + cx) / 2;
+                                            cx = me ? (currentMovePoint.xEnd + cx) / 2 : currentMovePoint.xEnd;
                                             cy = currentMovePoint.yEnd;
                                             currentMovePoint = null;
                                             GameScr.instance.clickMoving = false;
@@ -7354,8 +7354,37 @@ public class Char : IMapObject
         wdy = toY;
     }
 
+    public void resetRevivalMovement()
+    {
+        wdx = wdy = 0;
+        cp1 = cp2 = cp3 = 0;
+        cvx = cvy = 0;
+        currentMovePoint = null;
+        endMovePointCommand = null;
+        vMovePoints.removeAllElements();
+        isDie = false;
+    }
+
+    public void reviveAt(short x, short y, long hp, long maxHp)
+    {
+        resetRevivalMovement();
+        cx = xSd = x;
+        cy = ySd = y;
+        cHP = hp;
+        cHPFull = maxHp;
+        statusMe = 1;
+        if (me)
+        {
+            cxSend = cx;
+            cySend = cy;
+            meDead = false;
+            isLockMove = false;
+        }
+    }
+
     public void liveFromDead()
     {
+        resetRevivalMovement();
         cHP = cHPFull;
         cMP = cMPFull;
         statusMe = 1;

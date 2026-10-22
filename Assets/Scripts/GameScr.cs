@@ -3937,7 +3937,9 @@ public class GameScr : mScreen, IChatable
 
     public void doSelectSkill(Skill skill, bool isShortcut)
     {
-        if (Char.myCharz().isCreateDark || isCharging() || Char.myCharz().taskMaint.taskId <= 1)
+        if (skill == null || Skill.isDisabled(skill.template.id) || Char.myCharz().cHP <= 0
+            || Char.myCharz().statusMe == 5 || Char.myCharz().statusMe == 14
+            || Char.myCharz().isCreateDark || isCharging() || Char.myCharz().taskMaint.taskId <= 1)
         {
             return;
         }
@@ -3950,7 +3952,7 @@ public class GameScr : mScreen, IChatable
             lastSkill = skill;
             selectedIndexSkill = -1;
             gI().auto = 0;
-            return;
+            if (!skill.template.isBuffToPlayer()) return;
         }
         if (Char.myCharz().isUseSkillSpec())
         {
@@ -3984,7 +3986,7 @@ public class GameScr : mScreen, IChatable
         }
         if (Char.myCharz().charFocus != null || !Char.myCharz().isSelectingSkillBuffToPlayer())
         {
-            if (Char.myCharz().focusToAttack())
+            if (Char.myCharz().isSelectingSkillBuffToPlayer() || Char.myCharz().focusToAttack())
             {
                 doFire(isShortcut, skipWaypoint: true);
                 doSeleckSkillFlag = true;
