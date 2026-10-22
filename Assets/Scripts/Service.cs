@@ -2632,13 +2632,6 @@ public class Service
 		}
 	}
 
-    public void requestAccountState()
-    {
-        Message message = new Message(GuestCredentials.Command);
-        try { message.writer().writeByte(6); session.sendMessage(message); }
-        finally { message.cleanup(); }
-    }
-
     public void guestLogin(string secret, string device)
     {
         Message message = new Message(GuestCredentials.Command);
@@ -2648,6 +2641,27 @@ public class Service
             message.writer().writeUTF(device);
             session.sendMessage(message);
         } finally { message.cleanup(); }
+    }
+
+    public void requestEmailLink(string email)
+    {
+        Message message = new Message(GuestCredentials.Command);
+        try { message.writer().writeByte(2); message.writer().writeUTF(email); session.sendMessage(message); }
+        finally { message.cleanup(); }
+    }
+
+    public void requestAccountState()
+    {
+        Message message = new Message(GuestCredentials.Command);
+        try { message.writer().writeByte(6); session.sendMessage(message); }
+        finally { message.cleanup(); }
+    }
+
+    public void confirmEmailLink(string code, string password)
+    {
+        Message message = new Message(GuestCredentials.Command);
+        try { message.writer().writeByte(4); message.writer().writeUTF(code); message.writer().writeUTF(password); session.sendMessage(message); }
+        finally { message.cleanup(); }
     }
 
 	public void getMagicTree(sbyte action)

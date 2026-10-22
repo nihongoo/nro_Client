@@ -122,13 +122,8 @@ public class Controller : IMessageHandler
 			MyVector myVector = new MyVector();
 			int num = 0;
 			GameCanvas.timeLoading = 15;
-            // Consume account packets before legacy handlers and only once.
-            if (msg.command == GuestCredentials.Command) {
-                int action = msg.reader().readByte();
-                if (action == 1) GuestCredentials.Accepted(msg.reader().readBool());
-                else if (action == 7) GuestCredentials.Confirmed(msg.reader().readBool(), msg.reader().readBool());
-                return;
-            }
+            // Custom account packets must be consumed exactly once, before legacy handlers.
+            if (msg.command == GuestCredentials.Command) { EmailLinkFlow.Read(msg.reader()); return; }
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{

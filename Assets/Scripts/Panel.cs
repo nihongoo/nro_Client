@@ -3111,7 +3111,7 @@ public partial class Panel : IActionListener, IChatable
     private void setTabTool()
     {
         SoundMn.gI().getSoundOption();
-        currentListLength = strTool.Length + (InventoryFrameActive ? 2 : 0);
+        currentListLength = strTool.Length + (InventoryFrameActive ? 3 : 0);
         ITEM_HEIGHT = 24;
         selected = (GameCanvas.isTouch ? (-1) : 0);
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -4402,7 +4402,7 @@ public partial class Panel : IActionListener, IChatable
             }
             g.setColor((i != selected) ? 15196114 : 16383818);
             g.fillRect(num, num2, num3, h);
-            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : "Rương đồ";
+            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : i == strTool.Length + 1 ? "Rương đồ" : GuestCredentials.AccountMenuLabel;
             mFont.tahoma_7b_dark.drawString(g, label, xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
             if (!label.Equals(mResources.gameInfo))
             {
@@ -7505,6 +7505,7 @@ public partial class Panel : IActionListener, IChatable
             return;
         }
         if (InventoryFrameActive && selected >= strTool.Length) {
+            if (selected == strTool.Length + 2) { EmailLinkFlow.Open(); return; }
             if (selected == strTool.Length) { CloseInventoryBagDetail(); inventoryAppearanceFromSettings = false; SelectInventoryFrameTab(4); }
             else if (selected == strTool.Length + 1) {
                 if (Char.myCharz().arrItemBox == null) { GameCanvas.startOKDlg("Chưa có dữ liệu rương. Hãy mở rương tại NPC."); return; }
