@@ -37,6 +37,7 @@ namespace UnityEngine {
  }
 }
 class Image {public Texture2D texture;public Image(int w,int h,string name){texture=new Texture2D(w,h,name);}}
+class GameScr {public static Image imgSkill=new Image(56,56,"native-orange-frame");}
 class Small {public Image img;}
 class SmallImage {
  public static Image[] imgbig;public static int[][] smallImg;public static Small[] imgNew;public static Image imgEmpty=new Image(1,1,"empty");public static int requests;
@@ -49,7 +50,7 @@ namespace Hud {
  static class InventoryFrame {
   public const int SlotBackground=9993045,Accent=16383818,Border=6702080;public static int fallbackFrames;
   public static Rect Intersection(Rect a,Rect b){float x=Math.Max(a.x,b.x),y=Math.Max(a.y,b.y);return new Rect(x,y,Math.Max(0,Math.Min(a.xMax,b.xMax)-x),Math.Max(0,Math.Min(a.yMax,b.yMax)-y));}
-  public static void Clip(mGraphics g,Rect r){}public static void Rounded(mGraphics g,Rect r,int color,int alpha,int border){fallbackFrames++;}
+  public static Rect Inset(Rect r,float padding)=>new Rect(r.x+padding,r.y+padding,r.width-2*padding,r.height-2*padding);public static void Clip(mGraphics g,Rect r){}public static void Rounded(mGraphics g,Rect r,int color,int alpha,int border){fallbackFrames++;}
  }
  static class HudButtonSkin {
   public static Image CopyNative(Image image,Action<Color32[],int,int> edit){var pixels=new[]{new Color32(255,170,0,255)};edit(pixels,1,1);RenderTests.Check(pixels[0].r==pixels[0].g&&pixels[0].g==pixels[0].b,"disabled button not grey");return new Image(image.texture.width,image.texture.height,"grey");}
@@ -91,6 +92,9 @@ class RenderTests {
     Check(GUI.textures[0].name==(!enabled?"grey":selected?"green-left":"orange-left"),"wrong button state skin");
     foreach(Rect r in GUI.rectangles)Check(r.x>=button.x*zoom&&r.xMax<=button.xMax*zoom+.01&&r.y==button.y*zoom&&r.height==button.height*zoom,"button clipped/outside hit rectangle");
    }
+   GUI.textures.Clear();
+   Hud.InventoryItemVisuals.PaintSkillIcon(g,0,bounds,viewport);
+   Check(GUI.textures.Count==2&&GUI.textures[0].name=="native-orange-frame","original orange frame missing");
    Check(GUI.groups==0,"rendering leaked GUI clipping group");
   }
   Console.WriteLine("PASS: "+checks+" production icon/font/button rendering checks");

@@ -18,7 +18,7 @@ class ItemOptionTemplate {public int id;}
 class Image {}
 static class InventoryBag {public const int Columns=5;}
 static class InventoryFrameSkin {public static Image Corners(int a,int b,byte c)=>null;}
-static class InventoryItemVisuals {public static void PaintNativeButton(mGraphics g,Rect r,bool enabled,bool selected){}public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
+static class InventoryItemVisuals {public static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false){}public static void PaintNativeButton(mGraphics g,Rect r,bool enabled,bool selected){}public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
 class PopUp {public static void paintPopUp(mGraphics g,int a,int b,int c,int d,int e,bool f,Image corner=null,int border=0){} }
 class mGraphics {
  public static int zoomLevel=2,addYWhenOpenKeyBoard;public List<string> texts=new List<string>();
@@ -98,7 +98,7 @@ class GameScr {
 partial class Panel {
  public bool InventoryFrameActive=true,isShow=true,InventoryBagDetailOpen;
  public int currentTabIndex=2,cmy,cmtoY,cmyLim,currentListLength,selected,waitToPerform,ITEM_HEIGHT;
- public object cp;internal Image imgX;public static string specialInfo;public static long[] t_tiemnang={50000000,250000000,1250000000};
+ public object cp;internal Image imgX;public static string specialInfo;public static short spearcialImage;public static long[] t_tiemnang={50000000,250000000,1250000000};
  public int InventoryFrameScroll=>cmy;public int[] InventoryFrameTabIds=>new[]{0,1,2,3,6};public int InventoryBagCellCount=>0;
  public Rect InventoryDetailUpperBounds=>new Rect();public Rect InventoryDetailLowerBounds=>new Rect();public int InventoryDetailButtonCount=>0;
  public Rect InventoryDetailButtonBounds(int n)=>new Rect();

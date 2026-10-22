@@ -166,6 +166,28 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
         }
+        internal static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false)
+        {
+            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
+            if(selected) {
+                InventoryFrame.Clip(g,clip);
+                InventoryFrame.Rounded(g,bounds,InventoryFrame.Accent,255,InventoryFrame.Accent);
+                bounds=InventoryFrame.Inset(bounds,1);
+            }
+            // Restore the actual orange skill-frame sprite, rather than a recolored popup border.
+            Image frame=GameScr.imgSkill;
+            if(frame?.texture!=null) {
+                int zoom=Mathf.Max(1,mGraphics.zoomLevel);Color previous=GUI.color;
+                try {
+                    GUI.color=Color.white;GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
+                    try {GUI.DrawTexture(new Rect((bounds.x-clip.x)*zoom,(bounds.y-clip.y)*zoom,bounds.width*zoom,bounds.height*zoom),frame.texture);}
+                    finally {GUI.EndGroup();}
+                } finally {GUI.color=previous;}
+            }
+            else {InventoryFrame.Clip(g,clip);InventoryFrame.Rounded(g,bounds,InventoryFrame.SlotBackground,255,0xFF9900);}
+            // The source is a 28-logical-pixel frame with an inset of four pixels.
+            PaintCompactIcon(g,id,InventoryFrame.Inset(bounds,bounds.width/7f),viewport);
+        }
         private static readonly Dictionary<Texture2D,Image> disabledButtons=new Dictionary<Texture2D,Image>();
         private static Image ButtonPart(Image source,bool disabled)
         {

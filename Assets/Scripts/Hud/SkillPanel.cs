@@ -26,7 +26,7 @@ namespace Hud
             float left=Content.center.x-(4*Size+3*Gap)/2;
             return new Rect(left+i%4*(Size+Gap),Content.y+i/4*(Size+Gap),Size,Size);
         }
-        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,LineHeight+2*Margin);
+        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(LineHeight,20)+2*Margin);
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
@@ -194,8 +194,7 @@ public partial class Panel
         for(int i=0;i<templates.Length;i++) {
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
-            InventoryFrame.Rounded(g,cell,InventoryFrame.SlotBackground,255,skillDetailOpen&&skillSelectedId==t.id?InventoryFrame.Accent:InventoryFrame.FrameBorder);
-            InventoryItemVisuals.PaintCompactIcon(g,t.iconId,new Rect(cell.x+2,cell.y+2,cell.width-4,cell.height-4),viewport);
+            InventoryItemVisuals.PaintSkillIcon(g,t.iconId,cell,viewport,skillDetailOpen&&skillSelectedId==t.id);
             mFont.tahoma_7b_white.drawString(g,(i+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
@@ -207,7 +206,10 @@ public partial class Panel
         // The long effect and the old second-line hint remain in the existing intrinsic popup.
         if(status.Length==0||status.StartsWith("Chưa",StringComparison.OrdinalIgnoreCase))status="chưa kích hoạt";
         else status="đã kích hoạt";
-        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,"Nội tại: "+status,InventoryFrame.Inset(intrinsic),viewport,0x00552D);
+        Rect intrinsicIcon=new Rect(intrinsic.x+InventoryFrame.Padding,intrinsic.center.y-10,20,20);
+        InventoryItemVisuals.PaintSkillIcon(g,spearcialImage,intrinsicIcon,viewport);
+        Rect intrinsicText=InventoryFrame.Inset(intrinsic);intrinsicText.x+=20+InventoryFrame.Gap;intrinsicText.width-=20+InventoryFrame.Gap;
+        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,"Nội tại: "+status,intrinsicText,viewport,0x00552D);
         Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,intrinsic.yMax+SkillPanelLayout.Gap,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
         InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,InventoryFrame.Border);
         if(!SkillPanelLayout.CombinedTitle) {
@@ -240,8 +242,8 @@ public partial class Panel
         for(int i=0;i<5;i++) {
             Rect row=SkillPanelLayout.PotentialBounds(i);InventoryFrame.Clip(g,viewport);
             InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
-            InventoryItemVisuals.PaintCompactIcon(g,icons[i],new Rect(row.x+InventoryFrame.Padding,row.center.y-7,14,14),viewport);
-            Rect line=new Rect(row.x+14+2*InventoryFrame.Padding,row.y+InventoryFrame.Padding,row.width-14-3*InventoryFrame.Padding-30,SkillPanelLayout.LineHeight);
+            InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x+InventoryFrame.Padding,row.center.y-10,20,20),viewport);
+            Rect line=new Rect(row.x+20+2*InventoryFrame.Padding,row.y+InventoryFrame.Padding,row.width-20-3*InventoryFrame.Padding-30,SkillPanelLayout.LineHeight);
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),line,viewport,0x536DCC);
             line.y+=SkillPanelLayout.LineHeight;
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,line,viewport,0x00552D);
@@ -268,8 +270,7 @@ public partial class Panel
         int slot=0;SkillTemplate[] templates=SkillTabState.Templates();for(int i=0;i<templates.Length;i++)if(templates[i].id==t.id)slot=i;
         InventoryFrame.Clip(g,upper);
         Rect icon=new Rect(upper.x+1,upper.y+1-skillTopScroll,32,32);
-        InventoryFrame.Rounded(g,icon,InventoryFrame.SlotBackground,255,InventoryFrame.Accent);
-        InventoryItemVisuals.PaintCompactIcon(g,t.iconId,InventoryFrame.Inset(icon,3),upper);
+        InventoryItemVisuals.PaintSkillIcon(g,t.iconId,icon,upper,true);
         string[] nameLines=mFont.tahoma_7b_dark.splitFontArray(t.name,Mathf.Max(1,(int)(upper.xMax-icon.xMax-25)));
         InventoryFrame.Clip(g,upper);
         for(int i=0;i<nameLines.Length;i++)mFont.tahoma_7b_dark.drawString(g,nameLines[i],(int)icon.xMax+5,(int)icon.y+i*12,0);
