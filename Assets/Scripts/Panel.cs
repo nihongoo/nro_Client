@@ -1724,56 +1724,7 @@ public partial class Panel : IActionListener, IChatable
         }
     }
 
-    public void addSkillDetail(SkillTemplate tp, Skill skill, Skill nextSkill)
-    {
-        string text = "|0|" + tp.name;
-        for (int i = 0; i < tp.description.Length; i++)
-        {
-            text = text + "\n|4|" + tp.description[i];
-        }
-        text += "\n--";
-        if (skill != null)
-        {
-            string text2 = text;
-            text = text2 + "\n|2|" + mResources.cap_do + ": " + skill.point;
-            text = text + "\n|5|" + NinjaUtil.replace(tp.damInfo, "#", skill.damage + string.Empty);
-            text2 = text;
-            text = text2 + "\n|5|" + mResources.KI_consume + skill.manaUse + ((tp.manaUseType != 1) ? string.Empty : "%");
-            text2 = text;
-            text = text2 + "\n|5|" + mResources.cooldown + ": " + skill.strTimeReplay() + "s";
-            text += "\n--";
-            if (skill.point == tp.maxPoint)
-            {
-                text = text + "\n|0|" + mResources.max_level_reach;
-            }
-            else
-            {
-                if (!skill.template.isSkillSpec())
-                {
-                    text2 = text;
-                    text = text2 + "\n|1|" + mResources.next_level_require + Res.formatNumber(nextSkill.powRequire) + " " + mResources.potential;
-                }
-                text = text + "\n|4|" + NinjaUtil.replace(tp.damInfo, "#", nextSkill.damage + string.Empty);
-            }
-        }
-        else
-        {
-            text = text + "\n|2|" + mResources.not_learn;
-            string text3 = text;
-            text = text3 + "\n|1|" + mResources.learn_require + Res.formatNumber(nextSkill.powRequire) + " " + mResources.potential;
-            text = text + "\n|4|" + NinjaUtil.replace(tp.damInfo, "#", nextSkill.damage + string.Empty);
-            text3 = text;
-            text = text3 + "\n|4|" + mResources.KI_consume + nextSkill.manaUse + ((tp.manaUseType != 1) ? string.Empty : "%");
-            text3 = text;
-            text = text3 + "\n|4|" + mResources.cooldown + ": " + nextSkill.strTimeReplay() + "s";
-        }
-        currItem = null;
-        partID = null;
-        charInfo = null;
-        cp = new ChatPopup();
-        popUpDetailInit(cp, text);
-        idIcon = 0;
-    }
+
 
     public void show()
     {
@@ -2619,6 +2570,7 @@ public partial class Panel : IActionListener, IChatable
 
     public void updateScroolMouse(int a)
     {
+        if (ScrollSkillPanelMouse(a)) return;
         if (ScrollInventoryBagMouse(a)) return;
         bool flag = false;
         if (GameCanvas.pxMouse > wScroll)
@@ -3319,6 +3271,7 @@ public partial class Panel : IActionListener, IChatable
 
     private void setTabSkill()
     {
+        if (InventoryFrameActive) { OpenSkillPanel(); return; }
         ITEM_HEIGHT = 30;
         currentListLength = Char.myCharz().nClass.availableSkillTemplates.Length + 6;
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -3757,7 +3710,7 @@ public partial class Panel : IActionListener, IChatable
                 }
                 if (currentTabIndex == 2)
                 {
-                    paintSkill(g);
+                    PaintSkillPanel(g);
                 }
                 if (currentTabIndex == 3)
                 {
@@ -4466,144 +4419,7 @@ public partial class Panel : IActionListener, IChatable
         paintScrollArrow(g);
     }
 
-    private void paintSkill(mGraphics g)
-    {
-        g.setColor(16711680);
-        g.setClip(xScroll, yScroll, wScroll, hScroll);
-        g.translate(0, -cmy);
-        SkillTemplate[] skillTemplates = Char.myCharz().nClass.availableSkillTemplates;
-        int num = skillTemplates.Length;
-        for (int i = 0; i < num + 6; i++)
-        {
-            int num2 = xScroll + 30;
-            int num3 = yScroll + i * ITEM_HEIGHT;
-            int num4 = wScroll - 30;
-            int h = ITEM_HEIGHT - 1;
-            int num5 = xScroll;
-            int num6 = yScroll + i * ITEM_HEIGHT;
-            _ = ITEM_HEIGHT;
-            if (num3 - cmy > yScroll + hScroll || num3 - cmy < yScroll - ITEM_HEIGHT)
-            {
-                continue;
-            }
-            g.setColor((i != selected) ? 15196114 : 16383818);
-            if (i == 5)
-            {
-                g.setColor((i != selected) ? 16765060 : 16776068);
-            }
-            g.fillRect(num2, num3, num4, h);
-            g.drawImage(GameScr.imgSkill, num5, num6, 0);
-            if (i == 0)
-            {
-                SmallImage.drawSmallImage(g, 567, num5 + 4, num6 + 4, 0, 0);
-                string st = mResources.HP + " " + mResources.root + ": " + NinjaUtil.getMoneys(Char.myCharz().cHPGoc);
-                mFont.tahoma_7b_blue.drawString(g, st, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().cHPGoc + 1000) + " " + mResources.potential + ": " + mResources.increase + " " + Char.myCharz().hpFrom1000TiemNang, num2 + 5, num3 + 15, 0);
-            }
-            if (i == 1)
-            {
-                SmallImage.drawSmallImage(g, 569, num5 + 4, num6 + 4, 0, 0);
-                string st2 = mResources.KI + " " + mResources.root + ": " + NinjaUtil.getMoneys(Char.myCharz().cMPGoc);
-                mFont.tahoma_7b_blue.drawString(g, st2, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().cMPGoc + 1000) + " " + mResources.potential + ": " + mResources.increase + " " + Char.myCharz().mpFrom1000TiemNang, num2 + 5, num3 + 15, 0);
-            }
-            if (i == 2)
-            {
-                SmallImage.drawSmallImage(g, 568, num5 + 4, num6 + 4, 0, 0);
-                string st3 = mResources.hit_point + " " + mResources.root + ": " + NinjaUtil.getMoneys(Char.myCharz().cDamGoc);
-                mFont.tahoma_7b_blue.drawString(g, st3, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_green2.drawString(g, NinjaUtil.getMoneys(Char.myCharz().cDamGoc * 100) + " " + mResources.potential + ": " + mResources.increase + " " + Char.myCharz().damFrom1000TiemNang, num2 + 5, num3 + 15, 0);
-            }
-            if (i == 3)
-            {
-                SmallImage.drawSmallImage(g, 721, num5 + 4, num6 + 4, 0, 0);
-                string st4 = mResources.armor + " " + mResources.root + ": " + NinjaUtil.getMoneys(Char.myCharz().cDefGoc);
-                mFont.tahoma_7b_blue.drawString(g, st4, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_green2.drawString(g, NinjaUtil.getMoneys(500000 + Char.myCharz().cDefGoc * 100000) + " " + mResources.potential + ": " + mResources.increase + " " + Char.myCharz().defFrom1000TiemNang, num2 + 5, num3 + 15, 0);
-            }
-            if (i == 4)
-            {
-                SmallImage.drawSmallImage(g, 719, num5 + 4, num6 + 4, 0, 0);
-                string st5 = mResources.critical + " " + mResources.root + ": " + Char.myCharz().cCriticalGoc + "%";
-                int num7 = Char.myCharz().cCriticalGoc;
-                if (num7 > t_tiemnang.Length - 1)
-                {
-                    num7 = t_tiemnang.Length - 1;
-                }
-                long num8 = t_tiemnang[num7];
-                mFont.tahoma_7b_blue.drawString(g, st5, num2 + 5, num3 + 3, 0);
-                long number = num8;
-                mFont.tahoma_7_green2.drawString(g, Res.formatNumber2(number) + " " + mResources.potential + ": " + mResources.increase + " " + Char.myCharz().criticalFrom1000Tiemnang, num2 + 5, num3 + 15, 0);
-            }
-            if (i == 5)
-            {
-                if (specialInfo != null)
-                {
-                    SmallImage.drawSmallImage(g, spearcialImage, num5 + 4, num6 + 4, 0, 0);
-                    string[] array = mFont.tahoma_7.splitFontArray(specialInfo, 120);
-                    for (int j = 0; j < array.Length; j++)
-                    {
-                        mFont.tahoma_7_green2.drawString(g, array[j], num2 + 5, num3 + 3 + j * 12, 0);
-                    }
-                }
-                else
-                {
-                    mFont.tahoma_7_green2.drawString(g, string.Empty, num2 + 5, num3 + 9, 0);
-                }
-            }
-            if (i < 6)
-            {
-                continue;
-            }
-            int num9 = i - 6;
-            SkillTemplate skillTemplate = skillTemplates[num9];
-            SmallImage.drawSmallImage(g, skillTemplate.iconId, num5 + 4, num6 + 4, 0, 0);
-            Skill skill = Char.myCharz().getSkill(skillTemplate);
-            if (skill != null)
-            {
-                mFont.tahoma_7b_blue.drawString(g, skillTemplate.name, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_blue.drawString(g, mResources.level + ": " + skill.point, num2 + num4 - 5, num3 + 3, mFont.RIGHT);
-                if (skill.point == skillTemplate.maxPoint)
-                {
-                    mFont.tahoma_7_green2.drawString(g, mResources.max_level_reach, num2 + 5, num3 + 15, 0);
-                }
-                else if (skill.template.isSkillSpec())
-                {
-                    string text = mResources.proficiency + ": ";
-                    int x = mFont.tahoma_7_green2.getWidthExactOf(text) + num2 + 5;
-                    int num10 = num3 + 15;
-                    mFont.tahoma_7_green2.drawString(g, text, num2 + 5, num10, 0);
-                    mFont.tahoma_7_green2.drawString(g, "(" + skill.strCurExp() + ")", num2 + num4 - 5, num10, mFont.RIGHT);
-                    num10 += 4;
-                    g.setColor(7169134);
-                    g.fillRect(x, num10, 50, 5);
-                    int num11 = skill.curExp * 50 / 1000;
-                    g.setColor(11992374);
-                    g.fillRect(x, num10, num11, 5);
-                    if (skill.curExp < 1000)
-                    {
-                    }
-                }
-                else
-                {
-                    Skill skill2 = skillTemplate.skills[skill.point];
-                    mFont.tahoma_7_green2.drawString(g, mResources.level + " " + (skill.point + 1) + " " + mResources.need + " " + Res.formatNumber2(skill2.powRequire) + " " + mResources.potential, num2 + 5, num3 + 15, 0);
-                }
-            }
-            else
-            {
-                Skill skill3 = skillTemplate.skills[0];
-                string st6 = mResources.need_upper + " " + Res.formatNumber2(skill3.powRequire) + " " + mResources.potential_to_learn;
-                if (skill3.template.id == 24 || skill3.template.id == 25 || skill3.template.id == 26)
-                {
-                    st6 = mResources.need_upper + " " + Res.formatNumber2(skill3.powRequire) + " " + mResources.potential_to_learn_tuyetKi;
-                }
-                mFont.tahoma_7b_green.drawString(g, skillTemplate.name, num2 + 5, num3 + 3, 0);
-                mFont.tahoma_7_green2.drawString(g, st6, num2 + 5, num3 + 15, 0);
-            }
-        }
-        paintScrollArrow(g);
-    }
+
 
     private void paintMapTrans(mGraphics g)
     {
@@ -8301,36 +8117,7 @@ public partial class Panel : IActionListener, IChatable
             GameCanvas.startOKDlg(mResources.can_not_do_when_die);
             return;
         }
-        if (selected != 0 && selected != 1 && selected != 2 && selected != 3 && selected != 4 && selected != 5)
-        {
-            int num = selected - 6;
-            SkillTemplate skillTemplate = Char.myCharz().nClass.availableSkillTemplates[num];
-            Skill skill = Char.myCharz().getSkill(skillTemplate);
-            Skill skill2 = null;
-            MyVector myVector = new MyVector(string.Empty);
-            if (skill != null)
-            {
-                if (skill.point == skillTemplate.maxPoint)
-                {
-                    myVector.addElement(new Command(mResources.make_shortcut, this, 9003, skill.template));
-                    myVector.addElement(new Command(mResources.CLOSE, 2));
-                }
-                else
-                {
-                    skill2 = skillTemplate.skills[skill.point];
-                    myVector.addElement(new Command(mResources.UPGRADE, this, 9002, skill2));
-                    myVector.addElement(new Command(mResources.make_shortcut, this, 9003, skill.template));
-                }
-            }
-            else
-            {
-                skill2 = skillTemplate.skills[0];
-                myVector.addElement(new Command(mResources.learn, this, 9004, skill2));
-            }
-            GameCanvas.menu.startAt(myVector, X, (selected + 1) * ITEM_HEIGHT - cmy + yScroll);
-            addSkillDetail(skillTemplate, skill, skill2);
-            return;
-        }
+        if (selected >= 6) { SelectPanelSkill(selected - 6); return; }
         long cTiemNang = Char.myCharz().cTiemNang;
         int cHPGoc = Char.myCharz().cHPGoc;
         int cMPGoc = Char.myCharz().cMPGoc;
@@ -8994,41 +8781,9 @@ public partial class Panel : IActionListener, IChatable
             GameCanvas.endDlg();
             InfoDlg.showWait();
         }
-        if (idAction == 9002)
-        {
-            Skill skill = (Skill)p;
-            if (skill.template.isSkillSpec())
-            {
-                GameCanvas.startOKDlg(mResources.updSkill);
-            }
-            else
-            {
-                GameCanvas.startOKDlg(mResources.can_buy_from_Uron1 + skill.powRequire + mResources.can_buy_from_Uron2 + skill.moreInfo + mResources.can_buy_from_Uron3);
-            }
-        }
-        if (idAction == 9003)
-        {
-            if (GameCanvas.isTouch && !Main.isPC)
-            {
-                GameScr.gI().doSetOnScreenSkill((SkillTemplate)p);
-            }
-            else
-            {
-                GameScr.gI().doSetKeySkill((SkillTemplate)p);
-            }
-        }
-        if (idAction == 9004)
-        {
-            Skill skill2 = (Skill)p;
-            if (skill2.template.isSkillSpec())
-            {
-                GameCanvas.startOKDlg(mResources.learnSkill);
-            }
-            else
-            {
-                GameCanvas.startOKDlg(mResources.can_buy_from_Uron1 + skill2.powRequire + mResources.can_buy_from_Uron2 + skill2.moreInfo + mResources.can_buy_from_Uron3);
-            }
-        }
+
+
+
         if (idAction == 10000)
         {
             InfoItem infoItem5 = (InfoItem)p;

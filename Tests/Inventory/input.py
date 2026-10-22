@@ -69,6 +69,7 @@ public partial class Panel {
  public int actions,lastAction,lastIndex=-1,menus;
  private void setTypeOption(){type=19;} private void hide(){isShow=false;isClose=true;}
  private void setTabTask(){} private void setTabInventory(bool reset){selected=-1;cmy=cmtoY=0;}
+ private void SyncSkillPanel(){} private bool UpdateSkillPanelInput()=>true; private bool ScrollSkillPanelMouse(int n)=>false;
  private void setTabSkill(){} private void setTabClans(){} private void setTabMod(){} private void setTabTool(){}
  private void doFireInventory(){menus++;GameCanvas.menu.showMenu=true;addItemDetail(currItem);}
  private void addItemDetail(Item item){cp=new ChatPopup{says=new[]{"item"}};}
@@ -167,7 +168,7 @@ class InputTests {
    Check(!GameCanvas.isPointerJustRelease&&p.actions==actions&&p.menus==menus,"swipe dispatched click/menu or left release pending");
    Check(HudLayout.GetRect(InventoryFrame.Tabs).y==header.y&&HudLayout.GetRect(InventoryFrame.Money).y==footer.y,"swipe moved fixed header/footer");
   }
-  foreach(int tab in new[]{0,2,3,6}) {
+  foreach(int tab in new[]{0,3,6}) {
    p.currentTabIndex=tab;p.selected=-1;GameCanvas.clearAllPointerEvent();
    GameCanvas.pointerPressed(10,95);
    Check(!p.FrameTick()&&GameCanvas.isPointerJustDown&&GameCanvas.isPointerDown,"frame swallowed legacy tab press");

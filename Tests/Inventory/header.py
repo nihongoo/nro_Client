@@ -85,10 +85,8 @@ class HeaderTests {
         foreach(int tick in new[]{0,12,19}) {
             p.W=width;c.cTiemNang=potential;GameCanvas.gameTick=tick;
             var skill=p.Paint(2);
-            Check(skill.text.Contains("Potential"),"Skill header lost its potential label");
-            Check(skill.text.Contains(NinjaUtil.getMoneys(potential)),"Skill header lost its current potential value");
-            Check(skill.text.Count==4&&!skill.text.Exists(t=>t.StartsWith("HP:")),"Equipment stats overpaint skill header");
-            Check(skill.ys[2]==26&&skill.ys[2]+10<=47,"Potential value is clipped by the header/body boundary");
+            Check(skill.text.Count==4&&skill.text[0]=="HP: 101/202"&&skill.text[1]=="KI: 303/404","Skills must share the character header with inventory");
+            Check(skill.ys[3]+10<=47,"Skill character header clipped");
             var task=p.Paint(0);
             Check(task.text.Exists(t=>t=="Stamina: 17/25")&&task.text.Contains("hero"),"Task stamina/name changed");
             Check(task.text.Contains("own-level")&&!task.text.Contains("Potential"),"Task level/header ownership changed");

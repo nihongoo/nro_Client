@@ -237,6 +237,8 @@ public partial class Panel
             int previousScroll = cmy;
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
             if (cmy != previousScroll) HudLayout.Invalidate();
+        } else if (currentTabIndex == 2) {
+            SyncSkillPanel();
         } else if (currentTabIndex == 4 || currentTabIndex == 5 || currentTabIndex == 6) {
             cmyLim = Mathf.Max(0, currentListLength * ITEM_HEIGHT - hScroll);
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
@@ -267,6 +269,7 @@ public partial class Panel
         if (isClose || cmtoX > 0) return true;
         if (!isShow || (chatTField != null && chatTField.isShow) || InfoDlg.isShow
             || tabIcon != null && tabIcon.isShow || GameCanvas.currentDialog != null || GameCanvas.menu.showMenu) return false;
+        if (currentTabIndex == 2) return UpdateSkillPanelInput();
         string hit = HudLayout.HitTest(new Vector2(GameCanvas.px, GameCanvas.py));
         if (GameCanvas.isPointerJustDown) {
             inventoryPressed = hit;
@@ -358,10 +361,7 @@ public partial class Panel
             mFont.tahoma_7_yellow.drawString(g, mResources.vitality + ": " + character.cStamina + "/" + character.cMaxStamina, 46, 12, 0);
             mFont.tahoma_7_yellow.drawString(g, character.me ? character.getStrLevel() : character.currStrLevel, 46, 23, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.power + ": " + NinjaUtil.getMoneys(character.cPower), 46, 34, 0);
-        } else if (currentTabIndex == 2) {
-            // Reuse the original skill header, including the current potential value.
-            paintSkillInfo(g);
-        } else if (currentTabIndex == 1) {
+        } else if (currentTabIndex == 1 || currentTabIndex == 2) {
             mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
@@ -412,14 +412,15 @@ public partial class Panel
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 PaintInventoryBag(g);
                 break;
-            case 2: paintSkill(g); break;
+            case 2: PaintSkillPanel(g); break;
             case 3: paintClans(g); break;
             case 4: paintModTabs(g); break;
             case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
-        if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
+        if (currentTabIndex == 2) PaintSkillDetail(g);
+        else if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
         if (tabIcon != null && tabIcon.isShow) tabIcon.paint(g);
         GameScr.resetTranslate(g);
     }
