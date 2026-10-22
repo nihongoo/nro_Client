@@ -23,12 +23,14 @@ namespace Hud
         internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
         internal static float ColumnGap => (Content.width-4*Size)/5;
         internal static float RowGap => Mathf.Max(Gap+3,InventoryFrame.Unit(14));
-        internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+Gap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-Gap));
+        internal static float GridBottomGap => Margin+3; // Include the three pixels by which Lv badges extend below the frames.
+        internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-GridBottomGap));
         internal static Rect CellBounds(int i)
         {
             return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
         }
-        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(LineHeight,20)+2*Margin);
+        internal static float IntrinsicTextWidth => Content.width-Size-Gap;
+        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(Size,Panel.SkillIntrinsicLines.Length*LineHeight));
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
@@ -202,15 +204,17 @@ public partial class Panel
         }
         viewport=SkillPanelLayout.ScrollBounds;
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
-        InventoryFrame.Clip(g,viewport);InventoryFrame.PaintSection(g,intrinsic,InventoryFrame.SlotBackground);
-        string status=CleanSkillText(specialInfo).Split('\n')[0];
-        // The long effect and the old second-line hint remain in the existing intrinsic popup.
-        if(status.Length==0||status.StartsWith("Chưa",StringComparison.OrdinalIgnoreCase))status="chưa kích hoạt";
-        else status="đã kích hoạt";
-        Rect intrinsicIcon=new Rect(intrinsic.x+InventoryFrame.Padding,intrinsic.center.y-10,20,20);
+        Rect intrinsicIcon=new Rect(intrinsic.x,intrinsic.center.y-SkillPanelLayout.Size/2,SkillPanelLayout.Size,SkillPanelLayout.Size);
         InventoryItemVisuals.PaintSkillIcon(g,spearcialImage,intrinsicIcon,viewport);
-        Rect intrinsicText=InventoryFrame.Inset(intrinsic);intrinsicText.x+=20+InventoryFrame.Gap;intrinsicText.width-=20+InventoryFrame.Gap;
-        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,"Nội tại: "+status,intrinsicText,viewport,0x00552D);
+        Rect intrinsicText=new Rect(intrinsicIcon.xMax+SkillPanelLayout.Gap,intrinsic.y,SkillPanelLayout.IntrinsicTextWidth,intrinsic.height);
+        InventoryFrame.Clip(g,viewport);g.setColor(16765060);
+        g.fillRect((int)intrinsicText.x,(int)intrinsicText.y,(int)intrinsicText.width,(int)intrinsicText.height);
+        string[] lines=SkillIntrinsicLines;
+        float textY=intrinsicText.center.y-lines.Length*SkillPanelLayout.LineHeight/2f;
+        foreach(string line in lines) {
+            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,line,new Rect(intrinsicText.x,textY,intrinsicText.width,SkillPanelLayout.LineHeight),viewport,0x00552D);
+            textY+=SkillPanelLayout.LineHeight;
+        }
         Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,intrinsic.yMax+SkillPanelLayout.Gap,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
         InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,InventoryFrame.Border);
         if(!SkillPanelLayout.CombinedTitle) {
@@ -218,6 +222,13 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,InventoryFrame.Border);
         }
         PaintSkillPotential(g,viewport);
+    }
+    internal static string[] SkillIntrinsicLines {
+        get {
+            string text=CleanSkillText(specialInfo);
+            if(text.Length==0)text="Nội tại: chưa kích hoạt";
+            return mFont.tahoma_7_green2.splitFontArray(text,Mathf.Max(1,(int)SkillPanelLayout.IntrinsicTextWidth));
+        }
     }
     private static string CleanSkillText(string text) => string.IsNullOrWhiteSpace(text)||string.Equals(text.Trim(),"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text.Trim();
     private static void PaintSkillFade(mGraphics g,Rect viewport,bool more)
