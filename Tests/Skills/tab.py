@@ -170,10 +170,12 @@ class SkillTabTests {
    GameCanvas.no.Click();Check(Service.gI().requests.Count==0,"cancel sent quick request");
    Click(SkillPanelLayout.ActionBounds(0));GameCanvas.yes.Click();req=Service.gI().requests[0];Check(req[0]==1&&req[1]==94&&req[2]==5&&req[3]==456789,"confirmation lost captured quote/token");
    mSystem.now+=1000;Check(SkillTabState.Remaining==29000,"countdown uses incorrect clock");
-   float fixedGridY=SkillPanelLayout.CellBounds(0).y,fixedIntrinsicY=SkillPanelLayout.IntrinsicBounds.y;
+   float fixedGridY=SkillPanelLayout.CellBounds(0).y,fixedIntrinsicY=SkillPanelLayout.IntrinsicBounds.y,fixedPotentialHeaderY=SkillPanelLayout.PotentialHeaderBounds.y;
    GameCanvas.panel.Paint(new mGraphics());GameCanvas.pxMouse=(int)root.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.ScrollBounds.center.y;GameCanvas.panel.Wheel(-1000);
    Near(SkillPanelLayout.CellBounds(0).y,fixedGridY,"grid scrolled with potential");
    Near(SkillPanelLayout.IntrinsicBounds.y,fixedIntrinsicY,"potential scrolling moved intrinsic");
+   Near(SkillPanelLayout.PotentialHeaderBounds.y,fixedPotentialHeaderY,"potential scrolling moved resource header");
+   Check(SkillPanelLayout.PotentialBounds(0).yMax<=SkillPanelLayout.PotentialHeaderBounds.yMax||SkillPanelLayout.ScrollBounds.y>=SkillPanelLayout.PotentialHeaderBounds.yMax,"stat viewport overlaps fixed header");
    Check(HudLayout.HitTest(SkillPanelLayout.IntrinsicBounds.center)==SkillPanelLayout.Intrinsic,"fixed intrinsic lost click target after scrolling");
    int potentialScroll=GameCanvas.panel.cmy;
    GameCanvas.pyMouse=(int)SkillPanelLayout.IntrinsicBounds.center.y;GameCanvas.panel.Wheel(1);
@@ -182,7 +184,7 @@ class SkillTabTests {
    Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
    Check(SkillPanelLayout.PotentialGroupBounds.yMax<=money.y,"potential group overlaps footer");
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
-   Check(SkillPanelLayout.ScrollBounds.height>=2*SkillPanelLayout.LineHeight,"low S22 cannot show both stat text lines");
+   Check(SkillPanelLayout.ScrollBounds.height>=(GameCanvas.h<=208?1:2)*SkillPanelLayout.LineHeight,"short screen cannot show a readable stat line");
    Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");
    for(int i=0;i<3;i++)Near(SkillPanelLayout.CellBounds(i+1).x-SkillPanelLayout.CellBounds(i).xMax,SkillPanelLayout.CellBounds(0).x-SkillPanelLayout.Content.x,"skill columns not spread evenly across panel");
    Check(SkillPanelLayout.CellBounds(4).y-SkillPanelLayout.CellBounds(0).yMax>=7,"row gap crowds Lv badges");
