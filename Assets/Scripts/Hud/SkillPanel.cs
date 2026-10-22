@@ -29,8 +29,10 @@ namespace Hud
         {
             return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
         }
-        internal static float IntrinsicTextWidth => Content.width-Size-Gap;
-        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(Size,Panel.SkillIntrinsicLines.Length*LineHeight));
+        internal static float IntrinsicTextWidth => Content.width-Size-Gap-Margin;
+        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Mathf.Max(Size,Panel.SkillIntrinsicLines.Length*LineHeight+2*Gap));
+        internal static Rect IntrinsicIconBounds => new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);
+        internal static Rect IntrinsicBarBounds => new Rect(IntrinsicIconBounds.center.x,IntrinsicBounds.y,IntrinsicBounds.xMax-IntrinsicIconBounds.center.x,IntrinsicBounds.height);
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
@@ -204,13 +206,15 @@ public partial class Panel
         }
         viewport=SkillPanelLayout.ScrollBounds;
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
-        Rect intrinsicIcon=new Rect(intrinsic.x,intrinsic.center.y-SkillPanelLayout.Size/2,SkillPanelLayout.Size,SkillPanelLayout.Size);
+        Rect intrinsicIcon=SkillPanelLayout.IntrinsicIconBounds;
+        // Join the description surface behind the icon: one clickable row, with no padded outer card.
+        InventoryFrame.Clip(g,viewport);
+        InventoryFrame.PaintSection(g,SkillPanelLayout.IntrinsicBarBounds,InventoryFrame.EquipmentBackground);
         InventoryItemVisuals.PaintSkillIcon(g,spearcialImage,intrinsicIcon,viewport);
         Rect intrinsicText=new Rect(intrinsicIcon.xMax+SkillPanelLayout.Gap,intrinsic.y,SkillPanelLayout.IntrinsicTextWidth,intrinsic.height);
         string[] lines=SkillIntrinsicLines;
         float textY=intrinsicText.center.y-lines.Length*SkillPanelLayout.LineHeight/2f;
         for(int i=0;i<lines.Length;i++) {
-            // Let the panel provide the surface; distinguish status from supporting text by typography.
             InventoryItemVisuals.PaintCompactText(g,i==0?mFont.tahoma_7b_dark:mFont.tahoma_7,lines[i],new Rect(intrinsicText.x,textY,intrinsicText.width,SkillPanelLayout.LineHeight),viewport,i==0?0x00552D:0x6E5A3D);
             textY+=SkillPanelLayout.LineHeight;
         }
