@@ -149,7 +149,7 @@ class SkillTabTests {
    Check(SkillPanelLayout.PotentialGroupBounds.y>=SkillPanelLayout.SkillsGroupBounds.yMax+SkillPanelLayout.Gap,"skill and potential groups are not separated");
    Near(SkillPanelLayout.PotentialGroupBounds.x,SkillPanelLayout.SkillsGroupBounds.x,"group borders misaligned");
    Check(SkillPanelLayout.SkillsGroupBounds.yMax>=SkillPanelLayout.IntrinsicBounds.yMax+InventoryFrame.Padding,"intrinsic outside skill group");
-   Near(SkillPanelLayout.Size,Math.Min(InventoryFrame.Unit(mobile?44:60),(SkillPanelLayout.Content.width-3*SkillPanelLayout.Gap)/4),"skill frames smaller than design");
+   Check(SkillPanelLayout.Size<=SkillPanelLayout.DesignSize,"responsive skill frames exceed design size");
    for(int i=0;i<8;i++){
     Rect cell=HudLayout.GetRect(SkillPanelLayout.Cell(i));Check(cell.width>0&&cell.height>0,"missing grid cell");
     Check(HudLayout.HitTest(cell.center)==SkillPanelLayout.Cell(i),"cell not clickable");
@@ -170,13 +170,17 @@ class SkillTabTests {
    GameCanvas.no.Click();Check(Service.gI().requests.Count==0,"cancel sent quick request");
    Click(SkillPanelLayout.ActionBounds(0));GameCanvas.yes.Click();req=Service.gI().requests[0];Check(req[0]==1&&req[1]==94&&req[2]==5&&req[3]==456789,"confirmation lost captured quote/token");
    mSystem.now+=1000;Check(SkillTabState.Remaining==29000,"countdown uses incorrect clock");
-   float fixedGridY=SkillPanelLayout.CellBounds(0).y;
+   float fixedGridY=SkillPanelLayout.CellBounds(0).y,fixedIntrinsicY=SkillPanelLayout.IntrinsicBounds.y;
    GameCanvas.panel.Paint(new mGraphics());GameCanvas.pxMouse=(int)root.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.ScrollBounds.center.y;GameCanvas.panel.Wheel(-1000);
    Near(SkillPanelLayout.CellBounds(0).y,fixedGridY,"grid scrolled with potential");
-   Check(SkillPanelLayout.IntrinsicBounds.y+GameCanvas.panel.cmy>=SkillPanelLayout.CellBounds(4).yMax,"intrinsic overlaps fixed grid");
+   Near(SkillPanelLayout.IntrinsicBounds.y,fixedIntrinsicY,"potential scrolling moved intrinsic");
+   Check(HudLayout.HitTest(SkillPanelLayout.IntrinsicBounds.center)==SkillPanelLayout.Intrinsic,"fixed intrinsic lost click target after scrolling");
+   int potentialScroll=GameCanvas.panel.cmy;
+   GameCanvas.pyMouse=(int)SkillPanelLayout.IntrinsicBounds.center.y;GameCanvas.panel.Wheel(1);
+   Check(GameCanvas.panel.cmy==potentialScroll,"scrolling on intrinsic affects potential content");
    HudLayout.Invalidate();Rect last=HudLayout.GetRect(SkillPanelLayout.Potential(4));Check(last.height>0&&last.yMax<=money.y,"potential rows not reachable by scrolling");
    Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
-   Check(SkillPanelLayout.PotentialGroupBounds.yMax<=SkillPanelLayout.ScrollBounds.yMax+.1f,"potential group bottom border unreachable");
+   Check(SkillPanelLayout.PotentialGroupBounds.yMax<=money.y,"potential group overlaps footer");
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
    Check(SkillPanelLayout.ScrollBounds.height>=2*SkillPanelLayout.LineHeight,"low S22 cannot show both stat text lines");
    Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");
@@ -184,7 +188,7 @@ class SkillTabTests {
    Check(SkillPanelLayout.CellBounds(4).y-SkillPanelLayout.CellBounds(0).yMax>=7,"row gap crowds Lv badges");
    Near(SkillPanelLayout.DetailContent.x-SkillPanelLayout.DetailBounds.x,InventoryFrame.Padding,"right panel padding");
    Near(SkillPanelLayout.Content.x-SkillPanelLayout.Frame.x,InventoryFrame.Padding,"left panel padding");
-   for(int i=0;i<5;i++)Near(SkillPanelLayout.PotentialBounds(i).height,SkillPanelLayout.IntrinsicBounds.height,"stat row size differs from intrinsic row");
+   for(int i=0;i<5;i++)Check(SkillPanelLayout.PotentialBounds(i).height>=SkillPanelLayout.IntrinsicBounds.height&&SkillPanelLayout.PotentialBounds(i).height>=2*SkillPanelLayout.LineHeight+2,"compact stat row cannot contain two text lines");
    foreach(SkillTemplate template in c.nClass.availableSkillTemplates)template.description=new[]{"null"};
    GameCanvas.pxMouse=(int)detail.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.UpperBounds.center.y;GameCanvas.panel.Wheel(-1000);
    var descriptionPaint=new mGraphics();GameCanvas.panel.Paint(descriptionPaint);

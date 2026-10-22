@@ -19,30 +19,31 @@ namespace Hud
         internal static Rect Content => InventoryFrame.Inset(Frame);
         internal static int LineHeight => Mathf.Max(12,Mathf.Max(mFont.tahoma_7b_blue.getHeight(),mFont.tahoma_7_green2.getHeight()));
         internal const int PotentialGap=1;
-        internal static float RowHeight => Size;
-        internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
+        internal static float RowHeight => Mathf.Max(Size,2*LineHeight+2);
+        internal static float DesignSize => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
+        // Reserve a usable lower viewport on short screens while keeping both groups independent.
+        internal static float Size => Mathf.Min(DesignSize,Mathf.Max(8,(Frame.height-4*Margin-2*Gap-RowGap-GridBottomGap-2*LineHeight)/3));
         internal static float ColumnGap => (Content.width-4*Size)/5;
         internal static float RowGap => Mathf.Max(Gap+3,InventoryFrame.Unit(14));
         internal static float GridBottomGap => Margin+3; // Include the three pixels by which Lv badges extend below the frames.
-        internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-GridBottomGap));
+        internal static Rect ScrollBounds => InventoryFrame.Inset(PotentialGroupBounds);
         internal static Rect CellBounds(int i)
         {
             return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
         }
         internal static float IntrinsicTextWidth => Content.width-Size-Gap-Margin;
-        internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Size);
+        internal static Rect IntrinsicBounds => new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Size);
         internal static Rect IntrinsicIconBounds => new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);
         internal static Rect IntrinsicBarBounds => IntrinsicBounds;
         internal static Rect SkillsGroupBounds => new Rect(Frame.x,Frame.y,Frame.width,
             Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);
         internal static float PotentialGroupTop => IntrinsicBounds.yMax+Margin+Gap;
-        internal static Rect PotentialGroupBounds => new Rect(Frame.x,PotentialGroupTop,Frame.width,
-            PotentialBounds(4).yMax+Margin-PotentialGroupTop);
+        internal static Rect PotentialGroupBounds => new Rect(Frame.x,PotentialGroupTop,Frame.width,Mathf.Max(0,Frame.yMax-PotentialGroupTop));
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
         internal static int TitleHeight => (CombinedTitle?1:2)*LineHeight+2*Gap;
-        internal static Rect PotentialBounds(int i) => new Rect(Content.x,PotentialGroupTop+Margin+TitleHeight+i*(RowHeight+PotentialGap),Content.width,RowHeight);
+        internal static Rect PotentialBounds(int i) => new Rect(Content.x,ScrollBounds.y+TitleHeight+i*(RowHeight+PotentialGap)-(GameCanvas.panel?.SkillScroll??0),Content.width,RowHeight);
         internal static Rect DetailBounds => InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
         internal static Rect DetailContent => InventoryFrame.Inset(DetailBounds);
         internal static float ControlsTop => DetailContent.yMax-100;
@@ -66,7 +67,7 @@ namespace Hud
                 HudLayout.Register(Cell(i),()=>InventoryFrame.Intersection(CellBounds(slot),Content),HudLayout.OverlayOrder+12,()=>Visible&&slot<SkillTabState.Templates().Length);
                 HudLayout.Register(Key(i),()=>KeyBounds(slot),HudLayout.OverlayOrder+17,()=>DetailVisible);
             }
-            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible);
+            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,Content),HudLayout.OverlayOrder+12,()=>Visible);
             for(int i=0;i<5;i++) { int row=i; HudLayout.Register(Potential(i),()=>InventoryFrame.Intersection(PotentialBounds(row),ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible); }
             HudLayout.Register(Detail,()=>DetailBounds,HudLayout.OverlayOrder+14,()=>DetailVisible);
             HudLayout.Register(Upper,()=>UpperBounds,HudLayout.OverlayOrder+15,()=>DetailVisible);
@@ -105,8 +106,8 @@ public partial class Panel
     private void SyncSkillPanel()
     {
         currentListLength=14;
-        float bottom=SkillPanelLayout.PotentialGroupBounds.yMax+cmy;
-        cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(bottom-SkillPanelLayout.Content.yMax));
+        float bottom=SkillPanelLayout.PotentialBounds(4).yMax+cmy;
+        cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(bottom-SkillPanelLayout.ScrollBounds.yMax));
         cmy=cmtoY=Mathf.Clamp(cmy,0,cmyLim);
     }
     private void SelectPanelSkill(int slot)
@@ -124,7 +125,9 @@ public partial class Panel
             skillDragStart=hit==SkillPanelLayout.Upper ? skillTopScroll : cmy;
             GameCanvas.isPointerJustDown=false;
         }
-        bool left=skillPressed!=null&&(skillPressed==SkillPanelLayout.Left||skillPressed==SkillPanelLayout.Intrinsic||skillPressed.StartsWith("skills.potential."));
+        bool left=skillPressed!=null&&(skillPressed==SkillPanelLayout.Left||skillPressed.StartsWith("skills.potential."));
+        if(skillPressed==SkillPanelLayout.Intrinsic&&(GameCanvas.isPointerDown||GameCanvas.isPointerJustRelease)
+            &&(System.Math.Abs(GameCanvas.py-skillDragY)>4||System.Math.Abs(GameCanvas.px-skillDragX)>4))skillDragging=true;
         bool upper=skillPressed==SkillPanelLayout.Upper;
         if((left||upper)&&(GameCanvas.isPointerDown||GameCanvas.isPointerJustRelease)) {
             int delta=GameCanvas.py-skillDragY;
@@ -209,9 +212,7 @@ public partial class Panel
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
-        viewport=SkillPanelLayout.ScrollBounds;
-        InventoryFrame.Clip(g,viewport);
-        InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
+        viewport=SkillPanelLayout.Content;
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
         Rect intrinsicIcon=SkillPanelLayout.IntrinsicIconBounds;
         // One frame encloses the icon and description, exactly as tall as the skill icon.
@@ -226,11 +227,14 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,i==0?mFont.tahoma_7b_dark:mFont.tahoma_7,lines[i],new Rect(intrinsicText.x,textY,intrinsicText.width,lineHeight),viewport,i==0?0x00552D:0x6E5A3D);
             textY+=lineHeight;
         }
-        Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,SkillPanelLayout.PotentialGroupTop+SkillPanelLayout.Margin,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
-        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,InventoryFrame.Border);
+        InventoryFrame.Clip(g,SkillPanelLayout.PotentialGroupBounds);
+        InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
+        viewport=SkillPanelLayout.ScrollBounds;
+        Rect title=new Rect(viewport.x+SkillPanelLayout.Margin,viewport.y-SkillScroll,viewport.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
+        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,0x362413);
         if(!SkillPanelLayout.CombinedTitle) {
             title.y+=SkillPanelLayout.LineHeight;
-            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,InventoryFrame.Border);
+            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,0x362413);
         }
         PaintSkillPotential(g,viewport);
     }
