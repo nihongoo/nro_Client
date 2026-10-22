@@ -7,7 +7,7 @@ namespace Hud
 {
     internal static class SkillPanelLayout
     {
-        internal const string Detail = "skills.detail", Close = "skills.close", Upper = "skills.upper", Lower = "skills.lower", Left = "skills.left", Intrinsic = "skills.intrinsic";
+        internal const string Detail = "skills.detail", Close = "skills.close", Upper = "skills.upper", Left = "skills.left", Intrinsic = "skills.intrinsic";
         internal static string Cell(int i) => "skills.cell." + i;
         internal static string Key(int i) => "skills.key." + i;
         internal static string Potential(int i) => "skills.potential." + i;
@@ -15,19 +15,19 @@ namespace Hud
         private static bool Visible => InventoryFrame.Visible && GameCanvas.panel.SkillPanelActive;
         private static bool DetailVisible => Visible && GameCanvas.panel.SkillDetailOpen;
         internal static Rect Content => new Rect(3,76,HudLayout.GetRect(InventoryFrame.Root).width-6,Mathf.Max(0,HudLayout.GetRect(InventoryFrame.Money).y-78));
-        internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60), (Content.width-28)/4);
+        internal const int Margin=6, Gap=4;
+        internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 36 : 48), (Content.width-28)/4);
+        internal static Rect ScrollBounds => new Rect(Content.x,CellBounds(4).yMax+Gap,Content.width,Mathf.Max(0,Content.yMax-CellBounds(4).yMax-Gap));
         internal static Rect CellBounds(int i)
         {
             float gap=(Content.width-4*Size)/5;
-            return new Rect(Content.x+gap+i%4*(Size+gap), Content.y+4+i/4*(Size+18)-(GameCanvas.panel?.SkillScroll??0), Size,Size);
+            return new Rect(Content.x+gap+i%4*(Size+gap), Content.y+Gap+i/4*(Size+Gap), Size,Size);
         }
-        internal static Rect IntrinsicBounds => new Rect(Content.x+2,CellBounds(4).yMax+19,Content.width-4,22);
-        internal static Rect PotentialBounds(int i) => new Rect(Content.x+2,IntrinsicBounds.yMax+31+i*30,Content.width-4,29);
+        internal static Rect IntrinsicBounds => new Rect(Content.x+3,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width-6,16);
+        internal static Rect PotentialBounds(int i) => new Rect(Content.x+3,IntrinsicBounds.yMax+34+i*20,Content.width-6,18);
         internal static Rect DetailBounds => HudLayout.GetRect(InventoryFrame.Detail);
         internal static float ControlsTop => DetailBounds.yMax-93;
-        internal static float Divider => Mathf.Max(30,Mathf.Min(DetailBounds.height/2,ControlsTop-30));
-        internal static Rect UpperBounds => new Rect(DetailBounds.x+5,4,DetailBounds.width-10,Mathf.Max(1,Divider-8));
-        internal static Rect LowerBounds => new Rect(DetailBounds.x+5,Divider+5,DetailBounds.width-10,Mathf.Max(1,ControlsTop-Divider-10));
+        internal static Rect UpperBounds => new Rect(DetailBounds.x+Margin,Margin,DetailBounds.width-2*Margin,Mathf.Max(1,ControlsTop-2*Margin));
         internal static Rect KeyBounds(int i)
         {
             Rect r=DetailBounds; float width=(r.width-18)/4;
@@ -41,17 +41,16 @@ namespace Hud
         }
         internal static void Register()
         {
-            HudLayout.Register(Left,()=>Content,HudLayout.OverlayOrder+11,()=>Visible);
+            HudLayout.Register(Left,()=>ScrollBounds,HudLayout.OverlayOrder+11,()=>Visible);
             for(int i=0;i<8;i++) {
                 int slot=i;
                 HudLayout.Register(Cell(i),()=>InventoryFrame.Intersection(CellBounds(slot),Content),HudLayout.OverlayOrder+12,()=>Visible&&slot<SkillTabState.Templates().Length);
                 HudLayout.Register(Key(i),()=>KeyBounds(slot),HudLayout.OverlayOrder+17,()=>DetailVisible);
             }
-            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,Content),HudLayout.OverlayOrder+12,()=>Visible);
-            for(int i=0;i<5;i++) { int row=i; HudLayout.Register(Potential(i),()=>InventoryFrame.Intersection(PotentialBounds(row),Content),HudLayout.OverlayOrder+12,()=>Visible); }
+            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible);
+            for(int i=0;i<5;i++) { int row=i; HudLayout.Register(Potential(i),()=>InventoryFrame.Intersection(PotentialBounds(row),ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible); }
             HudLayout.Register(Detail,()=>DetailBounds,HudLayout.OverlayOrder+14,()=>DetailVisible);
             HudLayout.Register(Upper,()=>UpperBounds,HudLayout.OverlayOrder+15,()=>DetailVisible);
-            HudLayout.Register(Lower,()=>LowerBounds,HudLayout.OverlayOrder+15,()=>DetailVisible);
             HudLayout.Register(Close,()=>new Rect(DetailBounds.xMax-21,3,18,18),HudLayout.OverlayOrder+18,()=>DetailVisible);
             for(int i=0;i<2;i++) { int button=i; HudLayout.Register(Action(i),()=>ActionBounds(button),HudLayout.OverlayOrder+17,()=>DetailVisible&&(button==0||GameCanvas.panel.SkillHasBook)); }
         }
@@ -60,12 +59,12 @@ namespace Hud
 
 public partial class Panel
 {
-    private int skillSelectedId=-1, skillTopScroll, skillBottomScroll;
+    private int skillSelectedId=-1, skillTopScroll;
     private bool skillDetailOpen;
     private string skillPressed;
     private int skillDragX,skillDragY,skillDragStart;
     private bool skillDragging;
-    private int skillUpperHeight,skillLowerHeight;
+    private int skillUpperHeight;
     internal bool SkillPanelActive => InventoryFrameActive && currentTabIndex==2;
     internal int SkillScroll => cmy;
     internal bool SkillDetailOpen => SkillPanelActive && skillDetailOpen && SelectedSkillTemplate!=null;
@@ -78,7 +77,7 @@ public partial class Panel
         && CurrentPanelLevel<SelectedSkillTemplate.maxPoint && SkillTabState.FindBook(skillSelectedId,CurrentPanelLevel+1)>=0;
     private void OpenSkillPanel()
     {
-        cp=null; waitToPerform=0; skillTopScroll=skillBottomScroll=0; selected=-1; cmy=cmtoY=0; ITEM_HEIGHT=30;
+        cp=null; waitToPerform=0; skillTopScroll=0; selected=-1; cmy=cmtoY=0; ITEM_HEIGHT=30;
         SkillTemplate[] templates=SkillTabState.Templates();
         bool found=false;foreach(SkillTemplate t in templates) found|=t.id==skillSelectedId;
         if(!found) skillSelectedId=templates.Length>0 ? templates[0].id : -1;
@@ -94,7 +93,7 @@ public partial class Panel
     private void SelectPanelSkill(int slot)
     {
         SkillTemplate[] templates=SkillTabState.Templates(); if(slot<0||slot>=templates.Length)return;
-        skillSelectedId=templates[slot].id; skillDetailOpen=true; skillTopScroll=skillBottomScroll=0; cp=null;
+        skillSelectedId=templates[slot].id; skillDetailOpen=true; skillTopScroll=0; cp=null;
         HudLayout.Invalidate();
     }
     private bool UpdateSkillPanelInput()
@@ -103,17 +102,16 @@ public partial class Panel
         string hit=HudLayout.HitTest(new Vector2(GameCanvas.px,GameCanvas.py));
         if(GameCanvas.isPointerJustDown) {
             skillPressed=hit;skillDragX=GameCanvas.px;skillDragY=GameCanvas.py;skillDragging=false;
-            skillDragStart=hit==SkillPanelLayout.Upper ? skillTopScroll : hit==SkillPanelLayout.Lower ? skillBottomScroll : cmy;
+            skillDragStart=hit==SkillPanelLayout.Upper ? skillTopScroll : cmy;
             GameCanvas.isPointerJustDown=false;
         }
-        bool left=skillPressed!=null&&(skillPressed==SkillPanelLayout.Left||skillPressed==SkillPanelLayout.Intrinsic||skillPressed.StartsWith("skills.cell.")||skillPressed.StartsWith("skills.potential."));
-        bool upper=skillPressed==SkillPanelLayout.Upper,lower=skillPressed==SkillPanelLayout.Lower;
-        if((left||upper||lower)&&(GameCanvas.isPointerDown||GameCanvas.isPointerJustRelease)) {
+        bool left=skillPressed!=null&&(skillPressed==SkillPanelLayout.Left||skillPressed==SkillPanelLayout.Intrinsic||skillPressed.StartsWith("skills.potential."));
+        bool upper=skillPressed==SkillPanelLayout.Upper;
+        if((left||upper)&&(GameCanvas.isPointerDown||GameCanvas.isPointerJustRelease)) {
             int delta=GameCanvas.py-skillDragY;
             if(System.Math.Abs(delta)>4||System.Math.Abs(GameCanvas.px-skillDragX)>4)skillDragging=true;
             if(skillDragging) {
                 if(upper)skillTopScroll=Mathf.Clamp(skillDragStart-delta,0,Mathf.Max(0,skillUpperHeight-(int)SkillPanelLayout.UpperBounds.height));
-                else if(lower)skillBottomScroll=Mathf.Clamp(skillDragStart-delta,0,Mathf.Max(0,skillLowerHeight-(int)SkillPanelLayout.LowerBounds.height));
                 else cmy=cmtoY=Mathf.Clamp(skillDragStart-delta,0,cmyLim);
                 HudLayout.Invalidate();
             }
@@ -155,18 +153,17 @@ public partial class Panel
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
         if (SkillDetailOpen && SkillPanelLayout.UpperBounds.Contains(point))
             skillTopScroll = Mathf.Clamp(skillTopScroll - amount * 24, 0, Mathf.Max(0, skillUpperHeight - (int)SkillPanelLayout.UpperBounds.height));
-        else if (SkillDetailOpen && SkillPanelLayout.LowerBounds.Contains(point))
-            skillBottomScroll = Mathf.Clamp(skillBottomScroll - amount * 24, 0, Mathf.Max(0, skillLowerHeight - (int)SkillPanelLayout.LowerBounds.height));
-        else if (SkillPanelLayout.Content.Contains(point)) cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim);
+        else if (SkillPanelLayout.ScrollBounds.Contains(point)) cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim);
         HudLayout.Invalidate();
         return true;
     }
 
     private void ActivateSkillAction()
     {
-        SkillTemplate template=SelectedSkillTemplate;if(template==null||!SkillTabState.Ready)return;
-        if(SkillTabState.Studying(template.id)) {SkillTabState.ConfirmQuick();return;}
+        SkillTemplate template=SelectedSkillTemplate;if(template==null)return;
         if(CurrentPanelLevel>=template.maxPoint)return;
+        if(SkillTabState.Studying(template.id)) {SkillTabState.ConfirmQuick();return;}
+        if(SkillTabState.Waiting&&!SkillHasBook)return;
         int book=SkillTabState.FindBook(template.id,CurrentPanelLevel+1);
         if(book>=0)SkillTabState.UseBook(Char.myCharz().arrItemBag[book].template.id);
         else SkillTabState.GoToTeacher();
@@ -189,22 +186,32 @@ public partial class Panel
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
             InventoryFrame.Rounded(g,cell,InventoryFrame.SlotBackground,255,skillDetailOpen&&skillSelectedId==t.id?InventoryFrame.Accent:InventoryFrame.Border);
-            InventoryFrame.Clip(g,InventoryFrame.Intersection(cell,viewport));
-            SmallImage.drawSmallImage(g,t.iconId,(int)cell.center.x,(int)cell.center.y,0,mGraphics.HCENTER|mGraphics.VCENTER);
+            InventoryItemVisuals.PaintCompactIcon(g,t.iconId,new Rect(cell.x+2,cell.y+2,cell.width-4,cell.height-4),viewport);
             mFont.tahoma_7b_white.drawString(g,(i+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
-            InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false);
-            InventoryFrame.Clip(g,InventoryFrame.Intersection(new Rect(cell.x-5,cell.yMax+6,cell.width+10,12),viewport));
-            mFont.tahoma_7.drawString(g,SkillFit(mFont.tahoma_7,t.name,cell.width+8),(int)cell.center.x,(int)cell.yMax+6,mFont.CENTER);
+            InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
+        viewport=SkillPanelLayout.ScrollBounds;
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
         InventoryFrame.Clip(g,viewport);InventoryFrame.Rounded(g,intrinsic,InventoryFrame.SlotBackground);
-        SkillLabel(g,mFont.tahoma_7_green2,"Nội tại: "+(specialInfo??"chưa kích hoạt"),InventoryFrame.Intersection(intrinsic,viewport));
-        Rect title=new Rect(viewport.x,intrinsic.yMax+3,viewport.width,13);
-        SkillLabel(g,mFont.tahoma_7b_dark,mResources.potential+": "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang),InventoryFrame.Intersection(title,viewport));
-        Rect activity=new Rect(viewport.x,title.yMax,viewport.width,12);
-        SkillLabel(g,mFont.tahoma_7,mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong),InventoryFrame.Intersection(activity,viewport));
+        string status=CleanSkillText(specialInfo).Split('\n')[0];
+        // The long effect and the old second-line hint remain in the existing intrinsic popup.
+        if(status.Length==0||status.StartsWith("Chưa",StringComparison.OrdinalIgnoreCase))status="chưa kích hoạt";
+        else status="đã kích hoạt";
+        SkillLabel(g,mFont.tahoma_7_green2,"Nội tại: "+status,InventoryFrame.Intersection(intrinsic,viewport));
+        Rect title=new Rect(intrinsic.x,intrinsic.yMax+4,intrinsic.width,28);
+        InventoryFrame.Clip(g,viewport);InventoryFrame.Rounded(g,title,InventoryFrame.EquipmentBackground);
+        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,"Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang),new Rect(title.x,title.y,title.width,14),viewport,InventoryFrame.Border);
+        SkillLabel(g,mFont.tahoma_7,mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong),InventoryFrame.Intersection(new Rect(title.x,title.y+14,title.width,12),viewport));
         PaintSkillPotential(g,viewport);
+        PaintSkillFade(g,viewport,cmy<cmyLim);
+    }
+    private static string CleanSkillText(string text) => string.IsNullOrWhiteSpace(text)||string.Equals(text.Trim(),"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text.Trim();
+    private static void PaintSkillFade(mGraphics g,Rect viewport,bool more)
+    {
+        if(!more)return;
+        InventoryFrame.Clip(g,viewport);
+        for(int i=0;i<8;i++) {g.setColor(InventoryFrame.MoneyBackground,(i+1)/9f);g.fillRect((int)viewport.x,(int)viewport.yMax-8+i,(int)viewport.width,1);}
     }
     private static void PaintStudyClock(mGraphics g,Rect cell,Rect viewport)
     {
@@ -222,31 +229,31 @@ public partial class Panel
         for(int i=0;i<5;i++) {
             Rect row=SkillPanelLayout.PotentialBounds(i);InventoryFrame.Clip(g,viewport);
             InventoryFrame.Rounded(g,row,InventoryFrame.EquipmentBackground);
-            SmallImage.drawSmallImage(g,icons[i],(int)row.x+12,(int)row.center.y,0,mGraphics.HCENTER|mGraphics.VCENTER);
-            Rect line=new Rect(row.x+25,row.y,row.width-27,14);
-            SkillLabel(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),InventoryFrame.Intersection(line,viewport));
-            line.y+=14;
-            SkillLabel(g,mFont.tahoma_7_green2,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,InventoryFrame.Intersection(line,viewport));
+            InventoryItemVisuals.PaintCompactIcon(g,icons[i],new Rect(row.x+2,row.y+3,12,12),viewport);
+            Rect line=new Rect(row.x+19,row.y,row.width-53,9);
+            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),line,viewport,0x536DCC);
+            line.y+=9;
+            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,line,viewport,0x00552D);
         }
     }
     private sealed class SkillLine {internal string Text;internal mFont Font;}
     private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width)
     {
-        foreach(string line in font.splitFontArray(text??string.Empty,Mathf.Max(1,(int)width-4)))lines.Add(new SkillLine{Text=line,Font=font});
+        if(string.IsNullOrWhiteSpace(text))return;
+        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4)))lines.Add(new SkillLine{Text=line,Font=font});
     }
     private static int PaintSkillLines(mGraphics g,List<SkillLine> lines,Rect viewport,int scroll,int initial=0)
     {
         InventoryFrame.Clip(g,viewport);int y=(int)viewport.y+initial-scroll;
-        foreach(SkillLine line in lines){line.Font.drawString(g,line.Text,(int)viewport.x+1,y,0);y+=12;}
+        foreach(SkillLine line in lines){InventoryItemVisuals.PaintCompactText(g,line.Font,line.Text,new Rect(viewport.x,y,viewport.width,12),viewport,line.Font==mFont.tahoma_7_green2?0x00552D:InventoryFrame.Border);y+=12;}
         return initial+lines.Count*12;
     }
     private void PaintSkillDetail(mGraphics g)
     {
         if(!SkillDetailOpen)return;
-        Rect r=SkillPanelLayout.DetailBounds,upper=SkillPanelLayout.UpperBounds,lower=SkillPanelLayout.LowerBounds;
+        Rect r=SkillPanelLayout.DetailBounds,upper=SkillPanelLayout.UpperBounds,lower=upper;
         SkillTemplate t=SelectedSkillTemplate;Skill current=CurrentPanelSkill;int level=current?.point??0;
         InventoryFrame.Clip(g,r);InventoryFrame.Rounded(g,r,InventoryFrame.EquipmentBackground);
-        g.setColor(InventoryFrame.Border);g.fillRect((int)r.x+5,(int)SkillPanelLayout.Divider,(int)r.width-10,1);
         int slot=0;SkillTemplate[] templates=SkillTabState.Templates();for(int i=0;i<templates.Length;i++)if(templates[i].id==t.id)slot=i;
         InventoryFrame.Clip(g,upper);
         Rect icon=new Rect(upper.x+1,upper.y+1-skillTopScroll,32,32);
@@ -260,12 +267,14 @@ public partial class Panel
         Skill display=current!=null&&current.point>0?current:(t.skills.Length>0?t.skills[0]:null);
         var top=new List<SkillLine>();
         if(display!=null)AddSkillLines(top,mResources.KI_consume+display.manaUse+(t.manaUseType==1?"%":"")+" · "+mResources.cooldown+": "+display.strTimeReplay()+"s",mFont.tahoma_7,upper.width);
-        AddSkillDamage(top,t,level," (hiện tại)",mFont.tahoma_7b_dark,upper.width);
-        if(level<t.maxPoint)AddSkillDamage(top,t,level+1," (kế tiếp)",mFont.tahoma_7_green2,upper.width);
-        if(level!=t.maxPoint)AddSkillDamage(top,t,t.maxPoint," (tối đa)",mFont.tahoma_7,upper.width);
-        skillUpperHeight=PaintSkillLines(g,top,upper,skillTopScroll,headingHeight);
+        AddSkillDamage(top,t,level,level==t.maxPoint?" (hiện tại, tối đa)":" (hiện tại)",mFont.tahoma_7b_dark,upper.width);
+        if(level<t.maxPoint)AddSkillDamage(top,t,level+1,level+1==t.maxPoint?" (kế tiếp, tối đa)":" (kế tiếp)",mFont.tahoma_7_green2,upper.width);
+        if(level+1<t.maxPoint)AddSkillDamage(top,t,t.maxPoint," (tối đa)",mFont.tahoma_7,upper.width);
+        int tableEnd=PaintSkillLines(g,top,upper,skillTopScroll,headingHeight);
+        InventoryFrame.Clip(g,upper);g.setColor(InventoryFrame.Border);
+        g.fillRect((int)upper.x,(int)upper.y+tableEnd-skillTopScroll+3,(int)upper.width,1);
         var bottom=new List<SkillLine>();
-        foreach(string line in t.description??new string[0])AddSkillLines(bottom,line,mFont.tahoma_7,lower.width);
+        foreach(string line in t.description??new string[0])AddSkillLines(bottom,CleanSkillText(line),mFont.tahoma_7,lower.width);
         bool studying=SkillTabState.Studying(t.id);
         if(studying)AddSkillLines(bottom,"Đang học cấp "+SkillTabState.LearningLevel+" · còn "+SkillTabState.Clock(SkillTabState.Remaining),mFont.tahoma_7b_dark,lower.width);
         else if(level<t.maxPoint&&level<t.skills.Length) {
@@ -273,19 +282,21 @@ public partial class Panel
             AddSkillLines(bottom,"Thời gian học: "+SkillTabState.Clock(SkillTabState.StudyDuration(level+1)),mFont.tahoma_7,lower.width);
             AddSkillLines(bottom,"Học tại: "+SkillTabState.TeacherName,mFont.tahoma_7,lower.width);
         }
-        skillLowerHeight=PaintSkillLines(g,bottom,lower,skillBottomScroll)+(studying?10:0);
+        skillUpperHeight=PaintSkillLines(g,bottom,upper,skillTopScroll,tableEnd+9)+(studying?10:0);
+        skillTopScroll=Mathf.Clamp(skillTopScroll,0,Mathf.Max(0,skillUpperHeight-(int)upper.height));
         if(studying) {
-            int y=(int)lower.y+bottom.Count*12-skillBottomScroll+3;
+            int y=(int)upper.y+tableEnd+9+bottom.Count*12-skillTopScroll+3;
             InventoryFrame.Clip(g,lower);g.setColor(InventoryFrame.SlotBackground);g.fillRect((int)lower.x,y,(int)lower.width,5);
             long elapsed=System.Math.Max(0,SkillTabState.Duration-SkillTabState.Remaining);
             int width=SkillTabState.Duration<=0?0:(int)(lower.width*System.Math.Min(1d,elapsed/(double)SkillTabState.Duration));
             g.setColor(InventoryFrame.Accent);g.fillRect((int)lower.x,y,width,5);
         }
+        PaintSkillFade(g,upper,skillTopScroll<skillUpperHeight-(int)upper.height);
         SkillLabel(g,mFont.tahoma_7,"Ô phím",new Rect(r.x+6,SkillPanelLayout.ControlsTop,r.width-12,12));
         for(int i=0;i<8;i++)PaintSkillButton(g,SkillPanelLayout.KeyBounds(i),(i+1).ToString(),SkillTabState.Ready,i==slot);
         bool maximum=level>=t.maxPoint;
-        string caption=!SkillTabState.Ready?"Đang tải...":studying?"Học nhanh · "+SkillTabState.QuickPrice+" ngọc":maximum?"Đã tối đa":SkillHasBook?"Dùng sách":"Đến "+SkillTabState.TeacherName;
-        PaintSkillButton(g,SkillPanelLayout.ActionBounds(0),caption,SkillTabState.Ready&&!maximum||studying,false);
+        string caption=maximum?"Đã tối đa":studying?"Học nhanh · "+SkillTabState.QuickPrice+" ngọc":SkillHasBook?"Dùng sách":SkillTabState.Waiting?"Đang tải...":"Đến NPC";
+        PaintSkillButton(g,SkillPanelLayout.ActionBounds(0),caption,!maximum&&(!SkillTabState.Waiting||SkillHasBook)||studying,false);
         if(SkillHasBook)PaintSkillButton(g,SkillPanelLayout.ActionBounds(1),"Đến NPC",true,false);
         Rect close=HudLayout.GetRect(SkillPanelLayout.Close);InventoryFrame.Clip(g,close);InventoryFrame.Rounded(g,close,InventoryFrame.EquipmentBackground);
         g.drawImage(imgX,(int)close.center.x,(int)close.center.y,mGraphics.HCENTER|mGraphics.VCENTER);
@@ -294,13 +305,14 @@ public partial class Panel
     private static void AddSkillDamage(List<SkillLine> rows,SkillTemplate t,int level,string suffix,mFont font,float width)
     {
         if(level<=0||level>t.skills.Length)return;
-        Skill s=t.skills[level-1];string value=NinjaUtil.replace(t.damInfo??"#","#",s.damage.ToString());
-        AddSkillLines(rows,"Cấp "+level+suffix+": "+value,font,width);
+        Skill s=t.skills[level-1];string value=s.damage+(t.damInfo!=null&&t.damInfo.Contains("%")?"%":"");
+        rows.Add(new SkillLine{Text="Cấp "+level+suffix+": "+value,Font=font});
     }
     private static void PaintSkillButton(mGraphics g,Rect r,string text,bool enabled,bool selected)
     {
         InventoryFrame.Clip(g,r);
-        Command.paintOngMau(selected?Command.btn1left:Command.btn0left,selected?Command.btn1mid:Command.btn0mid,selected?Command.btn1right:Command.btn0right,(int)r.x,(int)r.y,(int)r.width,g);
-        SkillLabel(g,enabled?mFont.tahoma_7b_dark:mFont.tahoma_7_grey,text,r,true);
+        if(!enabled)InventoryFrame.Rounded(g,r,0xB3ADA2,255,InventoryFrame.Border);
+        else Command.paintOngMau(selected?Command.btn1left:Command.btn0left,selected?Command.btn1mid:Command.btn0mid,selected?Command.btn1right:Command.btn0right,(int)r.x,(int)r.y,(int)r.width,g);
+        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,text,r,r,enabled?InventoryFrame.Border:0x626262,true);
     }
 }

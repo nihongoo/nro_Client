@@ -100,14 +100,63 @@ namespace Hud
                 } finally { GUI.EndGroup(); }
             } finally { GUI.color = previous; }
         }
-        internal static void PaintLevel(mGraphics g, Rect cell, Rect viewport, int level, bool bag)
+        private static readonly Dictionary<mFont, GUIStyle> compactStyles = new Dictionary<mFont, GUIStyle>();
+        // Keep the game's font, fitting the complete value instead of dropping digits with ellipses.
+        internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false)
+        {
+            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
+            if(!compactStyles.TryGetValue(font,out GUIStyle style)) {
+                style=new GUIStyle(GUI.skin.label){font=font.myFont,alignment=TextAnchor.MiddleLeft,
+                    padding=new RectOffset(),margin=new RectOffset(),wordWrap=false,richText=false};
+                compactStyles.Add(font,style);
+            }
+            style.alignment=center?TextAnchor.MiddleCenter:TextAnchor.MiddleLeft;
+            int zoom=Mathf.Max(1,mGraphics.zoomLevel);
+            style.fontSize=Mathf.Max(1,font.myFont.fontSize);
+            while(style.fontSize>1&&(style.CalcSize(new GUIContent(text)).x>(bounds.width-2)*zoom||style.CalcSize(new GUIContent(text)).y>bounds.height*zoom))style.fontSize--;
+            style.normal.textColor=new Color((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,1);
+            Color previous=GUI.color;
+            try {
+                GUI.color=Color.white;
+                GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
+                try {GUI.Label(new Rect((bounds.x-clip.x+1)*zoom,(bounds.y-clip.y)*zoom,(bounds.width-2)*zoom,bounds.height*zoom),text,style);}
+                finally {GUI.EndGroup();}
+            } finally {GUI.color=previous;}
+        }
+        internal static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport)
+        {
+            Image image=null;Rect uv=new Rect(0,0,1,1);
+            if(SmallImage.imgbig!=null&&SmallImage.smallImg!=null&&id<SmallImage.smallImg.Length) {
+                int[] data=SmallImage.smallImg[id];
+                if(data[0]<SmallImage.imgbig.Length)image=SmallImage.imgbig[data[0]];
+                if(image!=null)uv=new Rect(data[1]*mGraphics.zoomLevel/(float)image.texture.width,
+                    1-(data[2]+data[4])*mGraphics.zoomLevel/(float)image.texture.height,
+                    data[3]*mGraphics.zoomLevel/(float)image.texture.width,data[4]*mGraphics.zoomLevel/(float)image.texture.height);
+            }
+            if(image==null&&SmallImage.imgNew!=null&&id<SmallImage.imgNew.Length) {
+                if(SmallImage.imgNew[id]==null)SmallImage.createImage(id);
+                image=SmallImage.imgNew[id]?.img;
+            }
+            if(image==null)return;
+            float aspect=image.texture.width*uv.width/(image.texture.height*uv.height);
+            float width=Mathf.Min(bounds.width,bounds.height*aspect),height=width/aspect;
+            Rect clip=InventoryFrame.Intersection(bounds,viewport);int zoom=Mathf.Max(1,mGraphics.zoomLevel);
+            if(clip.width<=0||clip.height<=0)return;
+            Color previous=GUI.color;
+            try {
+                GUI.color=Color.white;GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
+                try {GUI.DrawTextureWithTexCoords(new Rect((bounds.center.x-width/2-clip.x)*zoom,(bounds.center.y-height/2-clip.y)*zoom,width*zoom,height*zoom),image.texture,uv);}
+                finally {GUI.EndGroup();}
+            } finally {GUI.color=previous;}
+        }
+        internal static void PaintLevel(mGraphics g, Rect cell, Rect viewport, int level, bool bag, bool compact = false)
         {
             mFont font = mFont.tahoma_7;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             if (levelFont != font.myFont || levelZoom != zoom || levelWidth <= 0) {
                 levelFont = font.myFont; levelZoom = zoom; levelWidth = font.getWidth("Lv7") + 6; levelStyles.Clear();
             }
-            Rect badge = LevelBounds(cell, levelWidth, bag);
+            Rect badge = compact ? new Rect(cell.xMax-17,cell.yMax-8,18,9) : LevelBounds(cell, levelWidth, bag);
             InventoryFrame.Clip(g, viewport);
             InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
             string label = "Lv" + Mathf.Clamp(level, 0, 7);
@@ -115,14 +164,14 @@ namespace Hud
                 font.drawString(g, label, (int)badge.center.x, (int)(badge.center.y - font.getHeight() / 2f), mFont.CENTER);
                 return;
             }
-            int key = Mathf.RoundToInt(badge.width * zoom);
+            int key = Mathf.RoundToInt(badge.width * zoom) * 2 + (compact ? 1 : 0);
             if (!levelStyles.TryGetValue(key, out GUIStyle style)) {
                 style = new GUIStyle(GUI.skin.label) {
                     font = font.myFont, fontSize = Mathf.Max(1, font.myFont.fontSize), alignment = TextAnchor.MiddleCenter,
                     padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
-                while (style.fontSize > 1 && (style.CalcSize(new GUIContent("Lv7")).x > key - 4
+                while (style.fontSize > 1 && (style.CalcSize(new GUIContent("Lv7")).x > badge.width * zoom - 4
                     || style.CalcSize(new GUIContent("Lv7")).y > badge.height * zoom - 2)) style.fontSize--;
                 style.normal.textColor = style.hover.textColor = Color.black;
                 style.active.textColor = style.focused.textColor = Color.black;

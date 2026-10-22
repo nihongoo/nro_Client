@@ -18,12 +18,12 @@ class ItemOptionTemplate {public int id;}
 class Image {}
 static class InventoryBag {public const int Columns=5;}
 static class InventoryFrameSkin {public static Image Corners(int a,int b,byte c)=>null;}
-static class InventoryItemVisuals {public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag){} }
+static class InventoryItemVisuals {public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
 class PopUp {public static void paintPopUp(mGraphics g,int a,int b,int c,int d,int e,bool f,Image corner=null,int border=0){} }
 class mGraphics {
  public static int zoomLevel=2,addYWhenOpenKeyBoard;public List<string> texts=new List<string>();
  public const int HCENTER=1,VCENTER=2;
- public void setColor(int c){} public void fillRect(int a,int b,int c,int d){} public void setClip(int a,int b,int c,int d){}
+ public void setColor(int c){}public void setColor(int c,float alpha){} public void fillRect(int a,int b,int c,int d){} public void setClip(int a,int b,int c,int d){}
  public void drawLine(int a,int b,int c,int d){}public void drawImage(Image image,int x,int y,int anchor){}
 }
 class mFont {
@@ -130,7 +130,19 @@ class SkillTabTests {
   }
   foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{2,3,4})foreach(int[] viewport in mobile?new[]{new[]{422,195},new[]{585,270},new[]{844,390}}:new[]{new[]{640,360},new[]{960,540},new[]{1280,720}}){
    global::Main.isPC=!mobile;UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
-   GameCanvas.w=viewport[0];GameCanvas.h=viewport[1];mGraphics.zoomLevel=zoom;SkillTabState.Reset();GameCanvas.panel.Show();State(ids);HudLayout.BeginFrame();
+   GameCanvas.w=viewport[0];GameCanvas.h=viewport[1];mGraphics.zoomLevel=zoom;SkillTabState.Reset();GameCanvas.panel.Show();
+   Check(SkillTabState.Waiting,"initial request must have bounded loading state");
+   foreach(Skill learned in c.learned)learned.point=7;
+   var maxPaint=new mGraphics();GameCanvas.panel.Paint(maxPaint);
+   Check(maxPaint.texts.Contains("Đã tối đa")&&!maxPaint.texts.Contains("Đang tải..."),"max level waits for server");
+   foreach(Skill learned in c.learned)learned.point=1;
+   mSystem.now+=2001;SkillTabState.Update();
+   Check(!SkillTabState.Ready&&!SkillTabState.Waiting,"retries extend loading deadline");
+   var fallback=new mGraphics();GameCanvas.panel.Paint(fallback);
+   Check(fallback.texts.Contains("Đến NPC"),"missing server response has no NPC fallback");
+   foreach(SkillTemplate template in c.nClass.availableSkillTemplates)template.description=new[]{"null"," ","Mô tả thật"};
+   State(ids);HudLayout.BeginFrame();
+   Check(!GameCanvas.panel.SkillPanelActive||mobile||GameCanvas.panel.cmyLim==0,"tall PC unnecessarily scrolls potential");
    Rect root=HudLayout.GetRect(InventoryFrame.Root),detail=HudLayout.GetRect(SkillPanelLayout.Detail),money=HudLayout.GetRect(InventoryFrame.Money);
    Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h,"detail not full height");
    Check(root.xMax<detail.x,"panels overlap");
@@ -141,7 +153,7 @@ class SkillTabTests {
     Rect key=HudLayout.GetRect(SkillPanelLayout.Key(i));Check(key.x>=detail.x&&key.xMax<=detail.xMax&&key.yMax<SkillPanelLayout.ActionBounds(0).y,"key outside detail/overlaps action");
     Check(HudLayout.HitTest(key.center)==SkillPanelLayout.Key(i),"assignment key not clickable");
    }
-   var g=new mGraphics();GameCanvas.panel.Paint(g);Check(g.texts.Exists(t=>t.StartsWith("Cấp 1")),"detail missing real current level");
+   var g=new mGraphics();GameCanvas.panel.Paint(g);Check(!g.texts.Contains("null"),"null description rendered");Check(g.texts.Exists(t=>t.StartsWith("Cấp 1")),"detail missing real current level");
    Service.gI().requests.Clear();Click(SkillPanelLayout.CellBounds(1));Click(SkillPanelLayout.KeyBounds(6));
    var req=Service.gI().requests[0];Check(req[0]==2&&req[1]==1&&req[2]==6,"swap selected wrong template or slot");
    var swapped=(int[])ids.Clone();swapped[1]=ids[6];swapped[6]=1;State(swapped);
@@ -153,8 +165,13 @@ class SkillTabTests {
    GameCanvas.no.Click();Check(Service.gI().requests.Count==0,"cancel sent quick request");
    Click(SkillPanelLayout.ActionBounds(0));GameCanvas.yes.Click();req=Service.gI().requests[0];Check(req[0]==1&&req[1]==94&&req[2]==5&&req[3]==456789,"confirmation lost captured quote/token");
    mSystem.now+=1000;Check(SkillTabState.Remaining==29000,"countdown uses incorrect clock");
+   float fixedGridY=SkillPanelLayout.CellBounds(0).y;
    GameCanvas.panel.Paint(new mGraphics());GameCanvas.pxMouse=(int)root.center.x;GameCanvas.pyMouse=(int)money.y-10;GameCanvas.panel.Wheel(-1000);
+   Near(SkillPanelLayout.CellBounds(0).y,fixedGridY,"grid scrolled with potential");
+   Check(SkillPanelLayout.IntrinsicBounds.y+GameCanvas.panel.cmy>=SkillPanelLayout.CellBounds(4).yMax,"intrinsic overlaps fixed grid");
    HudLayout.Invalidate();Rect last=HudLayout.GetRect(SkillPanelLayout.Potential(4));Check(last.height>0&&last.yMax<=money.y,"potential rows not reachable by scrolling");
+   Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
+   Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
   }
   Check(SkillTabState.BookId(2,7)==86&&SkillTabState.BookId(2,6)==84,"Demon book gap lost");
   Check(SkillTabState.Clock(90061000)=="25:01:01","long countdown wrapped at 24 hours");

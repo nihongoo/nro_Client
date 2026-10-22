@@ -11,7 +11,8 @@ namespace Hud
         internal static long FinishToken = -1, RemainingAtRead, Duration;
         internal static short LearningBook = -1;
         internal static int LearningTemplate = -1, LearningLevel, QuickPrice;
-        private static long readAt, nextRequest;
+        private static long readAt, nextRequest, firstRequest = -1;
+        internal static bool Waiting => !Ready && firstRequest >= 0 && mSystem.currentTimeMillis()-firstRequest < 2000;
         private static SkillTemplate[] orderedTemplates;
         private static NClass templateClass;
         private static int teacherMap = -1, teacherId;
@@ -21,7 +22,7 @@ namespace Hud
         internal static void Reset()
         {
             Ready = false; FinishToken = -1; LearningBook = -1; LearningTemplate = -1;
-            teacherMap = -1; nextRequest = 0; orderedTemplates = null; templateClass = null;
+            teacherMap = -1; nextRequest = 0; firstRequest = -1; orderedTemplates = null; templateClass = null;
             for (int i = 0; i < 8; i++) Order[i] = -1;
         }
         internal static void Read(Message message)
@@ -45,6 +46,7 @@ namespace Hud
         }
         internal static void Request()
         {
+            if(firstRequest<0)firstRequest=mSystem.currentTimeMillis();
             nextRequest = mSystem.currentTimeMillis() + 2000;
             Service.gI().skillTabRequest(0);
         }
