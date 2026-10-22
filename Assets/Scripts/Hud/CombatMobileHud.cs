@@ -19,12 +19,12 @@ namespace Hud
         internal static bool Visible => HudLayout.IsMobileLayout && GameCanvas.currentScreen == GameScr.instance
             && GameScr.instance != null && GameScr.isPaint && !GameScr.isPaintOther && GameScr.isPaintRada == 1
             && GameScr.instance.mobCapcha == null
-            && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId != 0;
+            && !HudLayout.IsPlayerDead && Char.myCharz().taskMaint != null && Char.myCharz().taskMaint.taskId != 0;
         internal static bool CanInput => Visible && !GameScr.instance.isNotPaintTouchControl()
             && !GameScr.instance.isLockKey && !Char.isLockKey && !Controller.isStopReadMessage && !InfoDlg.isLock
             && !Notifications.NotificationCenter.IsOpen && !Mod.CuongLe.DoHoa.isShowMenuVIP && ChatPopup.serverChatPopUp == null
             && !Char.isLoadingMap
-            && !Char.myCharz().isTeleport && !Char.myCharz().isPaintNewSkill && Char.myCharz().statusMe != 14
+            && !Char.myCharz().isTeleport && !Char.myCharz().isPaintNewSkill
             && GameScr.instance.mobCapcha == null;
 
         internal static void Register()

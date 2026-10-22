@@ -229,7 +229,7 @@ public class CreateCharScr : mScreen, IActionListener
 		GameCanvas.menu.showMenu = false;
 		GameCanvas.endDlg();
 		base.switchToMe();
-		indexGender = Res.random(0, 3);
+		indexGender = GuestCredentials.IsDev ? 1 : Res.random(0, 3);
 		indexHair = Res.random(0, 3);
 		doChangeMap();
 		Char.isLoadingMap = false;

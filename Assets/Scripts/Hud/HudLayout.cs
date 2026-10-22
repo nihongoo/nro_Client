@@ -37,6 +37,8 @@ namespace Hud
             || UnityEngine.Device.Application.platform == RuntimePlatform.IPhonePlayer;
         public static Vector2 DesignReference => IsMobileLayout ? new Vector2(844, 390) : new Vector2(1280, 720);
         public static Rect ScreenBounds => new Rect(0, 0, GameCanvas.w, GameCanvas.h);
+        internal static bool IsPlayerDead => Char.myCharz().meDead || Char.myCharz().cHP <= 0
+            || Char.myCharz().statusMe == 5 || Char.myCharz().statusMe == 14;
 
         // Exact physical-design-pixel conversion: 1280x720 / zoom 2 = 640x360.
         // This does not change MotherCanvas zoom or stretch a component to another aspect ratio.

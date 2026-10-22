@@ -187,16 +187,17 @@ public class ServerListScreen : mScreen, IActionListener
 	{
 		nCmdPlay = 0;
 		string text = Rms.loadRMSString("acc");
+		if (GuestCredentials.Preferred) text = string.Empty;
 		if (text == null)
 		{
-			if (Rms.loadRMS("userAo" + ipSelect) != null)
+			if (GuestCredentials.HasToken)
 			{
 				nCmdPlay = 1;
 			}
 		}
 		else if (text.Equals(string.Empty))
 		{
-			if (Rms.loadRMS("userAo" + ipSelect) != null)
+			if (GuestCredentials.HasToken)
 			{
 				nCmdPlay = 1;
 			}
@@ -215,8 +216,8 @@ public class ServerListScreen : mScreen, IActionListener
 				cmd[0] = new Command(string.Empty, this, 3, null);
 				if (text == null)
 				{
-					cmd[0].caption = mResources.playNew;
-					if (Rms.loadRMS("userAo" + ipSelect) != null)
+					cmd[0].caption = "Chơi ngay (khách)";
+					if (GuestCredentials.HasToken)
 					{
 						cmd[0].caption = mResources.choitiep;
 					}
@@ -224,8 +225,8 @@ public class ServerListScreen : mScreen, IActionListener
 				}
 				if (text.Equals(string.Empty))
 				{
-					cmd[0].caption = mResources.playNew;
-					if (Rms.loadRMS("userAo" + ipSelect) != null)
+					cmd[0].caption = "Chơi ngay (khách)";
+					if (GuestCredentials.HasToken)
 					{
 						cmd[0].caption = mResources.choitiep;
 					}
@@ -242,7 +243,7 @@ public class ServerListScreen : mScreen, IActionListener
 				if (nCmdPlay == 1)
 				{
 					cmd[1] = new Command(string.Empty, this, 10100, null);
-					cmd[1].caption = mResources.playNew;
+					cmd[1].caption = GuestCredentials.IsDev ? "Khách mới (dev)" : "Chơi với khách";
 				}
 				else
 				{
@@ -873,17 +874,9 @@ public class ServerListScreen : mScreen, IActionListener
 				GameCanvas.loginScr = new LoginScr();
 			}
 			GameCanvas.loginScr.switchToMe();
-			bool flag = Rms.loadRMSString("acc") != null && ((!Rms.loadRMSString("acc").Equals(string.Empty)) ? true : false);
-			bool flag2 = Rms.loadRMSString("userAo" + ipSelect) != null && ((!Rms.loadRMSString("userAo" + ipSelect).Equals(string.Empty)) ? true : false);
-			if (!flag && !flag2)
-			{
-				string text = Rms.loadRMSString("userAo" + ipSelect);
-				GameCanvas.loginScr.doGuestLogin(text);
-			}
-			else
-			{
-				GameCanvas.loginScr.doLogin();
-			}
+			bool flag = !GuestCredentials.Preferred && !string.IsNullOrEmpty(Rms.loadRMSString("acc"));
+            if (!flag) GameCanvas.loginScr.doGuestLogin();
+            else GameCanvas.loginScr.doLogin();
 			LoginScr.serverName = nameServer[ipSelect];
 		}
 		if (idAction == 10100)
@@ -893,7 +886,8 @@ public class ServerListScreen : mScreen, IActionListener
 				GameCanvas.loginScr = new LoginScr();
 			}
 			GameCanvas.loginScr.switchToMe();
-			GameCanvas.loginScr.doGuestLogin(string.Empty);
+			if (GuestCredentials.IsDev) GuestCredentials.NewDevGuest();
+            GameCanvas.loginScr.doGuestLogin();
 			Res.outz("tao user ao");
 			GameCanvas.startWaitDlg();
 			LoginScr.serverName = nameServer[ipSelect];
@@ -962,8 +956,7 @@ public class ServerListScreen : mScreen, IActionListener
 				GameCanvas.loginScr = new LoginScr();
 			}
 			GameCanvas.loginScr.switchToMe();
-			string text2 = Rms.loadRMSString("userAo" + ipSelect);
-			GameCanvas.loginScr.doGuestLogin(text2);
+			GameCanvas.loginScr.doGuestLogin();
 			GameCanvas.startWaitDlg(mResources.PLEASEWAIT);
 			Res.outz("tao user ao");
 		}

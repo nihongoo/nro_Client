@@ -140,7 +140,7 @@ public class LoginScr : mScreen, IActionListener
 	private int stageStarted;
 	private string pendingUser, pendingPassword;
 	private sbyte pendingLoginType;
-	private bool pendingGuestCreation;
+	private bool pendingGuestLogin;
 	private bool editingSwitchedAccount;
 
 	public static void requireManualLogin()
@@ -161,19 +161,22 @@ public class LoginScr : mScreen, IActionListener
 		return true;
 	}
 
-	public void doGuestLogin(string username, bool accountCreated = false)
+	public void doGuestLogin()
 	{
 		if (sessionReplaced || manualLoginRequired) return;
 		if (System.Threading.Thread.CurrentThread.Name != Main.mainThreadName)
 		{
-			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(username, accountCreated), null);
+			System.Threading.Interlocked.CompareExchange(ref queuedLogin, () => doGuestLogin(), null);
 			return;
 		}
-		if (isLoggingIn && !(accountCreated && pendingGuestCreation)) return;
+		if (isLoggingIn) return;
 		isLoggingIn = true;
 		isLogin2 = true;
-		pendingGuestCreation = string.IsNullOrEmpty(username);
-		pendingUser = username ?? string.Empty;
+        GuestCredentials.BeginLogin();
+		try { GuestCredentials.GetSecret(); GuestCredentials.GetDevice(); }
+        catch (Exception e) { isLoggingIn = false; GameCanvas.startOKDlg(e.Message); return; }
+        pendingGuestLogin = true;
+        pendingUser = string.Empty;
 		pendingPassword = string.Empty;
 		pendingLoginType = 1;
 		loginStage = 1;
@@ -218,7 +221,7 @@ public class LoginScr : mScreen, IActionListener
 		{
 			screen.loginStage = 2;
 			screen.stageStarted = Environment.TickCount;
-			if (screen.pendingGuestCreation) Service.gI().login2(string.Empty);
+			if (screen.pendingGuestLogin) Service.gI().guestLogin(GuestCredentials.GetSecret(), GuestCredentials.GetDevice());
 			else Service.gI().login(screen.pendingUser, screen.pendingPassword, GameMidlet.VERSION, screen.pendingLoginType);
 			screen.pendingPassword = null;
 		}
@@ -586,6 +589,9 @@ public class LoginScr : mScreen, IActionListener
 			return;
 		}
 		if (isLoggingIn || timeLogin > 0) return;
+        if (isLogin2 || (GameCanvas.currentScreen != this && GuestCredentials.HasToken
+                && (GuestCredentials.Preferred || string.IsNullOrEmpty(Rms.loadRMSString("acc"))))) { doGuestLogin(); return; }
+        GuestCredentials.NormalLogin();
 		isLoggingIn = true;
 		string text = Rms.loadRMSString("acc");
 		string text2 = Rms.loadRMSString("pass");
@@ -594,23 +600,7 @@ public class LoginScr : mScreen, IActionListener
 			text = tfUser.getText().Trim();
 			text2 = tfPass.getText().Trim();
 		}
-		if (text != null && !text.Equals(string.Empty))
-		{
-			isLogin2 = false;
-		}
-		else if (Rms.loadRMSString("userAo" + ServerListScreen.ipSelect) != null && !Rms.loadRMSString("userAo" + ServerListScreen.ipSelect).Equals(string.Empty))
-		{
-			isLogin2 = true;
-		}
-		else
-		{
-			isLogin2 = false;
-		}
-		if ((text == null || text.Equals(string.Empty)) && isLogin2)
-		{
-			text = Rms.loadRMSString("userAo" + ServerListScreen.ipSelect);
-			text2 = "a";
-		}
+        isLogin2 = false;
 		if (string.IsNullOrEmpty(text))
 		{
 			finishLoginAttempt();
@@ -636,9 +626,9 @@ public class LoginScr : mScreen, IActionListener
 			return;
 		}
 		pendingUser = text;
-		pendingGuestCreation = false;
+		pendingGuestLogin = false;
 		pendingPassword = text2;
-		pendingLoginType = (sbyte)(isLogin2 ? 1 : 0);
+		pendingLoginType = 0;
 		loginStage = 1;
 		stageStarted = Environment.TickCount;
 		Main.isMiniApp = true;
@@ -662,7 +652,7 @@ public class LoginScr : mScreen, IActionListener
 		{
 			Rms.saveRMSInt("check", 1);
 			Rms.saveRMSString("acc", tfUser.getText().ToLower().Trim());
-			Rms.saveRMSString("pass", tfPass.getText().ToLower().Trim());
+			Rms.saveRMSString("pass", tfPass.getText().Trim());
 		}
 		else
 		{
@@ -807,7 +797,7 @@ public class LoginScr : mScreen, IActionListener
 		if (!Main.isPC && !TouchScreenKeyboard.visible && !Main.isMiniApp && !Main.isWindowsPhone)
 		{
 			string text = tfUser.getText().ToLower().Trim();
-			string text2 = tfPass.getText().ToLower().Trim();
+			string text2 = tfPass.getText().Trim();
 			if (!text.Equals(string.Empty) && !text2.Equals(string.Empty))
 			{
 				doLogin();
@@ -1084,8 +1074,7 @@ public class LoginScr : mScreen, IActionListener
 			break;
 		case 1002:
 		{
-			string text = Rms.loadRMSString("userAo" + ServerListScreen.ipSelect);
-			doGuestLogin(text);
+			doGuestLogin();
 			break;
 		}
 		case 1004:
@@ -1143,8 +1132,7 @@ public class LoginScr : mScreen, IActionListener
 					GameCanvas.startOKDlg(mResources.passwordBlank);
 					return;
 				}
-				Rms.saveRMSString("acc", tfUser.getText().Trim());
-				Rms.saveRMSString("pass", tfPass.getText());
+				GuestCredentials.SaveAccountChoice(tfUser.getText(), tfPass.getText());
 				editingSwitchedAccount = false;
 				GameCanvas.endDlg();
 				GameCanvas.serverScreen.switchToMe();

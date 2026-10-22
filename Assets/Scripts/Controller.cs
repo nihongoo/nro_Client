@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Assets.src.e;
 using Assets.src.f;
 using Assets.src.g;
@@ -122,6 +122,13 @@ public class Controller : IMessageHandler
 			MyVector myVector = new MyVector();
 			int num = 0;
 			GameCanvas.timeLoading = 15;
+            // Consume account packets before legacy handlers and only once.
+            if (msg.command == GuestCredentials.Command) {
+                int action = msg.reader().readByte();
+                if (action == 1) GuestCredentials.Accepted(msg.reader().readBool());
+                else if (action == 7) GuestCredentials.Confirmed(msg.reader().readBool(), msg.reader().readBool());
+                return;
+            }
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
@@ -1157,7 +1164,7 @@ public class Controller : IMessageHandler
 					Service.gI().getResource(3, null);
 					SmallImage.loadBigRMS();
 					SplashScr.imgLogo = null;
-					if (Rms.loadRMSString("acc") != null || Rms.loadRMSString("userAo" + ServerListScreen.ipSelect) != null)
+					if (Rms.loadRMSString("acc") != null || GuestCredentials.HasToken)
 					{
 						LoginScr.isContinueToLogin = true;
 					}
@@ -1669,7 +1676,6 @@ public class Controller : IMessageHandler
 					break;
 				}
 				GameCanvas.loginScr.isLogin2 = false;
-				Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, string.Empty);
 				GameCanvas.endDlg();
 				GameCanvas.loginScr.doLogin();
 				break;
@@ -5081,6 +5087,7 @@ public class Controller : IMessageHandler
 			{
 				GameCanvas.debug("SA8", 2);
 				LoginScr.authenticationAccepted();
+                Service.gI().requestAccountState();
 				GameCanvas.loginScr.savePass();
 				GameScr.isAutoPlay = false;
 				GameScr.canAutoPlay = false;
@@ -5098,10 +5105,6 @@ public class Controller : IMessageHandler
 				{
 					Rms.saveRMSString("acc", string.Empty);
 					Rms.saveRMSString("pass", string.Empty);
-				}
-				else
-				{
-					Rms.saveRMSString("userAo" + ServerListScreen.ipSelect, string.Empty);
 				}
 				if (GameScr.vsData != GameScr.vcData)
 				{
