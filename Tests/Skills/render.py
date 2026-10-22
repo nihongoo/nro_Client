@@ -24,7 +24,7 @@ namespace UnityEngine {
  public class GUIStyle {
   public Font font;public int fontSize;public TextAnchor alignment;public RectOffset padding,margin;public bool wordWrap,richText;
   public GUIStyleState normal=new GUIStyleState(),hover=new GUIStyleState(),active=new GUIStyleState(),focused=new GUIStyleState(),onNormal=new GUIStyleState(),onHover=new GUIStyleState(),onActive=new GUIStyleState(),onFocused=new GUIStyleState();
-  public GUIStyle(GUIStyle s){}public Vector2 CalcSize(GUIContent c)=>new Vector2(c.text.Length*fontSize*.5f,fontSize);
+  public static int measures;public GUIStyle(GUIStyle s){}public Vector2 CalcSize(GUIContent c){measures++;return new Vector2(c.text.Length*fontSize*.5f,fontSize);}
  }
  public class GUISkin {public GUIStyle label=new GUIStyle(null);}
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Min(float a,float b)=>Math.Min(a,b);public static float Max(float a,float b)=>Math.Max(a,b);}
@@ -78,7 +78,14 @@ class RenderTests {
    Check(SmallImage.requests>0,"missing dedicated image was never requested");
    Hud.InventoryItemVisuals.PaintCompactIcon(g,-1,bounds,viewport);Check(GUI.lastText=="?","invalid ID left blank");
    foreach(int ink in new[]{0x536DCC,0x00552D}) {
-    Hud.InventoryItemVisuals.PaintCompactText(g,new mFont(),"HP gốc: 52.100",bounds,viewport,ink);
+    var cachedFont=new mFont();
+    Hud.InventoryItemVisuals.PaintCompactText(g,cachedFont,"HP gốc: 52.100",bounds,viewport,ink);
+    int measured=GUIStyle.measures;
+    for(int repeat=0;repeat<100;repeat++)Hud.InventoryItemVisuals.PaintCompactText(g,cachedFont,"HP gốc: 52.100",bounds,viewport,ink);
+    Check(GUIStyle.measures==measured,"unchanged text was repeatedly measured");
+    Hud.InventoryItemVisuals.PaintCompactText(g,cachedFont,"HP gốc: 52.100",new Rect(bounds.x,bounds.y,bounds.width/2,bounds.height),viewport,ink);
+    Check(GUIStyle.measures>measured,"resizing failed to invalidate font fit");
+    Hud.InventoryItemVisuals.PaintCompactText(g,cachedFont,"HP gốc: 52.100",bounds,viewport,ink);
     var s=GUI.lastStyle;
     foreach(var state in new[]{s.normal,s.hover,s.active,s.focused,s.onNormal,s.onHover,s.onActive,s.onFocused})
      Check(Math.Abs(state.textColor.r-(ink>>16&255)/255f)<.001&&Math.Abs(state.textColor.g-(ink>>8&255)/255f)<.001&&Math.Abs(state.textColor.b-(ink&255)/255f)<.001,"font changes color on hover/focus");

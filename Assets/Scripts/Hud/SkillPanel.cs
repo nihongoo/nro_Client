@@ -15,9 +15,37 @@ namespace Hud
         private static bool Visible => InventoryFrame.Visible && GameCanvas.panel.SkillPanelActive;
         private static bool DetailVisible => Visible && GameCanvas.panel.SkillDetailOpen;
         internal const int Margin=InventoryFrame.Padding, Gap=InventoryFrame.Gap;
-        internal static Rect Frame => new Rect(InventoryFrame.FrameInset,73,HudLayout.GetRect(InventoryFrame.Root).width-2*InventoryFrame.FrameInset,Mathf.Max(0,HudLayout.GetRect(InventoryFrame.Money).y-Gap-73));
-        internal static Rect Content => InventoryFrame.Inset(Frame);
-        internal static int LineHeight => Mathf.Max(12,Mathf.Max(mFont.tahoma_7b_blue.getHeight(),mFont.tahoma_7_green2.getHeight()));
+        private static bool metricsReady,metricsMobile,combinedTitle;
+        private static int metricsWidth,metricsHeight,metricsZoom,lineHeight;
+        private static long metricsPotential,metricsActivity;
+        private static mFont metricsTitleFont,metricsBlueFont,metricsGreenFont;
+        private static Rect frame,content;
+        private static float metricsRootWidth,metricsMoneyY;
+        private static string potentialTitle,activityTitle;
+        private static void EnsureMetrics()
+        {
+            Rect root=HudLayout.GetRect(InventoryFrame.Root),money=HudLayout.GetRect(InventoryFrame.Money);
+            Char character=Char.myCharz();bool mobile=HudLayout.IsMobileLayout;
+            if(metricsReady&&metricsWidth==GameCanvas.w&&metricsHeight==GameCanvas.h&&metricsZoom==mGraphics.zoomLevel
+                &&metricsRootWidth==root.width&&metricsMoneyY==money.y&&metricsMobile==mobile
+                &&metricsPotential==character.cTiemNang&&metricsActivity==character.cNangdong
+                &&ReferenceEquals(metricsTitleFont,mFont.tahoma_7b_dark)&&ReferenceEquals(metricsBlueFont,mFont.tahoma_7b_blue)
+                &&ReferenceEquals(metricsGreenFont,mFont.tahoma_7_green2))return;
+            metricsWidth=GameCanvas.w;metricsHeight=GameCanvas.h;metricsZoom=mGraphics.zoomLevel;
+            metricsRootWidth=root.width;metricsMoneyY=money.y;metricsMobile=mobile;
+            metricsPotential=character.cTiemNang;metricsActivity=character.cNangdong;
+            metricsTitleFont=mFont.tahoma_7b_dark;metricsBlueFont=mFont.tahoma_7b_blue;metricsGreenFont=mFont.tahoma_7_green2;
+            frame=new Rect(InventoryFrame.FrameInset,73,root.width-2*InventoryFrame.FrameInset,Mathf.Max(0,money.y-Gap-73));
+            content=InventoryFrame.Inset(frame);
+            lineHeight=Mathf.Max(12,Mathf.Max(metricsBlueFont.getHeight(),metricsGreenFont.getHeight()));
+            potentialTitle="Tiềm năng · "+NinjaUtil.getMoneys(metricsPotential);
+            activityTitle=mResources.active_point+": "+NinjaUtil.getMoneys(metricsActivity);
+            combinedTitle=GameCanvas.h<=208||metricsTitleFont.getWidth(potentialTitle+" · "+activityTitle)<=content.width-2*Margin;
+            metricsReady=true;
+        }
+        internal static Rect Frame {get{EnsureMetrics();return frame;}}
+        internal static Rect Content {get{EnsureMetrics();return content;}}
+        internal static int LineHeight {get{EnsureMetrics();return lineHeight;}}
         internal const int PotentialGap=1;
         internal static float RowHeight => Mathf.Max(Size,2*LineHeight+2);
         internal static float DesignSize => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
@@ -41,9 +69,9 @@ namespace Hud
             Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);
         internal static float PotentialGroupTop => IntrinsicBounds.yMax+Margin+Gap;
         internal static Rect PotentialGroupBounds => new Rect(Frame.x,PotentialGroupTop,Frame.width,Mathf.Max(0,Frame.yMax-PotentialGroupTop));
-        internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
-        internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
-        internal static bool CombinedTitle => GameCanvas.h<=208||mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
+        internal static string PotentialTitle {get{EnsureMetrics();return potentialTitle;}}
+        internal static string ActivityTitle {get{EnsureMetrics();return activityTitle;}}
+        internal static bool CombinedTitle {get{EnsureMetrics();return combinedTitle;}}
         internal static int TitleHeight => (CombinedTitle?1:2)*LineHeight+(GameCanvas.h<=208?Gap:2*Gap);
         internal static Rect PotentialBounds(int i) => new Rect(Content.x,ScrollBounds.y+i*(RowHeight+PotentialGap)-(GameCanvas.panel?.SkillScroll??0),Content.width,RowHeight);
         internal static Rect DetailBounds => InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
@@ -108,8 +136,8 @@ public partial class Panel
     private void SyncSkillPanel()
     {
         currentListLength=14;
-        float bottom=SkillPanelLayout.PotentialBounds(4).yMax+cmy;
-        cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(bottom-SkillPanelLayout.ScrollBounds.yMax));
+        float contentHeight=5*SkillPanelLayout.RowHeight+4*SkillPanelLayout.PotentialGap;
+        cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(contentHeight-SkillPanelLayout.ScrollBounds.height));
         cmy=cmtoY=Mathf.Clamp(cmy,0,cmyLim);
     }
     private void SelectPanelSkill(int slot)
@@ -175,10 +203,11 @@ public partial class Panel
         if (!SkillPanelActive) return false;
         if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
+        int previousBodyScroll=skillTopScroll,previousStatScroll=cmy;
         if (SkillDetailOpen && SkillPanelLayout.UpperBounds.Contains(point))
             skillTopScroll = Mathf.Clamp(skillTopScroll - amount * 24, 0, Mathf.Max(0, skillUpperHeight - (int)SkillPanelLayout.UpperBounds.height));
         else if (SkillPanelLayout.ScrollBounds.Contains(point)) cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim);
-        HudLayout.Invalidate();
+        if(previousBodyScroll!=skillTopScroll||previousStatScroll!=cmy)HudLayout.Invalidate();
         return true;
     }
 
@@ -268,7 +297,8 @@ public partial class Panel
         int[] icons={567,569,568,721,719};
         long[] costs={c.cHPGoc+1000L,c.cMPGoc+1000L,c.cDamGoc*100L,500000L+c.cDefGoc*100000L,t_tiemnang[Mathf.Clamp(c.cCriticalGoc,0,t_tiemnang.Length-1)]};
         for(int i=0;i<5;i++) {
-            Rect row=SkillPanelLayout.PotentialBounds(i);InventoryFrame.Clip(g,viewport);
+            Rect row=SkillPanelLayout.PotentialBounds(i);if(row.yMax<=viewport.y||row.y>=viewport.yMax)continue;
+            InventoryFrame.Clip(g,viewport);
             InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
             InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x,row.y,SkillPanelLayout.Size,SkillPanelLayout.Size),viewport);
             float lineHeight=Mathf.Min(SkillPanelLayout.LineHeight,(row.height-2)/2);

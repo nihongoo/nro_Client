@@ -29,7 +29,7 @@ class mGraphics {
 class mFont {
  public const int LEFT=0,CENTER=2;
  public static mFont tahoma_7_yellow=new mFont(),tahoma_7=new mFont(),tahoma_7b_white=new mFont(),tahoma_7_green2=new mFont(),tahoma_7b_dark=new mFont(),tahoma_7b_blue=new mFont(),tahoma_7_grey=new mFont();
- public int getWidth(string s)=>s.Length*5;public int getHeight()=>10;
+ public static int widthCalls;public int getWidth(string s){widthCalls++;return s.Length*5;}public int getHeight()=>10;
  public string[] splitFontArray(string s,int width){var result=new List<string>();int count=Math.Max(1,width/5);while(s.Length>count){result.Add(s.Substring(0,count));s=s.Substring(count);}result.Add(s);return result.ToArray();}
  public void drawString(mGraphics g,string s,int x,int y,int align){g.texts.Add(s);}
 }
@@ -146,6 +146,12 @@ class SkillTabTests {
    Rect root=HudLayout.GetRect(InventoryFrame.Root),detail=HudLayout.GetRect(SkillPanelLayout.Detail),money=HudLayout.GetRect(InventoryFrame.Money);
    Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h-2*InventoryFrame.FrameInset,"detail frame inset");
    Check(root.xMax<detail.x,"panels overlap");
+   mFont.widthCalls=0;
+   for(int repeat=0;repeat<100;repeat++){for(int slotIndex=0;slotIndex<8;slotIndex++)_ = SkillPanelLayout.CellBounds(slotIndex);for(int rowIndex=0;rowIndex<5;rowIndex++)_ = SkillPanelLayout.PotentialBounds(rowIndex);}
+   Check(mFont.widthCalls==0,"unchanged layout repeated font measurement: "+mFont.widthCalls);
+   long oldPotential=c.cTiemNang;c.cTiemNang++;
+   Check(SkillPanelLayout.PotentialTitle.Contains(c.cTiemNang.ToString()),"potential update did not refresh cached layout data");
+   c.cTiemNang=oldPotential;
    Check(SkillPanelLayout.PotentialGroupBounds.y>=SkillPanelLayout.SkillsGroupBounds.yMax+SkillPanelLayout.Gap,"skill and potential groups are not separated");
    Near(SkillPanelLayout.PotentialGroupBounds.x,SkillPanelLayout.SkillsGroupBounds.x,"group borders misaligned");
    Check(SkillPanelLayout.SkillsGroupBounds.yMax>=SkillPanelLayout.IntrinsicBounds.yMax+InventoryFrame.Padding,"intrinsic outside skill group");

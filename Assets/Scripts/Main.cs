@@ -78,6 +78,7 @@ public class Main : MonoBehaviour
 
 	private Vector2 lastMousePos = default(Vector2);
 	private bool pointerInViewport;
+    private int lastWheelInputFrame=-1;
 
 	public static int a = 1;
 
@@ -439,12 +440,20 @@ public class Main : MonoBehaviour
 		}
 		if (isPC)
 		{
-			GameMidlet.gameCanvas.scrollMouse((int)(Input.GetAxis("Mouse ScrollWheel") * 10f));
 			int x2 = (int)guiPoint.x / mGraphics.zoomLevel;
 			int y2 = (int)guiPoint.y / mGraphics.zoomLevel;
-			GameMidlet.gameCanvas.pointerMouse(x2, y2);
+            PollDesktopWheel(x2,y2);
 		}
 	}
+
+    private void PollDesktopWheel(int x,int y)
+    {
+        GameMidlet.gameCanvas.pointerMouse(x,y);
+        // OnGUI runs Layout/Repaint/input events in one Unity frame. Consume the axis once.
+        if(lastWheelInputFrame==Time.frameCount)return;
+        lastWheelInputFrame=Time.frameCount;
+        GameMidlet.gameCanvas.scrollMouse((int)(Input.GetAxis("Mouse ScrollWheel")*10f));
+    }
 
 	private void OnApplicationQuit()
 	{

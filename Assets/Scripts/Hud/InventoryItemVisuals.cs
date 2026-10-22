@@ -104,6 +104,10 @@ namespace Hud
             } finally { GUI.color = previous; }
         }
         private static readonly Dictionary<mFont, GUIStyle> compactStyles = new Dictionary<mFont, GUIStyle>();
+        private sealed class CompactFit {
+            internal GUIContent Content;internal float Width,Height;internal int BaseSize,FontSize,Zoom;internal Font Font;
+        }
+        private static readonly Dictionary<mFont,Dictionary<string,CompactFit>> compactFits=new Dictionary<mFont,Dictionary<string,CompactFit>>();
         // Keep the game's font, fitting the complete value instead of dropping digits with ellipses.
         internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false)
         {
@@ -113,10 +117,27 @@ namespace Hud
                     padding=new RectOffset(),margin=new RectOffset(),wordWrap=false,richText=false};
                 compactStyles.Add(font,style);
             }
+            style.font=font.myFont;
             style.alignment=center?TextAnchor.MiddleCenter:TextAnchor.MiddleLeft;
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
-            style.fontSize=Mathf.Max(1,font.myFont.fontSize);
-            while(style.fontSize>1&&(style.CalcSize(new GUIContent(text)).x>(bounds.width-2)*zoom||style.CalcSize(new GUIContent(text)).y>bounds.height*zoom))style.fontSize--;
+            if(!compactFits.TryGetValue(font,out Dictionary<string,CompactFit> fits)) {
+                fits=new Dictionary<string,CompactFit>();compactFits.Add(font,fits);
+            }
+            if(!fits.TryGetValue(text,out CompactFit fit)) {
+                if(fits.Count>=256)fits.Clear();
+                fit=new CompactFit{Content=new GUIContent(text)};fits.Add(text,fit);
+            }
+            int baseSize=Mathf.Max(1,font.myFont.fontSize);
+            if(fit.Font!=font.myFont||fit.BaseSize!=baseSize||fit.Width!=bounds.width||fit.Height!=bounds.height||fit.Zoom!=zoom) {
+                style.fontSize=baseSize;
+                while(style.fontSize>1) {
+                    Vector2 measured=style.CalcSize(fit.Content);
+                    if(measured.x<=(bounds.width-2)*zoom&&measured.y<=bounds.height*zoom)break;
+                    style.fontSize--;
+                }
+                fit.Font=font.myFont;fit.BaseSize=baseSize;fit.Width=bounds.width;fit.Height=bounds.height;fit.Zoom=zoom;fit.FontSize=style.fontSize;
+            }
+            style.fontSize=fit.FontSize;
             Color ink=new Color((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,1);
             style.normal.textColor=style.hover.textColor=style.active.textColor=style.focused.textColor=ink;
             style.onNormal.textColor=style.onHover.textColor=style.onActive.textColor=style.onFocused.textColor=ink;
