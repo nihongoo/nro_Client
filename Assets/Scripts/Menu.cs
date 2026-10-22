@@ -193,6 +193,7 @@ public class Menu
 
 	public void updateMenuKey()
 	{
+		Hud.DeadStateHud.SyncMenu(this);
 		if ((GameScr.gI().activeRongThan && GameScr.gI().isUseFreez) || !showMenu || isScrolling())
 		{
 			return;
@@ -441,6 +442,8 @@ public class Menu
 
 	public void paintMenu(mGraphics g)
 	{
+		Hud.DeadStateHud.SyncMenu(this);
+		if (!showMenu) return;
 		if (GameScr.gI().activeRongThan && GameScr.gI().isUseFreez)
 		{
 			return;
@@ -533,6 +536,8 @@ public class Menu
 
 	public void updateMenu()
 	{
+		Hud.DeadStateHud.SyncMenu(this);
+		if (!showMenu) return;
 		moveCamera();
 		if (!isClose)
 		{

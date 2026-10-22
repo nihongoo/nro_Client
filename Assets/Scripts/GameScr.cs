@@ -667,9 +667,11 @@ public class GameScr : mScreen, IChatable
             new Rect(Char.myCharz().cmdMenu.x - 17, Char.myCharz().cmdMenu.y - 17, 34, 34), Hud.HudLayout.MenuOrder);
         Hud.CombatMobileHud.Register();
         // The broad optional analog zone goes before the individual PC controls.
-        Hud.HudLayout.Register("pc-analog.touch", () => Hud.HudLayout.IsMobileLayout ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
-            ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder);
+        Hud.HudLayout.Register("pc-analog.touch", () => Hud.HudLayout.IsMobileLayout || Hud.HudLayout.IsPlayerDead ? new Rect() : GameCanvas.isTouch && isAnalog != 0 && gamePad != null
+            ? Rect.MinMaxRect(gamePad.xZone, gamePad.yZone, gamePad.wZone, gamePad.hZone) : new Rect(), Hud.HudLayout.ControlsOrder,
+            () => Hud.CombatPcHud.Visible);
         Hud.CombatPcHud.Register();
+        Hud.DeadStateHud.Register();
         Hud.InventoryFrame.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
@@ -2531,8 +2533,14 @@ public class GameScr : mScreen, IChatable
         base.keyPress(keyCode);
     }
 
+    private void SyncDeadHudCommand()
+    {
+        Hud.DeadStateHud.SyncCommand();
+    }
+
     public override void updateKey()
     {
+        SyncDeadHudCommand();
         if (Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || Hud.MapListsHud.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
@@ -4122,6 +4130,7 @@ public class GameScr : mScreen, IChatable
 
     private void updateKeyTouchControl()
     {
+        if (Hud.HudLayout.IsPlayerDead) return;
         MainMod.updateTouch();
         if (Hud.HudLayout.IsMobileLayout) {
             if (mobCapcha != null) updateKeyTouchCapcha();
@@ -4593,6 +4602,7 @@ public class GameScr : mScreen, IChatable
 
     public override void paint(mGraphics g)
     {
+        SyncDeadHudCommand();
         countEff = 0;
         if (!isPaint)
         {
@@ -5990,7 +6000,7 @@ public class GameScr : mScreen, IChatable
         myVector.addElement(new Command(mResources.DIES[1], 110381));
         myVector.addElement(new Command(mResources.DIES[2], 110382));
         myVector.addElement(new Command(mResources.DIES[3], 110383));
-        GameCanvas.menu.startAt(myVector, 3);
+        Hud.DeadStateHud.OpenMenu(myVector);
     }
 
     public void getFlagImage(int charID, sbyte cflag)

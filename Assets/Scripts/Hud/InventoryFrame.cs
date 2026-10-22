@@ -229,7 +229,7 @@ public partial class Panel
         cmdClose.x = (int)close.x; cmdClose.y = (int)close.y;
         cmdClose.w = (int)close.width; cmdClose.h = (int)close.height;
         if (currentTabIndex == 1) {
-            isnewInventory = false; newSelected = 0; size_tab = 0; ITEM_HEIGHT = 24;
+            newSelected = 0; size_tab = 0; ITEM_HEIGHT = 24;
             SyncInventoryBag();
             currentListLength = (Char.myCharz().arrItemBody?.Length ?? 0) + (Char.myCharz().arrItemBag?.Length ?? 0);
             int last = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns - 1;

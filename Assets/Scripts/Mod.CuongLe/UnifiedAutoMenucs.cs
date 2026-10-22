@@ -27,6 +27,7 @@ public class UnifiedAutoMenu
     public static int BasePanelWidth = 90; // Fixed width for each column
     public static int ToggleButtonHeight = 14;
     public static bool isShowingAutoItem = true;
+    private const int HeaderHeight = 22;
     private static readonly int MaxColumns = 3; // Maximum number of columns
 
     public static SkillTrain[] SkillTrains;
@@ -57,7 +58,7 @@ public class UnifiedAutoMenu
     public static int PanelWidth => BasePanelWidth * MaxColumns;
 
     public static int PanelHeight =>
-        15 + Rows * ItemHeight + (isShowingAutoItem ? 0 : ToggleButtonHeight + 5);
+        HeaderHeight + Rows * ItemHeight + (isShowingAutoItem ? 0 : ToggleButtonHeight + 5);
 
     public static int PanelX => GameCanvas.w / 2 - PanelWidth / 2;
     public static int PanelY => GameCanvas.h / 3 - PanelHeight / 2;
@@ -165,26 +166,24 @@ public class UnifiedAutoMenu
     public static void Paint(mGraphics g)
     {
         int itemCount = isShowingAutoItem ? AutoItems.Length : SkillTrains.Length;
-        int headerHeight = 22;
-        int totalHeight = headerHeight + Rows * ItemHeight + (isShowingAutoItem ? 0 : ToggleButtonHeight + 5);
 
         int panelX = PanelX;
         int panelY = PanelY;
         int width = PanelWidth;
 
         g.setColor(0xF1F1F1);
-        g.fillRoundRect(panelX, panelY, width, totalHeight, 10, 10);
+        g.fillRoundRect(panelX, panelY, width, PanelHeight, 10, 10);
         g.setColor(0x666666);
-        g.drawRoundRect(panelX, panelY, width, totalHeight, 10, 10);
+        g.drawRoundRect(panelX, panelY, width, PanelHeight, 10, 10);
 
         // Draw header spanning the entire width
         int halfWidth = width / 2;
         g.setColor(isShowingAutoItem ? 0x3399FF : 0xCCCCCC);
-        g.fillRect(panelX, panelY, halfWidth, headerHeight);
+        g.fillRect(panelX, panelY, halfWidth, HeaderHeight);
         mFont.tahoma_7b_white.drawString(g, "Auto Item", panelX + (halfWidth - mFont.tahoma_7b_white.getWidth("Auto Item")) / 2, panelY + 3, 0);
 
         g.setColor(!isShowingAutoItem ? 0x3399FF : 0xCCCCCC);
-        g.fillRect(panelX + halfWidth, panelY, halfWidth, headerHeight);
+        g.fillRect(panelX + halfWidth, panelY, halfWidth, HeaderHeight);
         mFont.tahoma_7b_white.drawString(g, "Skill Train", panelX + halfWidth + (halfWidth - mFont.tahoma_7b_white.getWidth("Skill Train")) / 2, panelY + 3, 0);
 
         // Draw items in a grid layout with fixed 3 columns
@@ -192,7 +191,7 @@ public class UnifiedAutoMenu
         int rowsToDraw = (int)System.Math.Ceiling((float)itemCount / MaxColumns);
         for (int row = 0; row < rowsToDraw; row++)
         {
-            int y = panelY + headerHeight + row * ItemHeight;
+            int y = panelY + HeaderHeight + row * ItemHeight;
             g.setColor(row % 2 == 0 ? 0xFFFFFF : 0xEFEFEF);
             g.fillRect(panelX, y, PanelWidth, ItemHeight); // Phủ toàn bộ chiều ngang
         }
@@ -203,7 +202,7 @@ public class UnifiedAutoMenu
             int col = i % MaxColumns;
             int row = i / MaxColumns;
             int x = panelX + col * BasePanelWidth;
-            int y = panelY + headerHeight + row * ItemHeight;
+            int y = panelY + HeaderHeight + row * ItemHeight;
 
             string text = isShowingAutoItem ? AutoItems[i].Name : SkillTrains[i].Name;
             bool flag = isShowingAutoItem ? AutoItems[i].AutoFlag : SkillTrains[i].AutoFlag;
@@ -215,7 +214,7 @@ public class UnifiedAutoMenu
 
         if (!isShowingAutoItem)
         {
-            int btnY = panelY + headerHeight + Rows * ItemHeight + 2;
+            int btnY = panelY + HeaderHeight + Rows * ItemHeight + 2;
 
             long now = mSystem.currentTimeMillis();
             bool saveActive = now - lastClickSaveTime <= effectDuration;
@@ -240,10 +239,9 @@ public class UnifiedAutoMenu
     {
         int panelX = PanelX;
         int panelY = PanelY;
-        int headerHeight = 22;
         int halfWidth = PanelWidth / 2;
 
-        if (GameCanvas.isPointerHoldIn(panelX, panelY, halfWidth, headerHeight)
+        if (GameCanvas.isPointerHoldIn(panelX, panelY, halfWidth, HeaderHeight)
             && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
         {
             isShowingAutoItem = true;
@@ -251,7 +249,7 @@ public class UnifiedAutoMenu
             return;
         }
 
-        if (GameCanvas.isPointerHoldIn(panelX + halfWidth, panelY, halfWidth, headerHeight)
+        if (GameCanvas.isPointerHoldIn(panelX + halfWidth, panelY, halfWidth, HeaderHeight)
             && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
         {
             isShowingAutoItem = false;
@@ -266,7 +264,7 @@ public class UnifiedAutoMenu
             int col = i % MaxColumns;
             int row = i / MaxColumns;
             int x = panelX + col * BasePanelWidth;
-            int y = panelY + headerHeight + row * ItemHeight;
+            int y = panelY + HeaderHeight + row * ItemHeight;
             int checkX = x + BasePanelWidth - CheckBoxSize - 10;
 
             if (GameCanvas.isPointerHoldIn(checkX, y + 1, CheckBoxSize, CheckBoxSize)
@@ -313,7 +311,7 @@ public class UnifiedAutoMenu
 
         if (!isShowingAutoItem)
         {
-            int btnY = panelY + headerHeight + Rows * ItemHeight + 2;
+            int btnY = panelY + HeaderHeight + Rows * ItemHeight + 2;
             int margin = 10;
             int btnWidth = 40;
             int btnSpacing = PanelWidth - 2 * margin - btnWidth * 2;
@@ -339,8 +337,7 @@ public class UnifiedAutoMenu
         }
 
         // ✅ Nuốt sự kiện click nếu click trong vùng menu
-        int totalHeight = 22 + Rows * ItemHeight + (isShowingAutoItem ? 0 : ToggleButtonHeight + 5);
-        if (GameCanvas.isPointerHoldIn(PanelX, PanelY, PanelWidth, totalHeight)
+        if (GameCanvas.isPointerHoldIn(PanelX, PanelY, PanelWidth, PanelHeight)
             && GameCanvas.isPointerClick && GameCanvas.isPointerJustRelease)
         {
             GameCanvas.clearAllPointerEvent();
