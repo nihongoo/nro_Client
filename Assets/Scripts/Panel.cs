@@ -107,7 +107,6 @@ public partial class Panel : IActionListener, IChatable
 
     public static Image imgStar8;
 
-    public static Image imgStar9;
 
     public static Image imgStarCuongHoa;
 
@@ -149,11 +148,8 @@ public partial class Panel : IActionListener, IChatable
 
     private int[] currClanOption;
 
-    public int mainTabPos = 4;
 
-    public int shopTabPos = 50;
 
-    public int boxTabPos = 50;
 
     public string[][] mainTabName;
 
@@ -238,7 +234,6 @@ public partial class Panel : IActionListener, IChatable
 
     public int hasUse;
 
-    public int hasUseBag;
 
     public int currentListLength;
 
@@ -472,7 +467,6 @@ public partial class Panel : IActionListener, IChatable
 
     private int tt;
 
-    private int currentButtonPress;
 
     public static long[] t_tiemnang;
 
@@ -486,13 +480,9 @@ public partial class Panel : IActionListener, IChatable
 
     public static int[] color2;
 
-    private int sellectInventory;
 
-    private Item itemInvenNew;
 
-    private Effect eBanner;
 
-    private static FrameImage screenTab6;
 
     private bool isUp;
 
@@ -696,7 +686,6 @@ public partial class Panel : IActionListener, IChatable
 
     public sbyte size_tab;
 
-    private bool isnewInventory;
 
     public Panel()
     {
@@ -720,7 +709,6 @@ public partial class Panel : IActionListener, IChatable
         imgStar = GameCanvas.loadImage("/mainImage/star.png");
         imgMaxStar = GameCanvas.loadImage("/mainImage/starE.png");
         imgStar8 = GameCanvas.loadImage("/mainImage/star8.png");
-        imgStar9 = mSystem.loadImage("/mainImage/star9.png");
         imgStarCuongHoa = mSystem.loadImage("/mainImage/starCH.png");
         imgNew = GameCanvas.loadImage("/mainImage/new.png");
         imgTicket = GameCanvas.loadImage("/mainImage/ticket12.png");
@@ -2679,14 +2667,6 @@ public partial class Panel : IActionListener, IChatable
         if (GameCanvas.keyPressed[(!Main.isPC) ? 2 : 21])
         {
             flag = true;
-            if (isTabInven() && isnewInventory)
-            {
-                if (selected > 0 && sellectInventory == 0)
-                {
-                    selected--;
-                }
-            }
-            else
             {
                 selected--;
                 if (type == 24)
@@ -2730,14 +2710,6 @@ public partial class Panel : IActionListener, IChatable
         else if (GameCanvas.keyPressed[(!Main.isPC) ? 8 : 22])
         {
             flag = true;
-            if (isTabInven() && isnewInventory)
-            {
-                if (selected < 1 && sellectInventory == 0)
-                {
-                    selected++;
-                }
-            }
-            else
             {
                 selected++;
                 if (type == 24)
@@ -2769,11 +2741,6 @@ public partial class Panel : IActionListener, IChatable
                 cSelected = 0;
                 getCurrClanOtion();
             }
-        }
-        if (isnewInventory && GameCanvas.keyPressed[5] && itemInvenNew != null)
-        {
-            pointerDownTime = 0;
-            waitToPerform = 2;
         }
         if (flag)
         {
@@ -2852,12 +2819,7 @@ public partial class Panel : IActionListener, IChatable
                 {
                     wantUpdateList = false;
                 }
-                if (isnewInventory)
-                {
-                    int num3 = GameCanvas.px - xScroll;
-                    int num4 = GameCanvas.py - yScroll;
-                    sellectInventory = num4 / 34 * 5 + num3 / 34;
-                }
+
             }
         }
         if (!GameCanvas.isPointerJustRelease || !pointerIsDowning)
@@ -2880,10 +2842,7 @@ public partial class Panel : IActionListener, IChatable
             checkOptionSelect();
             pointerDownTime = 0;
             waitToPerform = 10;
-            if (isnewInventory)
-            {
-                waitToPerform = -1;
-            }
+
             SoundMn.gI().panelClick();
         }
         else if (selected != -1 && pointerDownTime > 5)
@@ -2917,11 +2876,6 @@ public partial class Panel : IActionListener, IChatable
         GameCanvas.isPointerJustRelease = false;
     }
 
-    public string subArray(string[] str)
-    {
-        return null;
-    }
-
     private void updateKeyInTabBar()
     {
         if (InventoryFrameActive) return;
@@ -2930,97 +2884,7 @@ public partial class Panel : IActionListener, IChatable
             return;
         }
         int num = currentTabIndex;
-        if (isTabInven() && isnewInventory)
-        {
-            if (selected == -1)
-            {
-                if (GameCanvas.keyPressed[6])
-                {
-                    currentTabIndex++;
-                    if (currentTabIndex >= currentTabName.Length)
-                    {
-                        if (GameCanvas.panel2 != null)
-                        {
-                            currentTabIndex = currentTabName.Length - 1;
-                            GameCanvas.isFocusPanel2 = true;
-                        }
-                        else
-                        {
-                            currentTabIndex = 0;
-                        }
-                    }
-                    selected = lastSelect[currentTabIndex];
-                    lastTabIndex[type] = currentTabIndex;
-                }
-                if (GameCanvas.keyPressed[4])
-                {
-                    currentTabIndex--;
-                    if (currentTabIndex < 0)
-                    {
-                        currentTabIndex = currentTabName.Length - 1;
-                    }
-                    if (GameCanvas.isFocusPanel2)
-                    {
-                        GameCanvas.isFocusPanel2 = false;
-                    }
-                    selected = lastSelect[currentTabIndex];
-                    lastTabIndex[type] = currentTabIndex;
-                }
-            }
-            else if (selected > 0)
-            {
-                if (GameCanvas.keyPressed[8])
-                {
-                    if (newSelected == 0)
-                    {
-                        sellectInventory++;
-                    }
-                    else
-                    {
-                        sellectInventory += 5;
-                    }
-                }
-                else if (GameCanvas.keyPressed[2])
-                {
-                    if (newSelected == 0)
-                    {
-                        sellectInventory--;
-                    }
-                    else
-                    {
-                        sellectInventory -= 5;
-                    }
-                }
-                else if (GameCanvas.keyPressed[4])
-                {
-                    if (newSelected == 0)
-                    {
-                        sellectInventory -= 5;
-                    }
-                    else
-                    {
-                        sellectInventory--;
-                    }
-                }
-                else if (GameCanvas.keyPressed[6])
-                {
-                    if (newSelected == 0)
-                    {
-                        sellectInventory += 5;
-                    }
-                    else
-                    {
-                        sellectInventory++;
-                    }
-                }
-            }
-            _ = sellectInventory;
-            if (sellectInventory == nTableItem)
-            {
-                sellectInventory = 0;
-            }
-        }
-        else if (!IsTabOption())
+        if (!IsTabOption())
         {
             if (GameCanvas.keyPressed[(!Main.isPC) ? 6 : 24])
             {
@@ -3538,16 +3402,7 @@ public partial class Panel : IActionListener, IChatable
 
     private void setTabInventory(bool resetSelect)
     {
-        if (isnewInventory)
-        {
-            int num = Char.myCharz().arrItemBody.Length + Char.myCharz().arrItemBag.Length;
-            currentListLength = checkCurrentListLength(num);
-            currentListLength = 3;
-            newSelected = 0;
-            size_tab = (sbyte)(num / 20 + ((num % 20 > 0) ? 1 : 0));
-            Res.outz("sizeTab = " + size_tab);
-            return;
-        }
+
         currentListLength = Char.myCharz().arrItemBody.Length + Char.myCharz().arrItemBag.Length;
         ITEM_HEIGHT = 24;
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -6185,11 +6040,6 @@ public partial class Panel : IActionListener, IChatable
                 if (currentTabIndex == 1)
                 {
                     SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), X + 25, 50, 0, 33);
-                    if (isnewInventory)
-                    {
-                        paintCharInfo(g, Char.myCharz());
-                    }
-                    else
                     {
                         paintItemBodyBagInfo(g);
                     }
@@ -6387,11 +6237,6 @@ public partial class Panel : IActionListener, IChatable
 
     private string getStatus(int status)
     {
-        bool flag = false;
-        bool flag2 = false;
-        if (1 == 0)
-        {
-        }
         string text = status switch
         {
             0 => mResources.follow,
@@ -6400,13 +6245,8 @@ public partial class Panel : IActionListener, IChatable
             3 => mResources.gohome,
             _ => "aaa",
         };
-        if (1 == 0)
-        {
-        }
         string text2 = text;
-        bool flag3 = false;
         string result = text2;
-        bool flag4 = false;
         return result;
     }
 
@@ -7022,18 +6862,7 @@ public partial class Panel : IActionListener, IChatable
             return;
         }
         moveCamera();
-        if (isTabInven() && isnewInventory)
-        {
-            if (eBanner == null)
-            {
-                eBanner = new Effect(205, 0, 0, 3, 10, -1);
-                eBanner.typeEff = 2;
-            }
-            if (eBanner != null)
-            {
-                eBanner.update();
-            }
-        }
+
         if (waitToPerform > 0)
         {
             waitToPerform--;
@@ -8993,10 +8822,7 @@ public partial class Panel : IActionListener, IChatable
         {
             Item[] arrItemBody = Char.myCharz().arrItemBody;
             sbyte id2 = (sbyte)GetInventorySelect_bag(selected, newSelected, arrItemBody);
-            if (isnewInventory)
-            {
-                id2 = (sbyte)currItem.indexUI;
-            }
+
             Service.gI().getItem(BAG_BODY, id2);
         }
         if (idAction == 2001)
@@ -9005,17 +8831,6 @@ public partial class Panel : IActionListener, IChatable
             Item item7 = (Item)p;
             bool inventorySelect_isbody = GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody);
             sbyte index = (inventorySelect_isbody ? ((sbyte)GetInventorySelect_body(selected, newSelected)) : ((sbyte)GetInventorySelect_bag(selected, newSelected, Char.myCharz().arrItemBody)));
-            if (isnewInventory)
-            {
-                index = (sbyte)currItem.indexUI;
-                sbyte b = 0;
-                if (newSelected != 0)
-                {
-                    b = 1;
-                }
-                Service.gI().useItem(0, b, index, -1);
-            }
-            else
             {
                 Service.gI().useItem(0, (!inventorySelect_isbody) ? ((sbyte)1) : ((sbyte)0), index, -1);
             }
@@ -9026,11 +8841,6 @@ public partial class Panel : IActionListener, IChatable
         }
         if (idAction == 2002)
         {
-            if (isnewInventory)
-            {
-                Service.gI().getItem(BODY_BAG, (sbyte)sellectInventory);
-            }
-            else
             {
                 Service.gI().getItem(BODY_BAG, (sbyte)GetInventorySelect_body(selected, newSelected));
             }
@@ -10464,11 +10274,6 @@ public partial class Panel : IActionListener, IChatable
 
     public static int GetColor_ItemBg(int id)
     {
-        bool flag = false;
-        bool flag2 = false;
-        if (1 == 0)
-        {
-        }
         int num = id switch
         {
             1 => 2786816,
@@ -10479,13 +10284,8 @@ public partial class Panel : IActionListener, IChatable
             6 => 11599872,
             _ => -1,
         };
-        if (1 == 0)
-        {
-        }
         int num2 = num;
-        bool flag3 = false;
         int result = num2;
-        bool flag4 = false;
         return result;
     }
 
@@ -10636,11 +10436,6 @@ public partial class Panel : IActionListener, IChatable
         mFont result;
         if (type == 0)
         {
-            bool flag = false;
-            bool flag2 = false;
-            if (1 == 0)
-            {
-            }
             mFont2 = id switch
             {
                 0 => mFont.bigNumber_While,
@@ -10651,19 +10446,9 @@ public partial class Panel : IActionListener, IChatable
                 6 => mFont.bigNumber_red,
                 _ => mFont.bigNumber_While,
             };
-            if (1 == 0)
-            {
-            }
             mFont3 = mFont2;
-            bool flag3 = false;
             result = mFont3;
-            bool flag4 = false;
             return result;
-        }
-        bool flag5 = false;
-        bool flag6 = false;
-        if (1 == 0)
-        {
         }
         mFont2 = id switch
         {
@@ -10676,13 +10461,8 @@ public partial class Panel : IActionListener, IChatable
             7 => mFont.tahoma_7b_dark,
             _ => mFont.tahoma_7b_white,
         };
-        if (1 == 0)
-        {
-        }
         mFont3 = mFont2;
-        bool flag7 = false;
         result = mFont3;
-        bool flag8 = false;
         return result;
     }
 
@@ -10728,10 +10508,7 @@ public partial class Panel : IActionListener, IChatable
         if (GameCanvas.keyPressed[(!Main.isPC) ? 4 : 23])
         {
             newSelected--;
-            if (isnewInventory)
-            {
-                currentListLength = 5;
-            }
+
             if (newSelected < 0)
             {
                 newSelected = 0;
@@ -10749,10 +10526,7 @@ public partial class Panel : IActionListener, IChatable
                 return;
             }
             newSelected++;
-            if (isnewInventory)
-            {
-                currentListLength = 5;
-            }
+
             if (newSelected > size_tab - 1)
             {
                 newSelected = size_tab - 1;
