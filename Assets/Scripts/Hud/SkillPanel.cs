@@ -189,12 +189,12 @@ public partial class Panel
     }
     private void PaintSkillPanel(mGraphics g)
     {
-        SyncSkillPanel();InventoryFrame.Clip(g,SkillPanelLayout.Frame);InventoryFrame.PaintSection(g,SkillPanelLayout.Frame,InventoryFrame.MoneyBackground);
+        SyncSkillPanel();InventoryFrame.Clip(g,SkillPanelLayout.Frame);InventoryFrame.PaintSection(g,SkillPanelLayout.Frame,InventoryFrame.PanelBackground);
         Rect viewport=SkillPanelLayout.Content;SkillTemplate[] templates=SkillTabState.Templates();
         for(int i=0;i<templates.Length;i++) {
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
-            InventoryFrame.Rounded(g,cell,InventoryFrame.SlotBackground,255,skillDetailOpen&&skillSelectedId==t.id?InventoryFrame.Accent:InventoryFrame.Border);
+            InventoryFrame.Rounded(g,cell,InventoryFrame.SlotBackground,255,skillDetailOpen&&skillSelectedId==t.id?InventoryFrame.Accent:InventoryFrame.FrameBorder);
             InventoryItemVisuals.PaintCompactIcon(g,t.iconId,new Rect(cell.x+2,cell.y+2,cell.width-4,cell.height-4),viewport);
             mFont.tahoma_7b_white.drawString(g,(i+1).ToString(),(int)cell.x+2,(int)cell.y+1,0);
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
@@ -222,7 +222,7 @@ public partial class Panel
     {
         if(!more)return;
         InventoryFrame.Clip(g,viewport);
-        for(int i=0;i<8;i++) {g.setColor(InventoryFrame.MoneyBackground,(i+1)/9f);g.fillRect((int)viewport.x,(int)viewport.yMax-8+i,(int)viewport.width,1);}
+        for(int i=0;i<8;i++) {g.setColor(InventoryFrame.PanelBackground,(i+1)/9f);g.fillRect((int)viewport.x,(int)viewport.yMax-8+i,(int)viewport.width,1);}
     }
     private static void PaintStudyClock(mGraphics g,Rect cell,Rect viewport)
     {
