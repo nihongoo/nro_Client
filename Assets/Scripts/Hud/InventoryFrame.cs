@@ -271,7 +271,7 @@ public partial class Panel
             newSelected = 0; size_tab = 0; ITEM_HEIGHT = 24;
             SyncInventoryBag();
             currentListLength = (Char.myCharz().arrItemBody?.Length ?? 0) + (Char.myCharz().arrItemBag?.Length ?? 0);
-            int last = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns - 1;
+            int last = InventoryBag.DisplaySlots(inventoryBagMap.Count, inventoryBagFilter) - 1;
             cmyLim = Mathf.Max(0, (int)(InventoryFrame.BagCellBounds(last).yMax + cmy + 5 - content.yMax));
             int previousScroll = cmy;
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
