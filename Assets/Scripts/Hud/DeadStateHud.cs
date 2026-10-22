@@ -20,9 +20,19 @@ namespace Hud
         {
             HudLayout.Register(Button, ButtonBounds, HudLayout.ControlsOrder, () => Visible);
             // The existing Menu owns modal input; this entry provides its shared geometry.
-            HudLayout.Register(MenuBounds, () => HudLayout.Anchor(HorizontalAnchor.Center, VerticalAnchor.Center,
-                new Vector2(Mathf.Min(GameCanvas.w - 2, GameCanvas.menu.menuW * 3), GameCanvas.menu.menuH), Vector2.zero),
+            HudLayout.Register(MenuBounds, MenuPosition,
                 HudLayout.OverlayOrder, () => false, false);
+        }
+
+        private static Rect MenuPosition()
+        {
+            Rect row = HudLayout.GetRect(HudLayout.IsMobileLayout
+                ? CombatMobileHud.SkillName(4) : CombatPcHud.SkillName(0));
+            Rect bounds = HudLayout.Anchor(HorizontalAnchor.Center, VerticalAnchor.Bottom,
+                new Vector2(Mathf.Min(GameCanvas.w - 2, GameCanvas.menu.menuW * 3), GameCanvas.menu.menuH), Vector2.zero);
+            // Share the skill row's bottom edge, including its platform-specific inset.
+            bounds.y = Mathf.Max(0, Mathf.Min(row.yMax, GameCanvas.h) - bounds.height);
+            return bounds;
         }
 
         private static Rect ButtonBounds()
