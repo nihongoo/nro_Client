@@ -12,7 +12,6 @@ namespace Mod.CuongLe
 
     	public static bool isShowCharsInMap;
 
-    	public static bool isHuntingBoss;
 
     	public static bool MapLuoi;
 
@@ -22,13 +21,7 @@ namespace Mod.CuongLe
 
         public static Image imgCheck = GameCanvas.loadImage("/mainImage/myTexture2dcheck.png");
 
-    	public static Image imgBoxItem =GameCanvas.loadImage("/mainImage/BoxMenu.png");
-
-    	public static Image imgBoxOpenItem = GameCanvas.loadImage("/mainImage/BoxMenuOpen.png");
-
         public static Image imgLogo = mSystem.loadImage("/mainImage/logo1E.png");
-
-        public static Image imgSetting = GameCanvas.loadImage("/pc/myTexture2dSettings.png");
 
         public static DoHoa getInstance()
     	{
@@ -49,15 +42,6 @@ namespace Mod.CuongLe
             {
                 g.drawImage(DoHoa.imgLogo, GameCanvas.w / 2, 20, 3);
             }
-            if (isShowMenuVIP)
-    		{
-                g.drawImage(imgBoxOpenItem, GameScr.imgPanel.getWidth() + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
-            }
-    		else
-    		{
-                g.drawImage(imgBoxItem, GameScr.imgPanel.getWidth() + 5 + DoHoa.imgSetting.getWidth() + 5, 3);
-            }
-            g.drawImage(imgSetting, GameScr.imgPanel.getWidth() + 5 , 3);
         }
 
     	public void perform(int idAction, object p)
@@ -71,10 +55,6 @@ namespace Mod.CuongLe
     		case 2:
     			HienThiBackground = !HienThiBackground;
     			Rms.saveRMSInt("saveBackground", HienThiBackground ? 1 : 0);
-    			break;
-    		case 3:
-    			isHuntingBoss = !isHuntingBoss;
-    			Rms.saveRMSInt("sanboss", isHuntingBoss ? 1 : 0);
     			break;
     		case 4:
     			isShowCharsInMap = !isShowCharsInMap;
@@ -92,7 +72,6 @@ namespace Mod.CuongLe
     		MyVector myVector = new MyVector();
     		myVector.addElement(new Command("Logo game: " + (HienThiLogo ? "ON" : "OFF"), getInstance(), 1, null));
     		myVector.addElement(new Command("Background: " + (HienThiBackground ? "ON" : "OFF"), getInstance(), 2, null));
-    		myVector.addElement(new Command("Thông báo Boss: " + (isHuntingBoss ? "ON" : "OFF"), getInstance(), 3, null));
     		myVector.addElement(new Command("Danh sách nhân vật: " + (isShowCharsInMap ? "ON" : "OFF"), getInstance(), 4, null));
     		myVector.addElement(new Command("Địa hình dạng lưới: " + (MapLuoi ? "ON" : "OFF"), getInstance(), 5, null));
     		GameCanvas.menu.startAt(myVector, 3);
@@ -102,7 +81,6 @@ namespace Mod.CuongLe
     	{
     		HienThiLogo = Rms.loadRMSInt("saveLogo") == 1;
     		HienThiBackground = Rms.loadRMSInt("saveBackground") != 0;
-            isHuntingBoss = Rms.loadRMSInt("sanboss") != 0;
     		isShowCharsInMap = Rms.loadRMSInt("showchar") == 1;
     		MapLuoi = Rms.loadRMSInt("mapLuoi") == 1;
             DrawFont = mFont.tahoma_7;
@@ -112,7 +90,6 @@ namespace Mod.CuongLe
     	{
     		HienThiBackground = true;
     		isShowCharsInMap = true;
-    		isHuntingBoss = true;
     		DrawFont = mFont.tahoma_7;
     	}
 

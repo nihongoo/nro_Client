@@ -1055,7 +1055,7 @@ public class Char : IMapObject
         if (task.taskId >= 1)
         {
             GameScr.gI().right = GameScr.gI().cmdFocus;
-            GameScr.gI().left = GameScr.gI().cmdMenu;
+            GameScr.gI().left = null; // Main menu opens from the HUD avatar on PC and mobile.
         }
         if (task.taskId < 0)
         {
@@ -1144,7 +1144,7 @@ public class Char : IMapObject
             chatInfo = new Info();
         }
         Char cInfo = null;
-        chatInfo.addInfo(info, 0, cInfo, isChatServer: false);
+        chatInfo.addInfo(info, 0, cInfo);
     }
 
     public int getSys()
@@ -5856,6 +5856,57 @@ public class Char : IMapObject
         }
     }
 
+    // Read-only projection of existing visibility flags; no gameplay state is changed.
+    internal bool IsHiddenFromHudList => isSetPos || isFusion || isInvisiblez;
+    // Unlike myCharz(), inspecting HUD readiness must not create a player.
+    internal static Char ExistingLocalPlayer => myChar;
+
+    // Shared with the HUD's person status dot: preserve the exact overhead-name palette.
+    public mFont GetNameStatusFont()
+    {
+        bool flag = myCharz().clan != null && clanID == myCharz().clan.ID;
+        bool flag2 = cTypePk == 3 || cTypePk == 5;
+        bool flag3 = cTypePk == 4;
+        mFont mFont2 = mFont.tahoma_7b_white;
+        if (!isPet && !isMiniPet)
+        {
+            if (!flag2)
+            {
+                if (flag3)
+                {
+                    mFont2 = mFont.nameFontYellow;
+                }
+                else if (flag)
+                {
+                    mFont2 = mFont.nameFontGreen;
+                }
+            }
+            else
+            {
+                mFont2 = mFont.nameFontRed;
+            }
+        }
+        else
+        {
+            mFont2 = mFont.tahoma_7_blue1Small;
+        }
+        if (TileMap.mapID == 170)
+        {
+            if (flagImage != 2325)
+            {
+                if (flagImage == 2323)
+                {
+                    mFont2 = mFont.tahoma_7_red;
+                }
+            }
+            else
+            {
+                mFont2 = mFont.tahoma_7_blue;
+            }
+        }
+        return mFont2;
+    }
+
     private void paintCharName_HP_MP_Overhead(mGraphics g)
     {
         Part part = GameScr.parts[getFHead(head)];
@@ -5916,43 +5967,7 @@ public class Char : IMapObject
                 fraDanhHieu.drawFrame(danhHieuFramme, x2, y2, 0, mGraphics.TOP | mGraphics.LEFT, g);
             }
         }
-        mFont mFont2 = mFont.tahoma_7b_white;
-        if (!isPet && !isMiniPet)
-        {
-            if (!flag2)
-            {
-                if (flag3)
-                {
-                    mFont2 = mFont.nameFontYellow;
-                }
-                else if (flag)
-                {
-                    mFont2 = mFont.nameFontGreen;
-                }
-            }
-            else
-            {
-                mFont2 = mFont.nameFontRed;
-            }
-        }
-        else
-        {
-            mFont2 = mFont.tahoma_7_blue1Small;
-        }
-        if (TileMap.mapID == 170)
-        {
-            if (flagImage != 2325)
-            {
-                if (flagImage == 2323)
-                {
-                    mFont2 = mFont.tahoma_7_red;
-                }
-            }
-            else
-            {
-                mFont2 = mFont.tahoma_7_blue;
-            }
-        }
+        mFont mFont2 = GetNameStatusFont();
         if ((paintName || flag2 || flag3) && !flag)
         {
             if (mSystem.clientType != 1)

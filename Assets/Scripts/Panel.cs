@@ -1,11 +1,11 @@
-﻿using Assets.src.g;
+using Assets.src.g;
 using Mod.CuongLe;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-public class Panel : IActionListener, IChatable
+public partial class Panel : IActionListener, IChatable
 {
     public class PlayerChat
     {
@@ -1365,6 +1365,11 @@ public class Panel : IActionListener, IChatable
     {
         type = 0;
         setType(0);
+        if (currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5))
+        {
+            currentTabIndex = 6;
+            lastTabIndex[type] = currentTabIndex;
+        }
         if (currentTabIndex == 1)
         {
             setTabInventory(resetSelect: true);
@@ -1835,6 +1840,7 @@ public class Panel : IActionListener, IChatable
 
     public void updateKey()
     {
+        if (InventoryFrameActive && UpdateInventoryFrameInput()) return;
         if ((chatTField != null && chatTField.isShow) || !GameCanvas.panel.isDoneCombine || InfoDlg.isShow)
         {
             return;
@@ -2625,6 +2631,7 @@ public class Panel : IActionListener, IChatable
 
     public void updateScroolMouse(int a)
     {
+        if (ScrollInventoryBagMouse(a)) return;
         bool flag = false;
         if (GameCanvas.pxMouse > wScroll)
         {
@@ -2917,6 +2924,7 @@ public class Panel : IActionListener, IChatable
 
     private void updateKeyInTabBar()
     {
+        if (InventoryFrameActive) return;
         if ((scroll != null && scroll.pointerIsDowning) || pointerIsDowning)
         {
             return;
@@ -3239,7 +3247,7 @@ public class Panel : IActionListener, IChatable
     private void setTabTool()
     {
         SoundMn.gI().getSoundOption();
-        currentListLength = strTool.Length;
+        currentListLength = strTool.Length + (InventoryFrameActive ? 2 : 0);
         ITEM_HEIGHT = 24;
         selected = (GameCanvas.isTouch ? (-1) : 0);
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -3859,6 +3867,7 @@ public class Panel : IActionListener, IChatable
 
     public void paint(mGraphics g)
     {
+        if (InventoryFrameActive) { PaintInventoryFrame(g); return; }
         g.translate(-g.getTranslateX(), -g.getTranslateY() + mGraphics.addYWhenOpenKeyBoard);
         g.translate(-cmx, 0);
         g.translate(X, Y);
@@ -4526,7 +4535,7 @@ public class Panel : IActionListener, IChatable
     {
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
-        for (int i = 0; i < strTool.Length; i++)
+        for (int i = 0; i < currentListLength; i++)
         {
             int num = xScroll;
             int num2 = yScroll + i * ITEM_HEIGHT;
@@ -4538,8 +4547,9 @@ public class Panel : IActionListener, IChatable
             }
             g.setColor((i != selected) ? 15196114 : 16383818);
             g.fillRect(num, num2, num3, h);
-            mFont.tahoma_7b_dark.drawString(g, strTool[i], xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
-            if (!strTool[i].Equals(mResources.gameInfo))
+            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : "Rương đồ";
+            mFont.tahoma_7b_dark.drawString(g, label, xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
+            if (!label.Equals(mResources.gameInfo))
             {
                 continue;
             }
@@ -5046,14 +5056,7 @@ public class Panel : IActionListener, IChatable
             g.setClip(xScroll, yScroll + cmy, wScroll, hScroll);
             _ = mFont.tahoma_7b_dark;
             mFont.tahoma_7b_green2.drawString(g, infoItem.charInfo.cName, num4 + 5, num5, 0);
-            if (!infoItem.isChatServer)
-            {
-                mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
-            else
-            {
-                mFont.tahoma_7_red.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
-            }
+            mFont.tahoma_7_blue.drawString(g, Res.split(infoItem.s, "|", 0)[2], num4 + 5, num5 + 11, 0);
         }
         paintScrollArrow(g);
     }
@@ -5597,7 +5600,6 @@ public class Panel : IActionListener, IChatable
 
     private void paintInventory(mGraphics g)
     {
-        g.setColor(16711680);
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
         Item[] arrItemBody = Char.myCharz().arrItemBody;
@@ -5612,7 +5614,7 @@ public class Panel : IActionListener, IChatable
             int num5 = wScroll - 36;
             int h = ITEM_HEIGHT - 1;
             int num6 = xScroll;
-            int num7 = yScroll + i * ITEM_HEIGHT;
+            int num7 = num4;
             int num8 = 34;
             int num9 = ITEM_HEIGHT - 1;
             if (num4 - cmy > yScroll + hScroll || num4 - cmy < yScroll - ITEM_HEIGHT)
@@ -5622,22 +5624,23 @@ public class Panel : IActionListener, IChatable
             Item item = ((!flag) ? arrItemBag[num2] : arrItemBody[num]);
             g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
             g.fillRect(num3, num4, num5, h);
-            g.setColor((i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045));
+            int iconColor = (i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045);
             if (item != null)
             {
                 if (item.isHaveOption(34))
                 {
-                    g.setColor((i != selected) ? color1[0] : color2[0]);
+                    iconColor = (i != selected) ? color1[0] : color2[0];
                 }
                 else if (item.isHaveOption(35))
                 {
-                    g.setColor((i != selected) ? color1[1] : color2[1]);
+                    iconColor = (i != selected) ? color1[1] : color2[1];
                 }
                 else if (item.isHaveOption(36))
                 {
-                    g.setColor((i != selected) ? color1[2] : color2[2]);
+                    iconColor = (i != selected) ? color1[2] : color2[2];
                 }
             }
+            g.setColor(iconColor);
             g.fillRect(num6, num7, num8, num9);
             if (item != null && item.isSelect && GameCanvas.panel.type == 12)
             {
@@ -7514,10 +7517,10 @@ public class Panel : IActionListener, IChatable
         }
     }
 
-    private void doFireInventory()
+    private void doFireInventory(bool detailOnly = false)
     {
         Res.outz("fire inventory");
-        if (Char.myCharz().statusMe == 14)
+        if (Char.myCharz().statusMe == 14 && !detailOnly)
         {
             GameCanvas.startOKDlg(mResources.can_not_do_when_die);
         }
@@ -7553,7 +7556,15 @@ public class Panel : IActionListener, IChatable
                 }
                 else if (GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody))
                 {
-                    myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    if (currItem.template.id == 454)
+                    {
+                        myVector.addElement(new Command(mResources.USE, this, 2001, currItem));
+                        Hud.MobileQuickItems.AddAssignmentCommands(myVector, currItem);
+                    }
+                    else
+                    {
+                        myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
+                    }
                 }
                 else if (GameCanvas.panel.type == 21)
                 {
@@ -7570,6 +7581,7 @@ public class Panel : IActionListener, IChatable
                 else
                 {
                     myVector.addElement(new Command(mResources.USE, this, 2001, currItem));
+                    Hud.MobileQuickItems.AddAssignmentCommands(myVector, currItem);
                 }
                 if (currItem.isTypeBody() && Equals(GameCanvas.panel))
                 {
@@ -7631,6 +7643,8 @@ public class Panel : IActionListener, IChatable
                         myVector.addElement(new Command(mResources.SALE, this, 3002, currItem));
                     }
                 }
+                if (detailOnly) { inventoryDetailCommands = myVector; return; }
+                if (InventoryFrameActive && currentTabIndex == 1) { OpenInventoryItemDetail(currItem); return; }
                 GameCanvas.menu.startAt(myVector, X, (selected + 1) * ITEM_HEIGHT - cmy + yScroll);
                 addItemDetail(currItem);
             }
@@ -7659,6 +7673,14 @@ public class Panel : IActionListener, IChatable
     {
         if (selected < 0)
         {
+            return;
+        }
+        if (InventoryFrameActive && selected >= strTool.Length) {
+            if (selected == strTool.Length) { CloseInventoryBagDetail(); inventoryAppearanceFromSettings = false; SelectInventoryFrameTab(4); }
+            else if (selected == strTool.Length + 1) {
+                if (Char.myCharz().arrItemBox == null) { GameCanvas.startOKDlg("Chưa có dữ liệu rương. Hãy mở rương tại NPC."); return; }
+                CloseInventoryBagDetail(); currentTabIndex = 5; selected = -1; cp = null; setTabBox(); Hud.HudLayout.Invalidate();
+            }
             return;
         }
         if (SoundMn.IsDelAcc && selected == strTool.Length - 1)
@@ -7695,37 +7717,8 @@ public class Panel : IActionListener, IChatable
                     }
                     break;
                 case 5:
-                    GameCanvas.endDlg();
-                    if (Char.myCharz().checkLuong() < 5)
-                    {
-                        GameCanvas.startOKDlg(mResources.not_enough_luong_world_channel);
-                        break;
-                    }
-                    if (chatTField == null)
-                    {
-                        chatTField = new ChatTextField();
-                        chatTField.tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
-                        chatTField.initChatTextField();
-                        chatTField.parentScreen = GameCanvas.panel;
-                    }
-                    chatTField.strChat = mResources.world_channel_5_luong;
-                    chatTField.tfChat.name = mResources.CHAT;
-                    chatTField.to = string.Empty;
-                    chatTField.isShow = true;
-                    chatTField.tfChat.isFocus = true;
-                    chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
-                    if (Main.isWindowsPhone)
-                    {
-                        chatTField.tfChat.strInfo = chatTField.strChat;
-                    }
-                    if (!Main.isPC)
-                    {
-                        chatTField.startChat2(this, string.Empty);
-                    }
-                    else if (GameCanvas.isTouch)
-                    {
-                        chatTField.tfChat.doChangeToTextBox();
-                    }
+                    hide();
+                    WorldChat.WorldChatHud.Open();
                     break;
                 case 6:
                     setTypeAccount();
@@ -7775,37 +7768,8 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
             case 6:
-                GameCanvas.endDlg();
-                if (Char.myCharz().checkLuong() < 5)
-                {
-                    GameCanvas.startOKDlg(mResources.not_enough_luong_world_channel);
-                    break;
-                }
-                if (chatTField == null)
-                {
-                    chatTField = new ChatTextField();
-                    chatTField.tfChat.y = GameCanvas.h - 35 - ChatTextField.gI().tfChat.height;
-                    chatTField.initChatTextField();
-                    chatTField.parentScreen = GameCanvas.panel;
-                }
-                chatTField.strChat = mResources.world_channel_5_luong;
-                chatTField.tfChat.name = mResources.CHAT;
-                chatTField.to = string.Empty;
-                chatTField.isShow = true;
-                chatTField.tfChat.isFocus = true;
-                chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
-                if (Main.isWindowsPhone)
-                {
-                    chatTField.tfChat.strInfo = chatTField.strChat;
-                }
-                if (!Main.isPC)
-                {
-                    chatTField.startChat2(this, string.Empty);
-                }
-                else if (GameCanvas.isTouch)
-                {
-                    chatTField.tfChat.doChangeToTextBox();
-                }
+                hide();
+                WorldChat.WorldChatHud.Open();
                 break;
             case 7:
                 setTypeAccount();
@@ -8400,21 +8364,16 @@ public class Panel : IActionListener, IChatable
         switch (selected)
         {
             case 0:
-                DoHoa.isHuntingBoss = !DoHoa.isHuntingBoss;
-                Rms.saveRMSInt("sanboss", DoHoa.isHuntingBoss ? 1 : 0);
-                break;
-
-            case 1:
                 DoHoa.isShowCharsInMap = !DoHoa.isShowCharsInMap;
                 Rms.saveRMSInt("showchar", DoHoa.isShowCharsInMap ? 1 : 0);
                 break;
 
-            case 2:
+            case 1:
                 DoHoa.MapLuoi = !DoHoa.MapLuoi;
                 Rms.saveRMSInt("mapLuoi", DoHoa.MapLuoi ? 1 : 0);
                 break;
 
-            case 3:
+            case 2:
                 ModProCuongLe.hienThiDoKH = !ModProCuongLe.hienThiDoKH;
                 if (ModProCuongLe.hienThiDoKH)
                 {
@@ -8425,7 +8384,7 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
 
-            case 4:
+            case 3:
                 MainMod.infoTrainGold = !MainMod.infoTrainGold;
                 if (MainMod.infoTrainGold)
                 {
@@ -8441,7 +8400,7 @@ public class Panel : IActionListener, IChatable
                 }
                 break;
 
-            case 5:
+            case 4:
                 ModProCuongLe.charw = !ModProCuongLe.charw;
                 if (ModProCuongLe.charw)
                 {
@@ -8452,7 +8411,7 @@ public class Panel : IActionListener, IChatable
                 MainMod.GoldCurrent = 0L;
                 break;
 
-            case 6:
+            case 5:
                 if (!MainMod.AutoCapCha)
                 {
                     string dataFolder = "Data";
@@ -8819,6 +8778,7 @@ public class Panel : IActionListener, IChatable
                     else
                     {
                         myVector.addElement(new Command(mResources.USE, this, 2001, item2));
+                        Hud.MobileQuickItems.AddAssignmentCommands(myVector, item2);
                     }
                     currItem = item2;
                 }
@@ -9470,16 +9430,7 @@ public class Panel : IActionListener, IChatable
                     return;
                 }
             }
-            if (chatTField.strChat.Equals(mResources.world_channel_5_luong))
-            {
-                if (!chatTField.tfChat.getText().Equals(string.Empty))
-                {
-                    Service.gI().chatGlobal(chatTField.tfChat.getText());
-                    chatTField.isShow = false;
-                    hide();
-                }
-            }
-            else if (chatTField.strChat.Equals(mResources.chat_player))
+            if (chatTField.strChat.Equals(mResources.chat_player))
             {
                 chatTField.isShow = false;
                 InfoItem infoItem = null;
@@ -10137,6 +10088,19 @@ public class Panel : IActionListener, IChatable
     {
         if (selected < 0)
         {
+            return;
+        }
+        int appearanceIndex = strCauhinh.Length - (Hud.HudLayout.IsMobileLayout ? 1 : 2);
+        if (selected == appearanceIndex)
+        {
+            OpenInventoryAppearanceSettings();
+            return;
+        }
+        // This PC-only row is appended after all original options; their indices stay intact.
+        if (!Hud.HudLayout.IsMobileLayout && selected == strCauhinh.Length-1)
+        {
+            Hud.CombatPcHud.ToggleKeyLabels();
+            SoundMn.gI().getStrOption();
             return;
         }
         switch (selected)

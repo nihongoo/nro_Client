@@ -113,6 +113,7 @@ public class ChatPopup : Effect2, IActionListener
 
     public static void addBigMessage(string chat, int howLong, Npc c)
     {
+        addBigMessageGame(chat, howLong, c);
     }
 
     public static void addChatPopupMultiLine(string chat, int howLong, Npc c)

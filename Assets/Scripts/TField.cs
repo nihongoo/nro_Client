@@ -302,8 +302,10 @@ public class TField : IActionListener
 	{
 		if (caretPos > 0 && text.Length > 0)
 		{
-			text = text.Substring(0, caretPos - 1);
-			caretPos--;
+            if (name == "chat") {
+                int length = caretPos >= 2 && char.IsLowSurrogate(text[caretPos - 1]) && char.IsHighSurrogate(text[caretPos - 2]) ? 2 : 1;
+                text = text.Remove(caretPos - length, length); caretPos -= length;
+            } else { text = text.Substring(0, caretPos - 1); caretPos--; }
 			setOffset(0);
 			setPasswordTest();
 			if (kb != null)
@@ -478,6 +480,7 @@ public class TField : IActionListener
 	{
 		if (Main.isPC && keyCode == -8)
 		{
+            if (name == "chat") { clear(); return true; } // IMEs may replace several letters within one tick.
 			clearKeyWhenPutText(-8);
 			return true;
 		}
@@ -649,7 +652,9 @@ public class TField : IActionListener
 		{
 			paintedText = text;
 		}
-		paintInputTf(g, flag, x, y - 1, width, height + 5, TEXT_GAP_X + offsetX + x + 1, y + (height - mFont.tahoma_8b.getHeight()) / 2 + 2, paintedText, name);
+        string composition = name == "chat" && Main.isPC && isFocus ? UnityEngine.Input.compositionString : string.Empty;
+        string displayText = string.IsNullOrEmpty(composition) ? paintedText : paintedText.Insert(caretPos, composition);
+		paintInputTf(g, flag, x, y - 1, width, height + 5, TEXT_GAP_X + offsetX + x + 1, y + (height - mFont.tahoma_8b.getHeight()) / 2 + 2, displayText, name);
 		g.setClip(x + 3, y + 1, width - 4, height - 2);
 		g.setColor(0);
 		if (flag && isPaintMouse && isPaintCarret)
@@ -741,7 +746,7 @@ public class TField : IActionListener
 			{
 				kb.text = kb.text.Substring(0, maxTextLenght);
 			}
-			if ((loginInput || kb.text.Length < 40) && isFocus)
+			if ((loginInput || name == "chat" || kb.text.Length < 40) && isFocus)
 			{
 				setText(kb.text);
 			}
@@ -842,7 +847,7 @@ public class TField : IActionListener
 		{
 			isFocus = true;
 			TouchScreenKeyboard.hideInput = !currentTField.showSubTextField;
-			TouchScreenKeyboardType t = TouchScreenKeyboardType.ASCIICapable;
+			TouchScreenKeyboardType t = name == "chat" ? TouchScreenKeyboardType.Default : TouchScreenKeyboardType.ASCIICapable;
 			if (inputType == INPUT_TYPE_NUMERIC)
 			{
 				t = TouchScreenKeyboardType.NumberPad;

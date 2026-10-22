@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Assets.src.e;
 using Assets.src.f;
 using Assets.src.g;
@@ -125,6 +125,9 @@ public class Controller : IMessageHandler
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
+			case Notifications.NotificationProtocol.Command:
+				Notifications.NotificationProtocol.Read(msg);
+				break;
 			case 0:
 				readLogin(msg);
 				break;
@@ -630,11 +633,6 @@ public class Controller : IMessageHandler
 			{
 				sbyte b42 = msg.reader().readByte();
 				Res.outz("server gui ve giao dich action = " + b42);
-				if (b42 == 0)
-				{
-					int playerID = msg.reader().readInt();
-					GameScr.gI().giaodich(playerID);
-				}
 				if (b42 == 1)
 				{
 					int num99 = msg.reader().readInt();
@@ -1080,15 +1078,17 @@ public class Controller : IMessageHandler
 			}
 			case -79:
 			{
-				InfoDlg.hide();
-				int num106 = msg.reader().readInt();
-				Char charMenu = GameCanvas.panel.charMenu;
-				if (charMenu == null)
+				int targetId = msg.reader().readInt();
+				long targetPower = msg.reader().readLong();
+				string targetLevel = msg.reader().readUTF();
+				Hud.TargetInfoHud.ReceivePower(targetId, targetPower, targetLevel);
+				Char menuTarget = GameCanvas.panel.charMenu;
+				if (menuTarget != null && menuTarget.charID == targetId)
 				{
-					return;
+					menuTarget.cPower = targetPower;
+					menuTarget.currStrLevel = targetLevel;
+					if (GameCanvas.panel.isShow && GameCanvas.panel.type == 10) InfoDlg.hide();
 				}
-				charMenu.cPower = msg.reader().readLong();
-				charMenu.currStrLevel = msg.reader().readUTF();
 				break;
 			}
 			case -93:
@@ -1256,12 +1256,6 @@ public class Controller : IMessageHandler
 				GameCanvas.panel.itemRequest(itemAction, info, where, index);
 				break;
 			}
-			case -59:
-			{
-				sbyte typePK = msg.reader().readByte();
-				GameScr.gI().player_vs_player(msg.reader().readInt(), msg.reader().readInt(), msg.reader().readUTF(), typePK);
-				break;
-			}
 			case -62:
 			{
 				int num27 = msg.reader().readUnsignedByte();
@@ -1370,14 +1364,6 @@ public class Controller : IMessageHandler
 					}
 					ClanImage.idImages.put(num169 + string.Empty, clanImage3);
 				}
-				break;
-			}
-			case -57:
-			{
-				string strInvite = msg.reader().readUTF();
-				int clanID = msg.reader().readInt();
-				int code = msg.reader().readInt();
-				GameScr.gI().clanInvite(strInvite, clanID, code);
 				break;
 			}
 			case -51:
@@ -2572,10 +2558,6 @@ public class Controller : IMessageHandler
 			}
 			case 92:
 			{
-				if (GameCanvas.currentScreen == GameScr.instance)
-				{
-					GameCanvas.endDlg();
-				}
 				string text4 = msg.reader().readUTF();
 				string str2 = msg.reader().readUTF();
 				str2 = Res.changeString(str2);
@@ -2601,7 +2583,8 @@ public class Controller : IMessageHandler
 					GameScr.info1.addInfo(empty, 0);
 					break;
 				}
-				GameScr.info2.addInfoWithChar(empty, char8, (b46 == 0) ? true : false);
+				if (b46 != 1) break; // Opcode 92 now belongs only to private chat.
+                GameScr.info2.addInfoWithChar(empty, char8);
 				if (GameCanvas.panel.isShow && GameCanvas.panel.type == 8)
 				{
 					GameCanvas.panel.initLogMessage();

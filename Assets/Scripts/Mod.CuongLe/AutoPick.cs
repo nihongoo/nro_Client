@@ -36,7 +36,7 @@ namespace Mod.CuongLe
                 ItemMap item = (ItemMap)GameScr.vItemMap.elementAt(i);
                 if (item == null || item.template == null) continue;
 
-                bool isOwnerOrFree = item.playerId == Char.myCharz().charID || item.playerId == -1;
+                bool isOwnerOrFree = IsOwnerOrFree(item);
                 int dx = Math.abs(Char.myCharz().cx - item.x);
                 int dy = Math.abs(Char.myCharz().cy - item.y);
 
@@ -273,13 +273,16 @@ namespace Mod.CuongLe
 
             if (isPickAll) return true;
 
-            bool isOwnerOrFree = item.playerId == Char.myCharz().charID || item.playerId == -1;
+            bool isOwnerOrFree = IsOwnerOrFree(item);
 
             if (pickByList == 0)
                 return isOwnerOrFree;
 
             return pickByList == 1 && listItemAutoPick.Contains(item.template.id) && isOwnerOrFree;
         }
+
+        internal static bool IsOwnerOrFree(ItemMap item) => item != null
+            && (item.playerId == Char.myCharz().charID || item.playerId == -1);
 
         private static bool isNRDMap(int mapID)
         {

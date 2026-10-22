@@ -83,6 +83,10 @@ public class Main : MonoBehaviour
 
 	public static bool isCompactDevice = true;
 
+    // Mobile defaults to 30 when targetFrameRate is left unset. Keep a 60 FPS render
+    // target without changing FixedUpdate, timeScale or the existing desktop preference.
+    public static int NormalTargetFrameRate => Hud.HudLayout.IsMobileLayout ? 60 : 90;
+
 	private void Start()
     {
         Time.timeScale = 2.6f;
@@ -108,6 +112,7 @@ public class Main : MonoBehaviour
 			isPC = true;
 		}
 		started = true;
+        if (Hud.HudLayout.IsMobileLayout) Application.targetFrameRate = NormalTargetFrameRate;
 		if (isPC)
 		{
 			level = Rms.loadRMSInt("levelScreenKN");
@@ -180,7 +185,6 @@ public class Main : MonoBehaviour
 		{
 			Screen.orientation = ScreenOrientation.AutoRotation;
 			Application.runInBackground = true;
-			//Application.targetFrameRate = 60;
 			base.useGUILayout = false;
 			isCompactDevice = detectCompactDevice();
 			if (main == null)
@@ -326,23 +330,46 @@ public class Main : MonoBehaviour
 		Vector2 guiPoint = ScaleGUI.ToGuiPoint(rawPoint);
 		int pointerX = (int)(guiPoint.x / mGraphics.zoomLevel);
 		int pointerY = (int)(guiPoint.y / mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard;
-		if (Input.GetMouseButtonDown(0))
+		bool mobileInput = Hud.MobileCombatPointers.Poll();
+		bool combatInput = !mobileInput && Hud.CombatPcPointer.Poll(rawPoint,new Vector2(pointerX,pointerY));
+		if (combatInput) pointerInViewport = false;
+		if (!mobileInput && !combatInput && Input.GetMouseButtonDown(0))
 		{
 			pointerInViewport = ScaleGUI.Viewport.Contains(rawPoint);
 			if (pointerInViewport) GameMidlet.gameCanvas.pointerPressed(pointerX, pointerY);
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButton(0) && pointerInViewport)
+		if (!mobileInput && !combatInput && Input.GetMouseButton(0) && pointerInViewport)
 		{
 			GameMidlet.gameCanvas.pointerDragged(pointerX, pointerY);
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 		}
-		if (Input.GetMouseButtonUp(0) && pointerInViewport)
+		if (!mobileInput && !combatInput && Input.GetMouseButtonUp(0) && pointerInViewport)
 		{
 			lastMousePos = guiPoint / mGraphics.zoomLevel;
 			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
 			pointerInViewport = false;
 		}
+        // Text comes from the OS/IME character event, not the physical key map.
+        if (isPC && GameCanvas.currentScreen == GameScr.instance && ChatTextField.gI().isShow && GameCanvas.currentDialog == null) {
+            Input.imeCompositionMode = IMECompositionMode.On;
+            if (Event.current.type == EventType.KeyDown) {
+                ChatTextField chat = ChatTextField.gI();
+                bool composing = !string.IsNullOrEmpty(Input.compositionString);
+                if (!composing) {
+                    if (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter) chat.perform(8000, null);
+                    else if (Event.current.keyCode == KeyCode.Escape) chat.perform(8001, null);
+                    else if (Event.current.keyCode == KeyCode.Backspace) chat.keyPressed(-8);
+                    else if (Event.current.keyCode == KeyCode.LeftArrow) chat.keyPressed(14);
+                    else if (Event.current.keyCode == KeyCode.RightArrow) chat.keyPressed(15);
+                    else if ((Event.current.control || Event.current.command) && Event.current.keyCode == KeyCode.V) chat.InsertDesktopText(GUIUtility.systemCopyBuffer);
+                    else if (!Event.current.control && !Event.current.command && Event.current.character >= ' ') chat.InsertDesktopText(Event.current.character.ToString());
+                }
+                Event.current.Use();
+            }
+            return;
+        }
+        Input.imeCompositionMode = IMECompositionMode.Auto;
 		if (Input.anyKeyDown && Event.current.type == EventType.KeyDown)
 		{
 			int num = MyKeyMap.map(Event.current.keyCode);
@@ -394,6 +421,8 @@ public class Main : MonoBehaviour
 
 	private void OnApplicationPause(bool paused)
 	{
+		if (paused && Hud.HudLayout.IsMobileLayout) Hud.MobileCombatPointers.Cancel();
+		if (paused && !Hud.HudLayout.IsMobileLayout) { Hud.CombatPcPointer.Cancel(); Hud.TargetInfoHud.ClearShapes(); }
 		isResume = false;
 		if (paused)
 		{

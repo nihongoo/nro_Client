@@ -175,18 +175,24 @@ public class PopUp
 
 	public static void paintPopUp(mGraphics g, int x, int y, int w, int h, int color, bool isButton)
 	{
+		paintPopUp(g, x, y, w, h, color, isButton, null, 0);
+	}
+
+	public static void paintPopUp(mGraphics g, int x, int y, int w, int h, int color, bool isButton, Image corner, int borderColor)
+	{
 		if (!isButton)
 		{
-			g.setColor(0);
+			Image cornerImage = corner ?? goc;
+			g.setColor(borderColor);
 			g.fillRect(x + 6, y, w - 14 + 1, h);
 			g.fillRect(x, y + 6, w, h - 12 + 1);
 			g.setColor(color);
 			g.fillRect(x + 6, y + 1, w - 12, h - 2);
 			g.fillRect(x + 1, y + 6, w - 2, h - 12);
-			g.drawRegion(goc, 0, 0, 7, 6, 0, x, y, 0);
-			g.drawRegion(goc, 0, 0, 7, 6, 2, x + w - 7, y, 0);
-			g.drawRegion(goc, 0, 0, 7, 6, 1, x, y + h - 6, 0);
-			g.drawRegion(goc, 0, 0, 7, 6, 3, x + w - 7, y + h - 6, 0);
+			g.drawRegion(cornerImage, 0, 0, 7, 6, 0, x, y, 0);
+			g.drawRegion(cornerImage, 0, 0, 7, 6, 2, x + w - 7, y, 0);
+			g.drawRegion(cornerImage, 0, 0, 7, 6, 1, x, y + h - 6, 0);
+			g.drawRegion(cornerImage, 0, 0, 7, 6, 3, x + w - 7, y + h - 6, 0);
 			return;
 		}
 		Image arg = ((color != 1) ? imgPopUp : imgPopUp2);

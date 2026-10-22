@@ -472,7 +472,6 @@ public class GameCanvas : IActionListener
 		borderCenterH = mGraphics.getImageHeight(imgBorder[1]);
 		Panel.graphics = Rms.loadRMSInt("lowGraphic");
 		lowGraphic = Rms.loadRMSInt("lowGraphic") == 1;
-		GameScr.isPaintChatVip = Rms.loadRMSInt("serverchat") != 1;
 		Char.isPaintAura = Rms.loadRMSInt("isPaintAura") == 1;
 		Char.isPaintAura2 = Rms.loadRMSInt("isPaintAura2") == 1;
 		Res.init();
@@ -591,6 +590,15 @@ public class GameCanvas : IActionListener
                 }
                 gameTick = 0;
 			}
+            Hud.HudLayout.BeginFrame();
+            Hud.MobileCombatPointers.UpdateJoystick();
+            Notifications.NotificationStore.UpdateInvitations();
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null) GameScr.instance.popUpYesNo.HandleInput();
+            Hud.TopActionsHud.UpdateInput();
+			Notifications.NotificationCenter.UpdateInput();
+            Hud.MapListsHud.UpdateInput();
+            Hud.TargetInfoHud.Update();
+            WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)
 			{
 				if (ChatPopup.serverChatPopUp != null)
@@ -666,13 +674,15 @@ public class GameCanvas : IActionListener
 						panel.hide();
 					}
 				}
+                bool chatModal = currentScreen == GameScr.instance && ChatTextField.gI().isShow;
+                if (chatModal && currentDialog == null) ChatTextField.gI().UpdateModalInput();
 				debug("E", 0);
 				if (!isLoading)
 				{
 					currentScreen.update();
 				}
 				debug("F", 0);
-				if (!panel.isShow && ChatPopup.serverChatPopUp == null)
+				if (!chatModal && !panel.isShow && ChatPopup.serverChatPopUp == null)
 				{
 					currentScreen.updateKey();
 				}
@@ -1106,7 +1116,7 @@ public class GameCanvas : IActionListener
 		try
 		{
 			int num = layer - 1;
-			if (num == imgBG.Length - 1 && (GameScr.gI().isRongThanXuatHien || GameScr.gI().isFireWorks))
+			if (num == imgBG.Length - 1 && GameScr.gI().isRongThanXuatHien)
 			{
 				g.setColor(GameScr.gI().mautroi);
 				g.fillRect(0, 0, w, h);
@@ -1115,10 +1125,7 @@ public class GameCanvas : IActionListener
 					drawSun1(g);
 					drawSun2(g);
 				}
-				if (GameScr.gI().isFireWorks && !lowGraphic)
-				{
-					FireWorkEff.paint(g);
-				}
+
 			}
 			else
 			{
@@ -1799,7 +1806,7 @@ public class GameCanvas : IActionListener
 	public void keyPressedz(int keyCode)
 	{
 		lastTimePress = mSystem.currentTimeMillis();
-		if ((keyCode >= 48 && keyCode <= 57) || (keyCode >= 65 && keyCode <= 122) || keyCode == 10 || keyCode == 8 || keyCode == 13 || keyCode == 32 || keyCode == 31)
+		if (keyCode >= 32 && keyCode != 127 || keyCode == 10 || keyCode == 8 || keyCode == 13 || keyCode == 31)
 		{
 			keyAsciiPress = keyCode;
 		}
@@ -1808,6 +1815,7 @@ public class GameCanvas : IActionListener
 
 	public void mapKeyPress(int keyCode)
 	{
+		if (Notifications.NotificationCenter.HandleKey(keyCode)) { keyAsciiPress = 0; return; }
 		if (currentDialog != null)
 		{
 			currentDialog.keyPress(keyCode);
@@ -2206,6 +2214,7 @@ public class GameCanvas : IActionListener
 
 	public static void checkBackButton()
 	{
+        if (Notifications.NotificationCenter.IsOpen) { Notifications.NotificationCenter.Close(); return; }
 		if (ChatPopup.serverChatPopUp == null && ChatPopup.currChatPopup == null)
 		{
 			startYesNoDlg(mResources.DOYOUWANTEXIT, new Command(mResources.YES, instance, 8885, null), new Command(mResources.NO, instance, 8882, null));
@@ -2266,15 +2275,12 @@ public class GameCanvas : IActionListener
 			}
 			GameScr.info1.paint(g);
 			GameScr.info2.paint(g);
-			if (GameScr.gI().popUpYesNo != null)
-			{
-				GameScr.gI().popUpYesNo.paint(g);
-			}
 			if (ChatPopup.currChatPopup != null)
 			{
 				ChatPopup.currChatPopup.paint(g);
 			}
 			Hint.paint(g);
+            Notifications.NotificationCenter.Paint(g);
 			if (ChatPopup.serverChatPopUp != null)
 			{
 				ChatPopup.serverChatPopUp.paint(g);
@@ -2287,6 +2293,8 @@ public class GameCanvas : IActionListener
 					effect.paint(g);
 				}
 			}
+            if (currentScreen == GameScr.instance && GameScr.instance?.popUpYesNo != null)
+                GameScr.instance.popUpYesNo.paint(g);
 			if (Char.isLoadingMap || LoginScr.isContinueToLogin || ServerListScreen.waitToLogin || ServerListScreen.isWait)
 			{
 				paintChangeMap(g);

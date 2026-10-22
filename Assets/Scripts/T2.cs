@@ -311,7 +311,6 @@ public class T2 : mResources
 		mResources.low = "Low";
 		mResources.increase_vga = "Increase resolution (strong devices)";
 		mResources.decrease_vga = "Decrease resolution (weak devices)";
-		mResources.serverchat_off = "Server notice";
 		mResources.serverchat_on = "Server notice";
 		mResources.aura_on = "Special aura";
 		mResources.aura_off = "Special aura";
@@ -493,8 +492,6 @@ public class T2 : mResources
 		mResources.can_not_do_when_die = "You can not perform this action when dying";
 		mResources.use_for_combine = "Use\nfor\ncombine";
 		mResources.use_for_trade = "Use\nfor\ntrade";
-		mResources.not_enough_luong_world_channel = "You don't have enough gem to chat on world channel";
-		mResources.world_channel_5_luong = "Chat on world channel (5 gems)";
 		mResources.want_to_trade = " want to trade with you, do you accept?";
 		mResources.hasJustUpgrade1 = "You have just upgrade ";
 		mResources.hasJustUpgrade2 = " to ";

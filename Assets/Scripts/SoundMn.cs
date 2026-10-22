@@ -237,12 +237,13 @@ public class SoundMn
 				(!GameCanvas.isPlaySound) ? (text2 + mResources.turnOffSound.Trim()) : (text + mResources.turnOffSound.Trim()),
 				(mGraphics.zoomLevel <= 1) ? (text2 + mResources.x2Screen) : (text + mResources.x1Screen)
 			};
+			AddPcHudLabelOption();
 			return;
 		}
 		string text3 = ((GameScr.isAnalog != 0) ? (text + mResources.turnOffAnalog) : (text2 + mResources.turnOnAnalog));
 		if (!GameCanvas.isTouch)
 		{
-			text3 = (GameScr.isPaintChatVip ? (text + mResources.serverchat_off) : (text2 + mResources.serverchat_off));
+			text3 = "Chat thế giới";
 		}
 		Panel.strCauhinh = new string[5]
 		{
@@ -252,6 +253,18 @@ public class SoundMn
 			(!GameCanvas.lowGraphic) ? (text2 + mResources.cauhinhthap.Trim()) : (text + mResources.cauhinhthap.Trim()),
 			text3
 		};
+		AddPcHudLabelOption();
+	}
+
+	private static void AddPcHudLabelOption()
+	{
+		int appearanceIndex = Panel.strCauhinh.Length;
+		System.Array.Resize(ref Panel.strCauhinh, appearanceIndex + 1);
+		Panel.strCauhinh[appearanceIndex] = "Giao diện";
+		if (Hud.HudLayout.IsMobileLayout) return;
+		int index = Panel.strCauhinh.Length;
+		System.Array.Resize(ref Panel.strCauhinh,index+1);
+		Panel.strCauhinh[index] = (Hud.CombatPcHud.ShowKeyLabels ? "[x]   " : "[  ]   ") + "Nhãn phím HUD PC";
 	}
 
 	public void HP_MPup()
@@ -326,19 +339,7 @@ public class SoundMn
 		getStrOption();
 	}
 
-	public void chatVipToolOption()
-	{
-		GameScr.isPaintChatVip = !GameScr.isPaintChatVip;
-		if (GameScr.isPaintChatVip)
-		{
-			Rms.saveRMSInt("serverchat", 0);
-		}
-		else
-		{
-			Rms.saveRMSInt("serverchat", 1);
-		}
-		getStrOption();
-	}
+
 
 	public void analogToolOption()
 	{
@@ -357,20 +358,11 @@ public class SoundMn
 		getStrOption();
 	}
 
-	public void CaseAnalog()
-	{
-		if (!Main.isPC)
-		{
-			if (!GameCanvas.isTouch)
-			{
-				chatVipToolOption();
-			}
-			else
-			{
-				analogToolOption();
-			}
-		}
-	}
+    public void CaseAnalog()
+    {
+        if (!GameCanvas.isTouch) WorldChat.WorldChatHud.Open();
+        else if (!Main.isPC) analogToolOption();
+    }
 
 	public void CaseSizeScr()
 	{

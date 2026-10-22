@@ -824,13 +824,6 @@ namespace Assets.src.f
 					}
 					break;
 				}
-				case 93:
-				{
-					string str = msg.reader().readUTF();
-					str = Res.changeString(str);
-					GameScr.gI().chatVip(str);
-					break;
-				}
 				case -106:
 				{
 					short num36 = msg.reader().readShort();

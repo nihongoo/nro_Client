@@ -41,6 +41,43 @@ public class GamePad
 	public int hZone;
 
 	private bool isGamePad;
+	private readonly Position[] mobileHistory = new Position[4];
+	private int mobileHistoryIndex;
+	private bool mobilePointerActive;
+
+	// Feed only the captured joystick finger through the original movement algorithm.
+	// Snapshot the singleton world pointer so another finger can still operate map/UI.
+	internal void UpdateMobilePointer(bool active, UnityEngine.Vector2 first, UnityEngine.Vector2 point)
+	{
+		int px = GameCanvas.px, py = GameCanvas.py, fx = GameCanvas.pxFirst, fy = GameCanvas.pyFirst;
+		bool down = GameCanvas.isPointerDown, release = GameCanvas.isPointerJustRelease;
+		Position[] history = GameCanvas.arrPos;
+		int previousR = R, previousX = xZone, previousY = yZone, previousW = wZone, previousH = hZone;
+		try {
+			UnityEngine.Rect touch = Hud.HudLayout.GetRect(Hud.CombatMobileHud.JoystickTouch);
+			xZone = (int)touch.x; yZone = (int)touch.y; wZone = (int)touch.xMax; hZone = (int)touch.yMax;
+			if (active && !mobilePointerActive) {
+				for (int i=0;i<mobileHistory.Length;i++) mobileHistory[i] = new Position((int)first.x,(int)first.y);
+				mobileHistoryIndex = 0;
+			}
+			if (active) {
+				mobileHistory[mobileHistoryIndex] = new Position((int)point.x,(int)point.y);
+				mobileHistoryIndex = (mobileHistoryIndex+1)%mobileHistory.Length;
+			}
+			GameCanvas.arrPos = mobileHistory;
+			GameCanvas.pxFirst = (int)first.x; GameCanvas.pyFirst = (int)first.y;
+			GameCanvas.px = (int)point.x; GameCanvas.py = (int)point.y;
+			GameCanvas.isPointerDown = active; GameCanvas.isPointerJustRelease = !active;
+			R = UnityEngine.Mathf.Max(1,(int)(Hud.HudLayout.GetRect(Hud.CombatMobileHud.Joystick).width/2));
+			update();
+		}
+		finally {
+			GameCanvas.px = px; GameCanvas.py = py; GameCanvas.pxFirst = fx; GameCanvas.pyFirst = fy;
+			GameCanvas.isPointerDown = down; GameCanvas.isPointerJustRelease = release;
+			GameCanvas.arrPos = history; mobilePointerActive = active;
+			R = previousR; xZone = previousX; yZone = previousY; wZone = previousW; hZone = previousH;
+		}
+	}
 
 	public bool isSmallGamePad;
 
@@ -201,6 +238,11 @@ public class GamePad
 			}
 			else
 			{
+				if (Hud.HudLayout.IsMobileLayout) {
+					UnityEngine.Rect rect = Hud.HudLayout.GetRect(Hud.CombatMobileHud.Joystick);
+					xM = xC = (int)rect.center.x; yM = yC = (int)rect.center.y;
+				}
+				else {
 				xM = (xC = 45);
 				if (!isLargeGamePad)
 				{
@@ -209,6 +251,7 @@ public class GamePad
 				else
 				{
 					yM = (yC = GameCanvas.h - 45);
+				}
 				}
 				isGamePad = false;
 				resetHold();
@@ -252,8 +295,31 @@ public class GamePad
 		GameCanvas.clearKeyHold();
 	}
 
+	// Read-only painted extent for HUD list layout; never the broad acquisition zone.
+	internal UnityEngine.Rect HudVisualBounds
+	{
+		get {
+			if (GameScr.imgAnalog1 == null || GameScr.imgAnalog2 == null) return new UnityEngine.Rect();
+			float w = GameScr.imgAnalog1.getWidth(), h = GameScr.imgAnalog1.getHeight();
+			float knobW = GameScr.imgAnalog2.getWidth(), knobH = GameScr.imgAnalog2.getHeight();
+			return UnityEngine.Rect.MinMaxRect(UnityEngine.Mathf.Min(xC-w/2,xM-knobW/2),
+				UnityEngine.Mathf.Min(yC-h/2,yM-knobH/2),UnityEngine.Mathf.Max(xC+w/2,xM+knobW/2),
+				UnityEngine.Mathf.Max(yC+h/2,yM+knobH/2));
+		}
+	}
 	public void paint(mGraphics g)
 	{
+		if (Hud.HudLayout.IsMobileLayout) {
+			if (GameScr.isAnalog == 0) return;
+			UnityEngine.Rect rect = Hud.HudLayout.GetRect(Hud.CombatMobileHud.Joystick);
+			Hud.CombatMobileHud.Circle(rect,new UnityEngine.Color32(40,24,12,64),new UnityEngine.Color32(255,243,218,153),2);
+			float diameter = Hud.CombatMobileHud.DesignUnit(44);
+			UnityEngine.Vector2 center = rect.center;
+			if (mobilePointerActive) center += new UnityEngine.Vector2(xM-xC,yM-yC);
+			Hud.CombatMobileHud.Circle(new UnityEngine.Rect(center.x-diameter/2,center.y-diameter/2,diameter,diameter),
+				new UnityEngine.Color32(255,243,218,255),new UnityEngine.Color32(255,243,218,255),0);
+			return;
+		}
 		if (GameScr.isAnalog != 0)
 		{
 			g.drawImage(GameScr.imgAnalog1, xC, yC, mGraphics.HCENTER | mGraphics.VCENTER);
