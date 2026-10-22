@@ -127,9 +127,10 @@ class DeadHudTests {
         return result;
     }
     static void Main(){
-        foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{2,3,4})foreach(int width in new[]{320,422,640,800}){
+        foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{2,3,4})foreach(int width in new[]{320,422,640,800})
+        foreach(int height in mobile?new[]{180,195}:new[]{300,360}){
             UnityEngine.Device.Application.platform=mobile?UnityEngine.RuntimePlatform.Android:UnityEngine.RuntimePlatform.WindowsPlayer;
-            mGraphics.zoomLevel=zoom;GameCanvas.w=width;GameCanvas.h=mobile?195:360;
+            mGraphics.zoomLevel=zoom;GameCanvas.w=width;GameCanvas.h=height;
             Alive();HudLayout.BeginFrame();DeadStateHud.SyncCommand();
             Check(mobile?CombatMobileHud.Visible:CombatPcHud.Visible,"living combat hidden");
             var names=Controls(mobile);var before=new List<UnityEngine.Rect>();
@@ -161,11 +162,14 @@ class DeadHudTests {
             var choices=new MyVector();for(int i=1;i<=3;i++)choices.addElement(new Command(mResources.DIES[i],110380+i));
             DeadStateHud.OpenMenu(choices);var menu=GameCanvas.menu;var bounds=HudLayout.GetRect(DeadStateHud.MenuBounds);
             Near(menu.menuX+bounds.width/2,GameCanvas.w/2f,"menu not horizontally centered");
-            Near(menu.menuY+menu.menuH/2f,GameCanvas.h/2f,"menu not vertically centered");
+            var skillRow=HudLayout.GetRect(mobile?CombatMobileHud.SkillName(4):CombatPcHud.SkillName(0));
+            Near(menu.menuY+menu.menuH,skillRow.yMax,"revive choices do not share the skill row bottom edge");
+            Check(bounds.xMin>=0&&bounds.xMax<=GameCanvas.w&&bounds.yMin>=0&&bounds.yMax<=GameCanvas.h,"revive menu outside viewport");
             foreach(int y in Menu.menuTemY)Check(y==menu.menuY,"menu paint and input rows differ");
             Check(!DeadStateHud.IsButtonPressed(),"button fires through its open menu");
             GameCanvas.w+=20;GameCanvas.h+=20;HudLayout.BeginFrame();DeadStateHud.SyncMenu(menu);
-            Near(menu.menuY+menu.menuH/2f,GameCanvas.h/2f,"menu does not follow resized viewport");
+            skillRow=HudLayout.GetRect(mobile?CombatMobileHud.SkillName(4):CombatPcHud.SkillName(0));
+            Near(menu.menuY+menu.menuH,skillRow.yMax,"revive menu does not follow skill row after viewport resize");
             Alive();DeadStateHud.SyncMenu(menu);DeadStateHud.SyncCommand();
             Check(!menu.showMenu&&GameScr.instance.center==null,"revival leaves stale menu/command");
             GameCanvas.w-=20;GameCanvas.h-=20;HudLayout.BeginFrame();

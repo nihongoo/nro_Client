@@ -16,6 +16,7 @@ namespace Hud
         private static bool showsTarget, layoutHasPower;
         private static object layoutFocus;
         private const float FramePadding = 10;
+        private const float MapPadding = 4;
         private sealed class PowerRequest
         {
             internal Char Target, Owner;
@@ -139,12 +140,13 @@ namespace Hud
             // NPC/no focus (or too little room for HP160): a compact map-only tab, same provider/style.
             if (!hasTarget || upperWidth < Unit(180)) {
                 if (upperWidth < Unit(40)) return new Rect();
-                upperWidth = Mathf.Min(upperWidth,Mathf.Max(Unit(80),mapMeasure.Get(MapValue(),mFont.tahoma_7_white)+Unit(FramePadding*2)+2));
+                // Without an HP tier, use the remaining width between neighboring HUDs.
+                upperWidth = Mathf.Min(available-2*wing,Mathf.Max(Unit(80),mapMeasure.Get(MapValue(),mFont.tahoma_7_white)+Unit(FramePadding*2)+2));
                 lowerWidth = upperWidth; stepY = -1;
                 Rect mapOnly = HudLayout.Anchor(HorizontalAnchor.Center,VerticalAnchor.Top,
                     new Vector2(upperWidth+2*wing,mapHeight+Unit(1)+Unit(4)),Vector2.zero);
-                mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(FramePadding),mapOnly.y+Unit(1),
-                    upperWidth-Unit(FramePadding*2),mapHeight));
+                mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(MapPadding),mapOnly.y+Unit(1),
+                    upperWidth-Unit(MapPadding*2),mapHeight));
                 return mapOnly;
             }
             showsTarget = true;
@@ -164,8 +166,8 @@ namespace Hud
             // Keep the row in place; only extend the desktop background past its bottom edge.
             float height = mobile ? Mathf.Max(Unit(58),nameY+row+Unit(4)) : nameY+row+Unit(1.75f);
             Rect root = HudLayout.Anchor(HorizontalAnchor.Center,VerticalAnchor.Top,new Vector2(width,height),Vector2.zero);
-            mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(FramePadding),root.y+Unit(1),
-                upperWidth-Unit(FramePadding*2),mapHeight));
+            mapRect = FrameTextBounds(new Rect(center-upperWidth/2+Unit(MapPadding),root.y+Unit(1),
+                upperWidth-Unit(MapPadding*2),mapHeight));
             hpRect = new Rect(center-upperWidth/2+Unit(FramePadding),root.y+hpY,upperWidth-Unit(FramePadding*2),hpHeight);
             Rect line = new Rect(center-lowerWidth/2+Unit(FramePadding),root.y+nameY,lowerWidth-Unit(FramePadding*2),row);
             if (target.HasPower) {
@@ -192,7 +194,8 @@ namespace Hud
             }
             if (root.width <= 0) return;
             if (!ReferenceEquals(textTarget,identity)) {
-                foreach (Marquee marquee in marquees.Values) marquee.Restart = true;
+                // A focus change must not restart the unchanged map name's scroll.
+                marquees[Hp].Restart = marquees[Name].Restart = marquees[Power].Restart = true;
                 textTarget = identity;
             }
             int tx = g.getTranslateX(), ty = g.getTranslateY()-mGraphics.addYWhenOpenKeyBoard;
