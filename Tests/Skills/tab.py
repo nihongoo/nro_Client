@@ -180,7 +180,7 @@ class SkillTabTests {
    Check(SkillPanelLayout.CellBounds(4).y-SkillPanelLayout.CellBounds(0).yMax>=7,"row gap crowds Lv badges");
    Near(SkillPanelLayout.DetailContent.x-SkillPanelLayout.DetailBounds.x,InventoryFrame.Padding,"right panel padding");
    Near(SkillPanelLayout.Content.x-SkillPanelLayout.Frame.x,InventoryFrame.Padding,"left panel padding");
-   for(int i=0;i<5;i++)Check(SkillPanelLayout.PotentialBounds(i).height>=2*SkillPanelLayout.LineHeight+2*SkillPanelLayout.PotentialPadding,"stat row clips two lines/padding");
+   for(int i=0;i<5;i++)Near(SkillPanelLayout.PotentialBounds(i).height,SkillPanelLayout.IntrinsicBounds.height,"stat row size differs from intrinsic row");
    foreach(SkillTemplate template in c.nClass.availableSkillTemplates)template.description=new[]{"null"};
    GameCanvas.pxMouse=(int)detail.center.x;GameCanvas.pyMouse=(int)SkillPanelLayout.UpperBounds.center.y;GameCanvas.panel.Wheel(-1000);
    var descriptionPaint=new mGraphics();GameCanvas.panel.Paint(descriptionPaint);

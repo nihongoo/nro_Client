@@ -18,8 +18,8 @@ namespace Hud
         internal static Rect Frame => new Rect(InventoryFrame.FrameInset,73,HudLayout.GetRect(InventoryFrame.Root).width-2*InventoryFrame.FrameInset,Mathf.Max(0,HudLayout.GetRect(InventoryFrame.Money).y-Gap-73));
         internal static Rect Content => InventoryFrame.Inset(Frame);
         internal static int LineHeight => Mathf.Max(12,Mathf.Max(mFont.tahoma_7b_blue.getHeight(),mFont.tahoma_7_green2.getHeight()));
-        internal const int PotentialPadding=3, PotentialGap=1;
-        internal static int RowHeight => 2*LineHeight+2*PotentialPadding;
+        internal const int PotentialGap=1;
+        internal static float RowHeight => Size;
         internal static float Size => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
         internal static float ColumnGap => (Content.width-4*Size)/5;
         internal static float RowGap => Mathf.Max(Gap+3,InventoryFrame.Unit(14));
@@ -257,10 +257,11 @@ public partial class Panel
         for(int i=0;i<5;i++) {
             Rect row=SkillPanelLayout.PotentialBounds(i);InventoryFrame.Clip(g,viewport);
             InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
-            InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x+InventoryFrame.Padding,row.center.y-10,20,20),viewport);
-            Rect line=new Rect(row.x+20+2*InventoryFrame.Padding,row.y+SkillPanelLayout.PotentialPadding,row.width-20-3*InventoryFrame.Padding-30,SkillPanelLayout.LineHeight);
+            InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x,row.y,SkillPanelLayout.Size,SkillPanelLayout.Size),viewport);
+            float lineHeight=Mathf.Min(SkillPanelLayout.LineHeight,(row.height-2)/2);
+            Rect line=new Rect(row.x+SkillPanelLayout.Size+SkillPanelLayout.Gap,row.center.y-lineHeight,row.width-SkillPanelLayout.Size-SkillPanelLayout.Gap-InventoryFrame.Padding-30,lineHeight);
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),line,viewport,0x536DCC);
-            line.y+=SkillPanelLayout.LineHeight;
+            line.y+=lineHeight;
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,line,viewport,0x00552D);
         }
     }
