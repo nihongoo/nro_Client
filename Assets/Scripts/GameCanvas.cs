@@ -1818,6 +1818,16 @@ public class GameCanvas : IActionListener
 
 	public void mapKeyPress(int keyCode)
 	{
+        // F1 opens the character menu; it must never fall through to a soft-key action.
+        if (Main.isPC && keyCode == -21 && GameScr.instance != null && currentScreen == GameScr.instance) {
+            keyAsciiPress = 0;
+            if (currentDialog == null && !menu.showMenu && !panel.isShow
+                && !ChatTextField.gI().isShow && ChatPopup.currChatPopup == null
+                && ChatPopup.serverChatPopUp == null && !Notifications.NotificationCenter.IsOpen
+                && !Mod.CuongLe.DoHoa.isShowMenuVIP && !GameScr.instance.isPaintPopup() && !InfoDlg.isLock && !isLoading)
+                GameScr.instance.actMenu();
+            return;
+        }
 		if (Notifications.NotificationCenter.HandleKey(keyCode)) { keyAsciiPress = 0; return; }
 		if (currentDialog != null)
 		{

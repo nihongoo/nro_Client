@@ -134,6 +134,7 @@ namespace Assets.src.g
 
 		public override void keyPress(int keyCode)
 		{
+            if (Main.isPC && keyCode == -26) { FocusField((focus + 1) % tf.Length); return; }
 			for (int i = 0; i < tf.Length; i++)
 			{
 				if (tf[i].isFocus)
@@ -152,7 +153,8 @@ namespace Assets.src.g
                 GameCanvas.clearAllPointerEvent(); GameCanvas.clearKeyPressed();
                 return;
             }
-			if (GameCanvas.keyPressed[2])
+            int up = Main.isPC ? 21 : 2, down = Main.isPC ? 22 : 8;
+			if (GameCanvas.keyPressed[up])
 			{
 				focus--;
 				if (focus < 0)
@@ -160,7 +162,7 @@ namespace Assets.src.g
 					focus = tf.Length - 1;
 				}
 			}
-			else if (GameCanvas.keyPressed[8])
+			else if (GameCanvas.keyPressed[down])
 			{
 				focus++;
 				if (focus > tf.Length - 1)
@@ -168,35 +170,25 @@ namespace Assets.src.g
 					focus = 0;
 				}
 			}
-			if (GameCanvas.keyPressed[2] || GameCanvas.keyPressed[8])
-			{
-				GameCanvas.clearKeyPressed();
-				for (int i = 0; i < tf.Length; i++)
-				{
-					if (focus == i)
-					{
-						tf[i].isFocus = true;
-						if (!GameCanvas.isTouch)
-						{
-							right = tf[i].cmdClear;
-						}
-					}
-					else
-					{
-						tf[i].isFocus = false;
-					}
-					if (GameCanvas.isPointerJustRelease && GameCanvas.isPointerHoldIn(tf[i].x, tf[i].y, tf[i].width, tf[i].height))
-					{
-						focus = i;
-						break;
-					}
-				}
-			}
+            if (GameCanvas.keyPressed[up] || GameCanvas.keyPressed[down]) {
+                GameCanvas.keyPressed[up] = GameCanvas.keyPressed[down] = false;
+                FocusField(focus);
+            }
+            if (GameCanvas.isPointerJustRelease) {
+                for (int i = 0; i < tf.Length; i++)
+                    if (GameCanvas.isPointerHoldIn(tf[i].x, tf[i].y, tf[i].width, tf[i].height)) {
+                        FocusField(i); break;
+                    }
+            }
 			base.updateKey();
 			GameCanvas.clearKeyPressed();
 		}
 
-
+        private void FocusField(int index) {
+            focus = index;
+            for (int i = 0; i < tf.Length; i++) tf[i].setFocus(i == focus);
+            if (!GameCanvas.isTouch) right = tf[focus].cmdClear;
+        }
 
 		public void clearScreen()
 		{
