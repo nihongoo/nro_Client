@@ -108,6 +108,10 @@ public class GameCanvas : IActionListener
 
 	public static Panel panel2;
 
+    // A retained game panel belongs to GameScr, not to a server input screen.
+    internal static bool IsGameplayPanelActive => GameScr.instance != null
+        && currentScreen == GameScr.instance && panel != null && panel.isShow;
+
 	public static ChooseCharScr chooseCharScr;
 
 	public static LoginScr loginScr;
@@ -185,8 +189,6 @@ public class GameCanvas : IActionListener
 	public static MyVector debugPaint;
 
 	public static MyVector debugSession;
-
-	private static bool isShowErrorForm = false;
 
 	public static bool paintBG;
 
@@ -289,8 +291,6 @@ public class GameCanvas : IActionListener
 	public static int keyAsciiPress;
 
 	public static int pXYScrollMouse;
-
-	private static Image imgSignal;
 
 	public static MyVector flyTexts = new MyVector();
 
@@ -623,7 +623,7 @@ public class GameCanvas : IActionListener
 					debug("D", 0);
 					menu.updateMenuKey();
 				}
-				else if (panel.isShow)
+				else if (IsGameplayPanelActive)
 				{
 					panel.update();
 					if (isPointer(panel.X, panel.Y, panel.W, panel.H))
@@ -682,7 +682,7 @@ public class GameCanvas : IActionListener
 					currentScreen.update();
 				}
 				debug("F", 0);
-				if (!chatModal && !panel.isShow && ChatPopup.serverChatPopUp == null)
+				if (!chatModal && !IsGameplayPanelActive && ChatPopup.serverChatPopUp == null)
 				{
 					currentScreen.updateKey();
 				}
@@ -1087,14 +1087,6 @@ public class GameCanvas : IActionListener
 		ServerListScreen.countDieConnect = 0;
 		ServerListScreen.testConnect = -1;
 		ServerListScreen.loadScreen = true;
-	}
-
-	public static void showErrorForm(int type, string moreInfo)
-	{
-	}
-
-	public static void paintCloud(mGraphics g)
-	{
 	}
 
 	public static void updateBG()
@@ -2115,7 +2107,7 @@ public class GameCanvas : IActionListener
 	public void scrollMouse(int a)
 	{
 		pXYScrollMouse = a;
-		if (panel != null && panel.isShow)
+		if (IsGameplayPanelActive)
 		{
 			panel.updateScroolMouse(a);
 		}
@@ -2246,7 +2238,7 @@ public class GameCanvas : IActionListener
 			debug("PB", 1);
 			g.translate(-g.getTranslateX(), -g.getTranslateY());
 			g.setClip(0, 0, w, h);
-			if (panel.isShow)
+			if (IsGameplayPanelActive)
 			{
 				panel.paint(g);
 				if (panel2 != null && panel2.isShow)
