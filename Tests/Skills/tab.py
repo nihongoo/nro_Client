@@ -146,6 +146,9 @@ class SkillTabTests {
    Rect root=HudLayout.GetRect(InventoryFrame.Root),detail=HudLayout.GetRect(SkillPanelLayout.Detail),money=HudLayout.GetRect(InventoryFrame.Money);
    Near(root.height,GameCanvas.h,"left not full height");Near(detail.height,GameCanvas.h-2*InventoryFrame.FrameInset,"detail frame inset");
    Check(root.xMax<detail.x,"panels overlap");
+   Check(SkillPanelLayout.PotentialGroupBounds.y>=SkillPanelLayout.SkillsGroupBounds.yMax+SkillPanelLayout.Gap,"skill and potential groups are not separated");
+   Near(SkillPanelLayout.PotentialGroupBounds.x,SkillPanelLayout.SkillsGroupBounds.x,"group borders misaligned");
+   Check(SkillPanelLayout.SkillsGroupBounds.yMax>=SkillPanelLayout.IntrinsicBounds.yMax+InventoryFrame.Padding,"intrinsic outside skill group");
    Near(SkillPanelLayout.Size,Math.Min(InventoryFrame.Unit(mobile?44:60),(SkillPanelLayout.Content.width-3*SkillPanelLayout.Gap)/4),"skill frames smaller than design");
    for(int i=0;i<8;i++){
     Rect cell=HudLayout.GetRect(SkillPanelLayout.Cell(i));Check(cell.width>0&&cell.height>0,"missing grid cell");
@@ -173,6 +176,7 @@ class SkillTabTests {
    Check(SkillPanelLayout.IntrinsicBounds.y+GameCanvas.panel.cmy>=SkillPanelLayout.CellBounds(4).yMax,"intrinsic overlaps fixed grid");
    HudLayout.Invalidate();Rect last=HudLayout.GetRect(SkillPanelLayout.Potential(4));Check(last.height>0&&last.yMax<=money.y,"potential rows not reachable by scrolling");
    Check(SkillPanelLayout.ScrollBounds.yMax<=money.y,"scroll viewport overlaps currency");
+   Check(SkillPanelLayout.PotentialGroupBounds.yMax<=SkillPanelLayout.ScrollBounds.yMax+.1f,"potential group bottom border unreachable");
    Check(SkillPanelLayout.UpperBounds.yMax<SkillPanelLayout.ControlsTop,"detail body overlaps fixed controls");
    Check(SkillPanelLayout.ScrollBounds.height>=2*SkillPanelLayout.LineHeight,"low S22 cannot show both stat text lines");
    Near(SkillPanelLayout.CellBounds(0).x+SkillPanelLayout.CellBounds(3).xMax,SkillPanelLayout.Content.center.x*2,"grid not centered");

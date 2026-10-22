@@ -33,11 +33,16 @@ namespace Hud
         internal static Rect IntrinsicBounds => new Rect(Content.x,ScrollBounds.y-(GameCanvas.panel?.SkillScroll??0),Content.width,Size);
         internal static Rect IntrinsicIconBounds => new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);
         internal static Rect IntrinsicBarBounds => IntrinsicBounds;
+        internal static Rect SkillsGroupBounds => new Rect(Frame.x,Frame.y,Frame.width,
+            Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);
+        internal static float PotentialGroupTop => IntrinsicBounds.yMax+Margin+Gap;
+        internal static Rect PotentialGroupBounds => new Rect(Frame.x,PotentialGroupTop,Frame.width,
+            PotentialBounds(4).yMax+Margin-PotentialGroupTop);
         internal static string PotentialTitle => "Tiềm năng · "+NinjaUtil.getMoneys(Char.myCharz().cTiemNang);
         internal static string ActivityTitle => mResources.active_point+": "+NinjaUtil.getMoneys(Char.myCharz().cNangdong);
         internal static bool CombinedTitle => mFont.tahoma_7b_dark.getWidth(PotentialTitle+" · "+ActivityTitle)<=Content.width-2*Margin;
         internal static int TitleHeight => (CombinedTitle?1:2)*LineHeight+2*Gap;
-        internal static Rect PotentialBounds(int i) => new Rect(Content.x,IntrinsicBounds.yMax+Gap+TitleHeight+i*(RowHeight+PotentialGap),Content.width,RowHeight);
+        internal static Rect PotentialBounds(int i) => new Rect(Content.x,PotentialGroupTop+Margin+TitleHeight+i*(RowHeight+PotentialGap),Content.width,RowHeight);
         internal static Rect DetailBounds => InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
         internal static Rect DetailContent => InventoryFrame.Inset(DetailBounds);
         internal static float ControlsTop => DetailContent.yMax-100;
@@ -100,8 +105,8 @@ public partial class Panel
     private void SyncSkillPanel()
     {
         currentListLength=14;
-        float bottom=SkillPanelLayout.PotentialBounds(4).yMax+cmy+4;
-        cmyLim=Mathf.Max(0,(int)(bottom-SkillPanelLayout.Content.yMax));
+        float bottom=SkillPanelLayout.PotentialGroupBounds.yMax+cmy;
+        cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(bottom-SkillPanelLayout.Content.yMax));
         cmy=cmtoY=Mathf.Clamp(cmy,0,cmyLim);
     }
     private void SelectPanelSkill(int slot)
@@ -195,7 +200,7 @@ public partial class Panel
     }
     private void PaintSkillPanel(mGraphics g)
     {
-        SyncSkillPanel();InventoryFrame.Clip(g,SkillPanelLayout.Frame);InventoryFrame.PaintSection(g,SkillPanelLayout.Frame,InventoryFrame.PanelBackground);
+        SyncSkillPanel();InventoryFrame.Clip(g,SkillPanelLayout.Frame);InventoryFrame.PaintSection(g,SkillPanelLayout.SkillsGroupBounds,InventoryFrame.PanelBackground);
         Rect viewport=SkillPanelLayout.Content;SkillTemplate[] templates=SkillTabState.Templates();
         for(int i=0;i<templates.Length;i++) {
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
@@ -205,6 +210,8 @@ public partial class Panel
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
         viewport=SkillPanelLayout.ScrollBounds;
+        InventoryFrame.Clip(g,viewport);
+        InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
         Rect intrinsicIcon=SkillPanelLayout.IntrinsicIconBounds;
         // One frame encloses the icon and description, exactly as tall as the skill icon.
@@ -219,7 +226,7 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,i==0?mFont.tahoma_7b_dark:mFont.tahoma_7,lines[i],new Rect(intrinsicText.x,textY,intrinsicText.width,lineHeight),viewport,i==0?0x00552D:0x6E5A3D);
             textY+=lineHeight;
         }
-        Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,intrinsic.yMax+SkillPanelLayout.Gap,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
+        Rect title=new Rect(intrinsic.x+SkillPanelLayout.Margin,SkillPanelLayout.PotentialGroupTop+SkillPanelLayout.Margin,intrinsic.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
         InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,InventoryFrame.Border);
         if(!SkillPanelLayout.CombinedTitle) {
             title.y+=SkillPanelLayout.LineHeight;
