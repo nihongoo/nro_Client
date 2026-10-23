@@ -209,13 +209,16 @@ namespace Hud
             PaintCompactIcon(g,id,InventoryFrame.Inset(bounds,bounds.width/7f),viewport);
         }
         private static readonly Dictionary<Texture2D,Image> disabledButtons=new Dictionary<Texture2D,Image>();
-        private static Image ButtonPart(Image source,bool disabled)
+        private static readonly Dictionary<Texture2D,Image> smoothButtons=new Dictionary<Texture2D,Image>();
+        private static readonly Dictionary<Texture2D,Image> smoothDisabledButtons=new Dictionary<Texture2D,Image>();
+        private static Image ButtonPart(Image source,bool disabled,bool smooth)
         {
-            if(source?.texture==null||!disabled)return source;
-            if(!disabledButtons.TryGetValue(source.texture,out Image grey)) {
+            if(source?.texture==null||(!disabled&&!smooth))return source;
+            var cache=smooth?(disabled?smoothDisabledButtons:smoothButtons):disabledButtons;
+            if(!cache.TryGetValue(source.texture,out Image grey)) {
                 grey=HudButtonSkin.CopyNative(source,(pixels,width,height)=>{
-                    for(int i=0;i<pixels.Length;i++) {Color32 p=pixels[i];byte value=(byte)((p.r*30+p.g*59+p.b*11)/100);pixels[i]=new Color32(value,value,value,p.a);}
-                });disabledButtons.Add(source.texture,grey);
+                    if(disabled)for(int i=0;i<pixels.Length;i++) {Color32 p=pixels[i];byte value=(byte)((p.r*30+p.g*59+p.b*11)/100);pixels[i]=new Color32(value,value,value,p.a);}
+                },smooth?FilterMode.Bilinear:FilterMode.Point);cache.Add(source.texture,grey);
             }
             return grey;
         }
@@ -224,14 +227,16 @@ namespace Hud
             Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
             GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
-            try {PaintNativeButton(g,new Rect(bounds.x-clip.x,bounds.y-clip.y,bounds.width,bounds.height),enabled,selected);}
+            // Scroll-card buttons shrink the native caps. Smooth a cached private copy
+            // instead of dropping edge pixels with the shared sprite's Point filter.
+            try {PaintNativeButton(g,new Rect(bounds.x-clip.x,bounds.y-clip.y,bounds.width,bounds.height),enabled,selected,true);}
             finally {GUI.EndGroup();}
         }
-        internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected)
+        internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected,bool smooth=false)
         {
-            Image left=ButtonPart(selected?Command.btn1left:Command.btn0left,!enabled);
-            Image middle=ButtonPart(selected?Command.btn1mid:Command.btn0mid,!enabled);
-            Image right=ButtonPart(selected?Command.btn1right:Command.btn0right,!enabled);
+            Image left=ButtonPart(selected?Command.btn1left:Command.btn0left,!enabled,smooth);
+            Image middle=ButtonPart(selected?Command.btn1mid:Command.btn0mid,!enabled,smooth);
+            Image right=ButtonPart(selected?Command.btn1right:Command.btn0right,!enabled,smooth);
             if(left?.texture==null||middle?.texture==null||right?.texture==null)return;
             // Fit all three native pieces to the hit rectangle, including their complete rounded caps.
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
