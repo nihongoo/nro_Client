@@ -5480,7 +5480,6 @@ public class Controller : IMessageHandler
 					useSkill(skill3);
 				}
 				GameScr.gI().sortSkill();
-				GameScr.gI().loadSkillShortcut();
 				Char.myCharz().xu = msg.reader().readLong();
 				Char.myCharz().luongKhoa = msg.reader().readInt();
 				Char.myCharz().luong = msg.reader().readInt();

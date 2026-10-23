@@ -482,8 +482,6 @@ public class GameScr : mScreen, IChatable
 
     public const int numSkill = 8;
 
-    public const int numSkill_2 = 5;
-
     public static Skill[] keySkill;
 
     public static Skill[] onScreenSkill;
@@ -1223,13 +1221,8 @@ public class GameScr : mScreen, IChatable
         Char.myCharz().vMovePoints.removeAllElements();
     }
 
-    public void loadSkillShortcut()
-    {
-    }
-
     public void onOSkill(sbyte[] oSkillID)
     {
-        Cout.println("GET onScreenSkill!");
         onScreenSkill = new Skill[numSkill];
         if (oSkillID == null)
         {
@@ -1252,7 +1245,6 @@ public class GameScr : mScreen, IChatable
 
     public void onKSkill(sbyte[] kSkillID)
     {
-        Cout.println("GET KEYSKILL!");
         keySkill = new Skill[numSkill];
         if (kSkillID == null)
         {
@@ -1275,7 +1267,6 @@ public class GameScr : mScreen, IChatable
 
     public void onCSkill(sbyte[] cSkillID)
     {
-        Cout.println("GET CURRENTSKILL!");
         if (cSkillID == null || cSkillID.Length == 0)
         {
             if (Char.myCharz().vSkillFight.size() > 0)
@@ -1304,7 +1295,6 @@ public class GameScr : mScreen, IChatable
 
     private void loadDefaultonScreenSkill()
     {
-        Cout.println("LOAD DEFAULT ONmScreen SKILL");
         for (int i = 0; i < onScreenSkill.Length && i < Char.myCharz().vSkillFight.size(); i++)
         {
             Skill skill = (Skill)Char.myCharz().vSkillFight.elementAt(i);
@@ -1315,7 +1305,6 @@ public class GameScr : mScreen, IChatable
 
     private void loadDefaultKeySkill()
     {
-        Cout.println("LOAD DEFAULT KEY SKILL");
         for (int i = 0; i < keySkill.Length && i < Char.myCharz().vSkillFight.size(); i++)
         {
             Skill skill = (Skill)Char.myCharz().vSkillFight.elementAt(i);
