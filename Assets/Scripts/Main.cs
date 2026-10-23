@@ -139,7 +139,6 @@ public class Main : MonoBehaviour
 	{
 		if (count >= 10)
 		{
-            Hud.SkillDiagnostics.Tick();
 			checkInput();
 			Session_ME.update();
 			Session_ME2.update();

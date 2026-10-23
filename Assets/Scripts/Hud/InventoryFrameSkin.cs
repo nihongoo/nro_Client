@@ -7,27 +7,23 @@ namespace Hud
     {
         private static readonly Dictionary<long, Image> corners = new Dictionary<long, Image>();
         private static Texture2D source;
-        internal static int DiagnosticCacheCount => corners.Count;
 
         internal static Image Corners(int fill, int border, byte opacity)
         {
             if (PopUp.goc == null) PopUp.loadBg();
             if (source != PopUp.goc.texture) {
-                SkillDiagnostics.CacheCleared(false);
                 foreach (Image image in corners.Values) Object.Destroy(image.texture);
                 corners.Clear(); source = PopUp.goc.texture;
             }
             long key = ((long)fill << 32) | ((long)border << 8) | opacity;
             if (!corners.TryGetValue(key, out Image result)) {
                 if (corners.Count >= 64) {
-                    SkillDiagnostics.CacheCleared(true);
                     foreach (Image image in corners.Values) Object.Destroy(image.texture);
                     corners.Clear();
                 }
                 result = HudButtonSkin.CopyNative(PopUp.goc,
                     (pixels, width, height) => TintCorners(pixels, fill, border, opacity));
                 corners.Add(key, result);
-                SkillDiagnostics.CacheEntry(key,fill,border,opacity,source.GetInstanceID());
             }
             return result;
         }

@@ -15,7 +15,7 @@ fields = '\n'.join(re.search(r'private static (?:int|long) ' + name + r'\s*=[^;]
 fixture = r'''
 using System;
 using UnityEngine;
-namespace Hud {static class SkillDiagnostics {public static void Tick(){}}}
+
 namespace UnityEngine {
  public struct Vector2 {public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;}public static Vector2 operator/(Vector2 p,int n)=>new Vector2(p.x/n,p.y/n);}
  public struct Rect {public bool Contains(Vector2 p)=>p.x>=0&&p.x<100&&p.y>=0&&p.y<100;}

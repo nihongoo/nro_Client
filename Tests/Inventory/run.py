@@ -38,35 +38,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Hud;
-namespace Hud {
- static class SkillDiagnostics {
-internal enum Stage { Sync, HitTest, Pointer, Release, Keys, Wheel, Select, Action, Book, Templates,
-            Metrics, IntrinsicLines, Description, AddLines, FontSplit, FontWidth, FontExact, FontHeight,
-            HudGetRect, HudResolve, HudVisible, PotentialData, PotentialRect, PotentialFrame, PotentialIcon,
-            PotentialText, MoneyFormat, Concat, FrameSync, FrameBackground, FrameHeader, FrameTabs,
-            FrameMoney, FrameDetails, PopUp, CompactText, LayoutScroll, LayoutSize, LayoutCell, LayoutPotential, LayoutIntrinsic, LayoutGroups, LayoutDetail, Learning, Platform, FrameMetrics, Count }
-internal enum Counter { BeginFrame, ViewportChange, GetRect, RectMiss, HitTest, Visible,
-            MetricsCall, MetricsRebuild, FrameMetricsCall, FrameMetricsRebuild, MobileLayoutReads, Split, FontMeasure, NewList, NewArray, NewLine, NewGUIStyle,
-            NewGUIContent, StringConcat, FormatMoney, TemplateCall, BookCall,
-            LayoutFrame, LayoutContent, LayoutLineHeight, LayoutRowHeight, LayoutDesignSize, LayoutSize,
-            LayoutColumnGap, LayoutRowGap, LayoutGridBottomGap, LayoutPotentialContent, LayoutPotentialHeaderBounds,
-            LayoutScrollBounds, LayoutIntrinsicTextWidth, LayoutIntrinsicBounds, LayoutIntrinsicIconBounds,
-            LayoutIntrinsicBarBounds, LayoutSkillsGroupBounds, LayoutPotentialGroupTop, LayoutPotentialGroupBounds,
-            LayoutPotentialTitle, LayoutActivityTitle, LayoutCombinedTitle, LayoutTitleHeight, LayoutDetailBounds,
-            LayoutDetailContent, LayoutControlsTop, LayoutUpperBounds, LayoutCellBounds, LayoutPotentialBounds,
-            LayoutKeyBounds, LayoutActionBounds, Count }
-  internal struct ProbeScope:IDisposable {public void Dispose(){}}
-  internal static ProbeScope Probe(Stage stage)=>new ProbeScope();
-  internal static void Count(Counter counter,int amount=1){}
-  internal static void Invalidated(string file,int line){}
-  internal static long StartRect()=>0;
-  internal static void RectResolved(string name,long start){}
-  internal enum Area { Frame,Panel,Grid,Intrinsic,Potential,Detail,Input,InventoryBody,Other }
-  internal struct Scope:IDisposable {public void Dispose(){}}
-  internal static Scope Measure(Area area)=>new Scope();
-  internal static void Tick(){}
- }
-}
+
 namespace UnityEngine {
     public enum RuntimePlatform { WindowsPlayer,Android,IPhonePlayer }
     public struct Color { public byte r; }

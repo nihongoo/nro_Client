@@ -43,13 +43,12 @@ namespace Hud
             long tick=HudLayout.FrameId,state=HudLayout.StateGeneration;
             if(metricsReady&&metricsFrame==tick&&metricsState==state&&metrics.Width==GameCanvas.w
                 &&metrics.Height==GameCanvas.h&&metrics.Zoom==mGraphics.zoomLevel&&ReferenceEquals(metrics.Font,mFont.tahoma_7_yellow))return;
-            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameMetrics)) {
-                SkillDiagnostics.Count(SkillDiagnostics.Counter.FrameMetricsCall);
+
                 bool mobile=HudLayout.IsMobileLayout;
                 metricsFrame=tick;metricsState=state;
                 if(metricsReady&&metrics.Width==GameCanvas.w&&metrics.Height==GameCanvas.h&&metrics.Zoom==mGraphics.zoomLevel
                     &&metrics.Mobile==mobile&&ReferenceEquals(metrics.Font,mFont.tahoma_7_yellow))return;
-                SkillDiagnostics.Count(SkillDiagnostics.Counter.FrameMetricsRebuild);
+
                 var next=new FrameMetrics {Width=GameCanvas.w,Height=GameCanvas.h,Zoom=mGraphics.zoomLevel,Mobile=mobile,Font=mFont.tahoma_7_yellow};
                 next.FitScale=GameCanvas.h * Mathf.Max(1,mGraphics.zoomLevel) / (mobile?390f:720f);
                 float width=Mathf.Max(Unit(mobile?300:380,next.Zoom,next.FitScale),
@@ -68,7 +67,6 @@ namespace Hud
                 next.BagGap=Mathf.Max(6,Unit(12,next.Zoom,next.FitScale));
                 next.BagLeft=(next.Root.width-next.BagSize*InventoryBag.Columns-next.BagGap*(InventoryBag.Columns-1))/2;
                 metrics=next;metricsReady=true;metricsVersion++;
-            }
         }
         // Preserve the original operation order, including division before multiplication.
         internal static float Unit(float pixels) {EnsureMetrics();return Unit(pixels,metrics.Zoom,metrics.FitScale);}
@@ -304,8 +302,7 @@ public partial class Panel
 
     private bool UpdateInventoryFrameInput()
     {
-        using (SkillDiagnostics.Measure(currentTabIndex==1?SkillDiagnostics.Area.Input:SkillDiagnostics.Area.Other)) {
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameSync)) {SyncInventoryFrame();EnsureInventoryDetailLayout();}
+         SyncInventoryFrame();EnsureInventoryDetailLayout();
         if (isClose || cmtoX > 0) return true;
         if (!isShow || (chatTField != null && chatTField.isShow) || InfoDlg.isShow
             || tabIcon != null && tabIcon.isShow || GameCanvas.currentDialog != null || GameCanvas.menu.showMenu) return false;
@@ -390,7 +387,6 @@ public partial class Panel
             }
         }
         return true;
-        }
     }
 
     // Header ownership follows the active tab; body rendering never paints over it.
@@ -419,18 +415,16 @@ public partial class Panel
 
     private void PaintInventoryFrame(mGraphics g)
     {
-        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Frame)) {
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameSync))SyncInventoryFrame();
+        SyncInventoryFrame();
         Rect root;
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameBackground)) {
+
         GameScr.resetTranslate(g);
         g.setColor(0, .25f); g.fillRect(0, 0, GameCanvas.w, GameCanvas.h);
         root = HudLayout.GetRect(InventoryFrame.Root);
         GameCanvas.paintz.paintFrameSimple(0, 0, W, H, g);
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
-        }
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameHeader)) {
+
         SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
         PaintInventoryHeader(g);
@@ -438,8 +432,7 @@ public partial class Panel
         InventoryFrame.Clip(g, root);
         InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
         g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
-        }
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameTabs)) {
+
         int[] ids = InventoryFrameTabIds;
         int activeTab = currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5) ? 6 : currentTabIndex;
         for (int i = 0; i < ids.Length; i++) {
@@ -452,17 +445,17 @@ public partial class Panel
                 (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
                     words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
         }
-        }
+
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
-                using (SkillDiagnostics.Measure(SkillDiagnostics.Area.InventoryBody)) {
+
                 InventoryFrame.PaintSection(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
                 mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 + InventoryFrame.Padding - cmy, mFont.CENTER);
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 PaintInventoryBag(g);
-                }
+
                 break;
             case 2: PaintSkillPanel(g); break;
             case 3: paintClans(g); break;
@@ -470,18 +463,15 @@ public partial class Panel
             case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
-        GameScr.resetTranslate(g); using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameMoney))PaintInventoryMoney(g);
-        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameDetails)) {
+        GameScr.resetTranslate(g); PaintInventoryMoney(g);
+
         if (currentTabIndex == 2) PaintSkillDetail(g);
         else {
-            using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Detail)) {
                 if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
-            }
         }
-        }
+
         if (tabIcon != null && tabIcon.isShow) tabIcon.paint(g);
         GameScr.resetTranslate(g);
-        }
     }
 
     private void PaintInventoryEquipment(mGraphics g, int slot)

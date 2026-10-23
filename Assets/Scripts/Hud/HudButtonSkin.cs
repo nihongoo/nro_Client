@@ -11,7 +11,6 @@ namespace Hud
         // Imported textures need not be CPU-readable. Copy once without altering the shared asset.
         internal static Image CopyNative(Image source, System.Action<Color32[], int, int> edit = null, FilterMode filter = FilterMode.Point)
         {
-            SkillDiagnostics.CopyNativeCalled();
             Texture2D original = source.texture;
             RenderTexture previous = RenderTexture.active;
             RenderTexture temporary = RenderTexture.GetTemporary(original.width, original.height, 0, RenderTextureFormat.ARGB32);

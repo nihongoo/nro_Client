@@ -36,11 +36,10 @@ namespace Hud
 
         // Device.Application reports the simulated Android/iOS platform in Device Simulator.
         // Read-only, no Editor override, preferences, RMS flag or mod toggle.
-        public static bool IsMobileLayout {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Platform)) {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.MobileLayoutReads);
+        public static bool IsMobileLayout {get{
             return UnityEngine.Device.Application.platform == RuntimePlatform.Android
                 || UnityEngine.Device.Application.platform == RuntimePlatform.IPhonePlayer;
-        }}}
+        }}
         public static Vector2 DesignReference => IsMobileLayout ? new Vector2(844, 390) : new Vector2(1280, 720);
         public static Rect ScreenBounds => new Rect(0, 0, GameCanvas.w, GameCanvas.h);
         internal static bool IsPlayerDead => Char.myCharz().meDead || Char.myCharz().cHP <= 0
@@ -94,14 +93,14 @@ namespace Hud
             // Dynamic world HUD providers still require a fresh frame. Fixed panel providers
             // opt into a state/geometry version and retain their cached rectangles.
             generation++; frameId++;
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.BeginFrame);
+
             EnsureViewport();
         }
         // State can change between input and paint (modal open/close, tabs, scrolling).
         // State-dependent providers discard pre-change rectangles; fixed frame geometry
         // keeps its own version until its viewport/font key changes.
-        public static void Invalidate([System.Runtime.CompilerServices.CallerFilePath] string file="", [System.Runtime.CompilerServices.CallerLineNumber] int line=0)
-        { SkillDiagnostics.Invalidated(file,line); generation++; stateGeneration++; }
+        public static void Invalidate()
+        {  generation++; stateGeneration++; }
         private static void EnsureViewport()
         {
             RuntimePlatform current = UnityEngine.Device.Application.platform;
@@ -109,7 +108,7 @@ namespace Hud
                 || keyboardY != mGraphics.addYWhenOpenKeyBoard || platform != current)
             {
                 width = GameCanvas.w; height = GameCanvas.h; zoom = mGraphics.zoomLevel;
-                keyboardY = mGraphics.addYWhenOpenKeyBoard; platform = current; generation++; stateGeneration++; SkillDiagnostics.Count(SkillDiagnostics.Counter.ViewportChange);
+                keyboardY = mGraphics.addYWhenOpenKeyBoard; platform = current; generation++; stateGeneration++;
             }
             if (!legacyRegistered && GameScr.instance != null)
             {
@@ -121,27 +120,21 @@ namespace Hud
         {
             long version = entry.CacheVersion == null ? generation : entry.CacheVersion();
             if (entry.Generation != version) {
-                SkillDiagnostics.Count(SkillDiagnostics.Counter.RectMiss);
-                long diagnosticStart=SkillDiagnostics.StartRect();
-                using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.HudResolve)) {
+
                 if (entry.Resolving) throw new InvalidOperationException("Circular HUD rect dependency: " + entry.Name);
                 entry.Resolving = true;
                 try { entry.Bounds = entry.Resolve(); entry.Generation = version; }
-                finally { entry.Resolving = false; SkillDiagnostics.RectResolved(entry.Name,diagnosticStart); }
-                }
+                finally { entry.Resolving = false;  }
             }
             return entry.Bounds;
         }
         private static bool IsVisible(Entry entry)
-        { using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.HudVisible)) { SkillDiagnostics.Count(SkillDiagnostics.Counter.Visible); return entry.Visible == null || entry.Visible(); } }
+        {    return entry.Visible == null || entry.Visible();  }
         public static Rect GetRect(string name)
         {
-        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.HudGetRect)) {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.GetRect);
             EnsureViewport();
             if (!byName.TryGetValue(name, out Entry entry)) throw new KeyNotFoundException("HUD rect not registered: " + name);
             return Resolve(entry);
-        }
     }
         public static bool TryGetRect(string name, out Rect bounds)
         {
@@ -163,16 +156,14 @@ namespace Hud
         }
         public static string HitTest(Vector2 point)
         {
-        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.HitTest)) {
             EnsureViewport();
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.HitTest);
+
             for (int i = backToFront.Count - 1; i >= 0; i--)
             {
                 Entry entry = backToFront[i];
                 if (entry.BlocksPointer && IsVisible(entry) && Resolve(entry).Contains(point)) return entry.Name;
             }
             return null;
-        }
     }
         public static bool IsTopmost(string name, Vector2 point) => HitTest(point) == name;
         // Read existing combat-control adapters without resolving the lists that are currently

@@ -111,10 +111,8 @@ namespace Hud
         // Keep the game's font, fitting the complete value instead of dropping digits with ellipses.
         internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false)
         {
-        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.CompactText)) {
             Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
             if(!compactStyles.TryGetValue(font,out GUIStyle style)) {
-                SkillDiagnostics.Count(SkillDiagnostics.Counter.NewGUIStyle);
                 style=new GUIStyle(GUI.skin.label){font=font.myFont,alignment=TextAnchor.MiddleLeft,
                     padding=new RectOffset(),margin=new RectOffset(),wordWrap=false,richText=false};
                 compactStyles.Add(font,style);
@@ -127,14 +125,13 @@ namespace Hud
             }
             if(!fits.TryGetValue(text,out CompactFit fit)) {
                 if(fits.Count>=256)fits.Clear();
-                SkillDiagnostics.Count(SkillDiagnostics.Counter.NewGUIContent);
+
                 fit=new CompactFit{Content=new GUIContent(text)};fits.Add(text,fit);
             }
             int baseSize=Mathf.Max(1,font.myFont.fontSize);
             if(fit.Font!=font.myFont||fit.BaseSize!=baseSize||fit.Width!=bounds.width||fit.Height!=bounds.height||fit.Zoom!=zoom) {
                 style.fontSize=baseSize;
                 while(style.fontSize>1) {
-                    SkillDiagnostics.Count(SkillDiagnostics.Counter.FontMeasure);
                     Vector2 measured=style.CalcSize(fit.Content);
                     if(measured.x<=(bounds.width-2)*zoom&&measured.y<=bounds.height*zoom)break;
                     style.fontSize--;
@@ -152,7 +149,6 @@ namespace Hud
                 try {GUI.Label(new Rect((bounds.x-clip.x+1)*zoom,(bounds.y-clip.y)*zoom,(bounds.width-2)*zoom,bounds.height*zoom),text,style);}
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
-        }
     }
         // Match SmallImage.drawSmallImage: entries outside the 256 atlas are separate images.
         internal static bool TryAtlasIcon(int id,out Image image,out Rect uv)
