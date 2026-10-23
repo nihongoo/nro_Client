@@ -25,6 +25,7 @@ internal sealed class EmailLinkFlow : IActionListener
 
     internal static void Read(myReader reader) {
         int action = reader.readByte();
+        if(action==9){GuestSwitchFlow.Read(reader);return;}
         if (action == 1) { replies.Enqueue(new Reply { Action = 1, Success = true, Dev = reader.readBool() }); return; }
         if (action == 7) {
             bool guest = reader.readBool(), dev = reader.readBool();
@@ -88,13 +89,14 @@ internal sealed class EmailLinkFlow : IActionListener
         }
         if (!GuestCredentials.IsGuest) return;
         GameCanvas.menu.showMenu = false;
-        if (string.IsNullOrEmpty(pendingEmail)) OpenEmail();
+        MyVector options = new MyVector();
+        if (string.IsNullOrEmpty(pendingEmail)) options.addElement(new Command("Liên kết email", instance, 4, null));
         else {
-            MyVector options = new MyVector();
             options.addElement(new Command("Nhập mã xác minh", instance, 3, null));
             options.addElement(new Command("Gửi lại / Đổi email", instance, 4, null));
-            GameCanvas.menu.startAt(options, 0);
         }
+        options.addElement(new Command("Đổi tài khoản", GameCanvas.panel, 10019, null));
+        GameCanvas.menu.startAt(options, 0);
     }
     private static ClientInput NewForm(int count, string title, string submit) {
         ClearForm();

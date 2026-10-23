@@ -8,6 +8,11 @@ internal static class GuestCredentials
 {
     private const string SecretKey = "guestSecretV1";
     private const string PreferredKey = "guestPreferredV1";
+    private const string DeleteKey = "guestDeletePendingV1";
+    internal static bool DeletePending => Rms.loadRMSString(DeleteKey)=="yes";
+    internal static void BeginDeletion(){Rms.saveRMSString(DeleteKey,"yes");if(!DeletePending)throw new InvalidOperationException("Không lưu được yêu cầu xóa khách.");}
+    internal static void CancelDeletion(){Rms.saveRMSString(DeleteKey,string.Empty);}
+    internal static void Deleted(){Rms.saveRMSString(SecretKey,string.Empty);Rms.saveRMSString(PreferredKey,"account");CancelDeletion();BeginLogin();}
     // -124 belongs to HOLD/effects in Controller2 and must not carry account data.
     internal const sbyte Command = -48;
     internal static bool IsDev { get; private set; }

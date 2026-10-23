@@ -8697,11 +8697,7 @@ public partial class Panel : IActionListener, IChatable
         }
         if (idAction == 10019)
         {
-            // Recheck a menu opened before an account-state update. Registration-screen
-            // confirmations still use the existing switch action outside the game.
-            if (GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance && !GuestCredentials.IsPermanent)
-                EmailLinkFlow.Open();
-            else GameCanvas.instance.switchAccount();
+            GameCanvas.instance.switchAccount();
         }
         if (idAction == 10020)
         {
