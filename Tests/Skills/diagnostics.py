@@ -20,7 +20,7 @@ namespace UnityEngine {
  }
 }
 class Panel {public bool isShow=true,InventoryFrameActive=true;public int currentTabIndex=2;}
-static class GameCanvas {public static Panel panel=new Panel();}
+static class GameCanvas {public static Panel panel=new Panel();public static bool isPointerJustDown,isPointerDown,isPointerJustRelease,isPointerClick;}
 namespace Hud {static class InventoryFrameSkin {internal static int DiagnosticCacheCount=>11;}}
 class Tests {
  static int checks;static void Check(bool value,string message){checks++;if(!value)throw new Exception(message);}
@@ -36,13 +36,20 @@ class Tests {
    SkillDiagnostics.CacheCleared(true);Exception();Exception();
   }
   using(SkillDiagnostics.Measure(SkillDiagnostics.Area.Frame)){Thread.Sleep(2);}
-  using(SkillDiagnostics.Measure(SkillDiagnostics.Area.Input)){Thread.Sleep(2);}
+  using(SkillDiagnostics.Measure(SkillDiagnostics.Area.Input)){
+   using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.HitTest)){Thread.Sleep(2);}
+   SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutScrollBounds,3);
+   SkillDiagnostics.Count(SkillDiagnostics.Counter.BeginFrame);
+   GameCanvas.isPointerDown=true;SkillDiagnostics.Invalidated("Fixture.cs",42);SkillDiagnostics.Invalidated("Fixture.cs",42);GameCanvas.isPointerDown=false;
+   long started=SkillDiagnostics.StartRect();Thread.Sleep(1);SkillDiagnostics.RectResolved("skills.left",started);
+  }
   Advance();
   Check(UnityEngine.Debug.logs.Count==1,"expected one summary per completed second");
   string first=UnityEngine.Debug.logs[0];
   Check(first.StartsWith("[SKILLDIAG] tab=Skills"),"skill summary label missing");
   foreach(string field in new[]{"ms(avg/max)","PaintInventoryFrame=","PaintSkillPanel=","grid=","intrinsic=","potential=","PaintSkillDetail=","UpdateSkillPanelInput=","CopyNative=2","copyByArea=grid:2,","cacheClearFull=1","cacheSize=11","cacheNew=2","key:0x0000000000000456","entryChanges=alpha,","exceptions=2"})
    Check(first.Contains(field),"summary missing: "+field);
+  foreach(string field in new[]{"deepMs(avg/max;calls/window,inclusive)=", "UpdateSkillPanelInput.HitTest:", "inputHeaviest=HitTest:", "UpdateSkillPanelInput.LayoutScrollBounds:3", "Fixture.cs:42 calls:2 justDown/held/release/click:0/2/0/0", "total:2 rectMiss/window", "skills.left:1;"})Check(first.Contains(field),"deep summary missing: "+field);
   var totals=Regex.Match(first,@" total=([0-9.]+)/([0-9.]+)");
   var painted=Regex.Match(first,@" PaintInventoryFrame=([0-9.]+)/([0-9.]+)");
   var input=Regex.Match(first,@" UpdateSkillPanelInput=([0-9.]+)/([0-9.]+)");
@@ -54,6 +61,7 @@ class Tests {
   Advance();
   Check(UnityEngine.Debug.logs.Count==2&&UnityEngine.Debug.logs[1].Contains("CopyNative=0")&&UnityEngine.Debug.logs[1].Contains("exceptions=1"),"per-second counters did not reset");
   Check(UnityEngine.Debug.warnings.Count==1,"same exception message printed stack again");
+  Check(!UnityEngine.Debug.logs[1].Contains("Fixture.cs:42")&&!UnityEngine.Debug.logs[1].Contains("LayoutScrollBounds:3")&&!UnityEngine.Debug.logs[1].Contains("skills.left:1;"),"deep counters did not reset");
   GameCanvas.panel.currentTabIndex=1;UnityEngine.Time.frameCount++;
   using(SkillDiagnostics.Measure(SkillDiagnostics.Area.Frame))using(SkillDiagnostics.Measure(SkillDiagnostics.Area.InventoryBody)){Thread.Sleep(2);}
   Advance();

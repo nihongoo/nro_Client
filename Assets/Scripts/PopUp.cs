@@ -180,6 +180,7 @@ public class PopUp
 
 	public static void paintPopUp(mGraphics g, int x, int y, int w, int h, int color, bool isButton, Image corner, int borderColor)
 	{
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.PopUp)) {
 		if (!isButton)
 		{
 			Image cornerImage = corner ?? goc;
@@ -220,7 +221,8 @@ public class PopUp
 		}
 		g.setColor((color != 1) ? 16770503 : 12052656);
 		g.fillRect(x + 10, y + 10, w - 20, h - 20);
-	}
+        }
+    }
 
 	public void paint(mGraphics g)
 	{

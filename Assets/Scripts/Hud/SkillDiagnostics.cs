@@ -7,7 +7,7 @@ using System.Text;
 namespace Hud
 {
     // Temporary diagnostics only. Nested timings are inclusive; total = frame paint + input.
-    internal static class SkillDiagnostics
+    internal static partial class SkillDiagnostics
     {
         internal enum Area { Frame, Panel, Grid, Intrinsic, Potential, Detail, Input, InventoryBody, Other }
         private const int AreaCount = 9;
@@ -65,6 +65,7 @@ namespace Hud
             }
             if (tab < 0 || frame == UnityEngine.Time.frameCount) return;
             if (frame >= 0) {
+                CommitDeepFrame();
                 double total = Pending[(int)Area.Frame] + Pending[(int)Area.Input];
                 totalSum += total; totalMax = System.Math.Max(totalMax, total); frames++;
                 for (int i = 0; i < AreaCount; i++) {
@@ -78,6 +79,7 @@ namespace Hud
         }
         private static void ResetWindow()
         {
+            ResetDeep();
             Array.Clear(Pending,0,AreaCount); Array.Clear(Sums,0,AreaCount); Array.Clear(Maxima,0,AreaCount);
             Array.Clear(CopiesByArea,0,AreaCount); Exceptions.Clear();
             frames = copies = fullClears = sourceClears = entries = exceptionCount = changedFields = 0;
@@ -142,7 +144,110 @@ namespace Hud
             if ((changedFields & 8) != 0) text.Append("source,");
             text.Append(" exceptions=").Append(exceptionCount);
             foreach (var item in Exceptions) text.Append(" [").Append(item.Key.Replace('\n',' ').Replace('\r',' ')).Append(" x").Append(item.Value).Append(']');
+            EmitDeep(text);
             UnityEngine.Debug.Log(text.ToString());
+        }
+    }
+}
+
+namespace Hud
+{
+    internal static partial class SkillDiagnostics
+    {
+        // Timings are inclusive, grouped by coarse area; never add parent and child times.
+        internal enum Stage { Sync, HitTest, Pointer, Release, Keys, Wheel, Select, Action, Book, Templates,
+            Metrics, IntrinsicLines, Description, AddLines, FontSplit, FontWidth, FontExact, FontHeight,
+            HudGetRect, HudResolve, HudVisible, PotentialData, PotentialRect, PotentialFrame, PotentialIcon,
+            PotentialText, MoneyFormat, Concat, FrameSync, FrameBackground, FrameHeader, FrameTabs,
+            FrameMoney, FrameDetails, PopUp, CompactText, LayoutScroll, LayoutSize, LayoutCell, LayoutPotential, LayoutIntrinsic, LayoutGroups, LayoutDetail, Learning, Platform, Count }
+        internal enum Counter { BeginFrame, ViewportChange, GetRect, RectMiss, HitTest, Visible,
+            MetricsCall, MetricsRebuild, MobileLayoutReads, Split, FontMeasure, NewList, NewArray, NewLine, NewGUIStyle,
+            NewGUIContent, StringConcat, FormatMoney, TemplateCall, BookCall,
+            LayoutFrame, LayoutContent, LayoutLineHeight, LayoutRowHeight, LayoutDesignSize, LayoutSize,
+            LayoutColumnGap, LayoutRowGap, LayoutGridBottomGap, LayoutPotentialContent, LayoutPotentialHeaderBounds,
+            LayoutScrollBounds, LayoutIntrinsicTextWidth, LayoutIntrinsicBounds, LayoutIntrinsicIconBounds,
+            LayoutIntrinsicBarBounds, LayoutSkillsGroupBounds, LayoutPotentialGroupTop, LayoutPotentialGroupBounds,
+            LayoutPotentialTitle, LayoutActivityTitle, LayoutCombinedTitle, LayoutTitleHeight, LayoutDetailBounds,
+            LayoutDetailContent, LayoutControlsTop, LayoutUpperBounds, LayoutCellBounds, LayoutPotentialBounds,
+            LayoutKeyBounds, LayoutActionBounds, Count }
+        private const int StageCount = (int)Stage.Count, CounterCount = (int)Counter.Count;
+        private static readonly double[] DeepPending = new double[AreaCount*StageCount], DeepSums = new double[AreaCount*StageCount], DeepMax = new double[AreaCount*StageCount];
+        private static readonly long[] DeepCalls = new long[AreaCount*StageCount], Counts = new long[AreaCount*CounterCount];
+        private static readonly Counter[] InputAllocCounters = {Counter.NewList,Counter.NewArray,Counter.Split,Counter.FontMeasure,Counter.StringConcat};
+        private static readonly string[] StageNames = Enum.GetNames(typeof(Stage)), CounterNames = Enum.GetNames(typeof(Counter));
+        private sealed class RectStat { internal int Calls; internal double Sum, Max; }
+        private sealed class SiteStat { internal int Calls, Down, Held, Released, Click; }
+        private static readonly Dictionary<string,RectStat> RectStats = new Dictionary<string,RectStat>();
+        private static readonly Dictionary<string,Dictionary<int,SiteStat>> Invalidations = new Dictionary<string,Dictionary<int,SiteStat>>();
+        internal struct ProbeScope : IDisposable
+        {
+            private readonly int index, selected;
+            private readonly long started;
+            private readonly bool active;
+            internal ProbeScope(Stage stage) { active=true; selected=tab; index=(int)currentArea*StageCount+(int)stage; started=Stopwatch.GetTimestamp(); DeepCalls[index]++; }
+            public void Dispose() { if(active && selected==tab)DeepPending[index]+=(Stopwatch.GetTimestamp()-started)*TickToMs; }
+        }
+        // No Tick, stack capture, strings or heap allocation in these hot-path operations.
+        internal static ProbeScope Probe(Stage stage) => tab<0?default(ProbeScope):new ProbeScope(stage);
+        internal static void Count(Counter counter, int amount=1) { if(tab>=0)Counts[(int)currentArea*CounterCount+(int)counter]+=amount; }
+        internal static long StartRect() => tab<0?0:Stopwatch.GetTimestamp();
+        internal static void RectResolved(string name,long start)
+        {
+            if(start==0||tab<0)return;
+            double ms=(Stopwatch.GetTimestamp()-start)*TickToMs;
+            if(!RectStats.TryGetValue(name,out RectStat stat)) { stat=new RectStat();RectStats.Add(name,stat); }
+            stat.Calls++;stat.Sum+=ms;stat.Max=System.Math.Max(stat.Max,ms);
+        }
+        internal static void Invalidated(string file,int line)
+        {
+            if(tab<0)return;
+            if(!Invalidations.TryGetValue(file,out Dictionary<int,SiteStat> sites)) {sites=new Dictionary<int,SiteStat>();Invalidations.Add(file,sites);}
+            if(!sites.TryGetValue(line,out SiteStat stat)) {stat=new SiteStat();sites.Add(line,stat);}
+            stat.Calls++;
+            if(GameCanvas.isPointerJustDown)stat.Down++;
+            if(GameCanvas.isPointerDown)stat.Held++;
+            if(GameCanvas.isPointerJustRelease)stat.Released++;
+            if(GameCanvas.isPointerClick)stat.Click++;
+        }
+        private static void CommitDeepFrame()
+        {
+            for(int i=0;i<DeepPending.Length;i++) { DeepSums[i]+=DeepPending[i];DeepMax[i]=System.Math.Max(DeepMax[i],DeepPending[i]);DeepPending[i]=0; }
+        }
+        private static void ResetDeep()
+        {
+            Array.Clear(DeepPending,0,DeepPending.Length);Array.Clear(DeepSums,0,DeepSums.Length);Array.Clear(DeepMax,0,DeepMax.Length);
+            Array.Clear(DeepCalls,0,DeepCalls.Length);Array.Clear(Counts,0,Counts.Length);
+            foreach(var item in RectStats){item.Value.Calls=0;item.Value.Sum=item.Value.Max=0;}
+            foreach(var file in Invalidations)foreach(var site in file.Value){site.Value.Calls=site.Value.Down=site.Value.Held=site.Value.Released=site.Value.Click=0;}
+        }
+        private static void EmitDeep(StringBuilder text)
+        {
+            text.Append(" deepMs(avg/max;calls/window,inclusive)=");
+            int heaviest=-1;
+            for(int i=0;i<DeepSums.Length;i++) {
+                if(DeepCalls[i]==0 && !(i/StageCount==(int)Area.Input && i%StageCount<=(int)Stage.HudVisible))continue;
+                text.Append('[').Append(Names[i/StageCount]).Append('.').Append(StageNames[i%StageCount]).Append(':')
+                    .Append(Number(DeepSums[i]/frames)).Append('/').Append(Number(DeepMax[i])).Append(';').Append(DeepCalls[i]).Append(']');
+                // Direct input blocks only, not their nested callees.
+                int stage=i%StageCount;
+                if(i/StageCount==(int)Area.Input && (stage==(int)Stage.Sync||stage==(int)Stage.HitTest||stage==(int)Stage.Pointer||stage==(int)Stage.Release||stage==(int)Stage.Keys)
+                    &&(heaviest<0||DeepSums[i]>DeepSums[heaviest]))heaviest=i;
+            }
+            text.Append(" inputHeaviest=");
+            if(heaviest<0)text.Append('-');else text.Append(StageNames[heaviest%StageCount]).Append(':').Append(Number(DeepSums[heaviest]/frames));
+            text.Append(" counts/window=");
+            for(int i=0;i<Counts.Length;i++)if(Counts[i]!=0)text.Append('[').Append(Names[i/CounterCount]).Append('.').Append(CounterNames[i%CounterCount]).Append(':').Append(Counts[i]).Append(']');
+            text.Append(" inputAlloc/window=");
+            foreach(Counter counter in InputAllocCounters)
+                text.Append(counter).Append(':').Append(Counts[(int)Area.Input*CounterCount+(int)counter]).Append(',');
+            text.Append(" Invalidate/window=");int total=0;
+            foreach(var file in Invalidations)foreach(var site in file.Value) {
+                SiteStat v=site.Value;if(v.Calls==0)continue;total+=v.Calls;
+                text.Append('[').Append(file.Key).Append(':').Append(site.Key).Append(" calls:").Append(v.Calls)
+                    .Append(" justDown/held/release/click:").Append(v.Down).Append('/').Append(v.Held).Append('/').Append(v.Released).Append('/').Append(v.Click).Append(']');
+            }
+            text.Append(" total:").Append(total).Append(" rectMiss/window(ms sum/maxCall)=");
+            foreach(var item in RectStats)if(item.Value.Calls>0)text.Append('[').Append(item.Key).Append(':').Append(item.Value.Calls).Append(';').Append(Number(item.Value.Sum)).Append('/').Append(Number(item.Value.Max)).Append(']');
         }
     }
 }

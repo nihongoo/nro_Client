@@ -24,6 +24,8 @@ namespace Hud
         private static string potentialTitle,activityTitle;
         private static void EnsureMetrics()
         {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Metrics)) {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsCall);
             Rect root=HudLayout.GetRect(InventoryFrame.Root),money=HudLayout.GetRect(InventoryFrame.Money);
             Char character=Char.myCharz();bool mobile=HudLayout.IsMobileLayout;
             if(metricsReady&&metricsWidth==GameCanvas.w&&metricsHeight==GameCanvas.h&&metricsZoom==mGraphics.zoomLevel
@@ -31,6 +33,7 @@ namespace Hud
                 &&metricsPotential==character.cTiemNang&&metricsActivity==character.cNangdong
                 &&ReferenceEquals(metricsTitleFont,mFont.tahoma_7b_dark)&&ReferenceEquals(metricsBlueFont,mFont.tahoma_7b_blue)
                 &&ReferenceEquals(metricsGreenFont,mFont.tahoma_7_green2))return;
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsRebuild);
             metricsWidth=GameCanvas.w;metricsHeight=GameCanvas.h;metricsZoom=mGraphics.zoomLevel;
             metricsRootWidth=root.width;metricsMoneyY=money.y;metricsMobile=mobile;
             metricsPotential=character.cTiemNang;metricsActivity=character.cNangdong;
@@ -43,48 +46,54 @@ namespace Hud
             combinedTitle=GameCanvas.h<=208||metricsTitleFont.getWidth(potentialTitle+" · "+activityTitle)<=content.width-2*Margin;
             metricsReady=true;
         }
-        internal static Rect Frame {get{EnsureMetrics();return frame;}}
-        internal static Rect Content {get{EnsureMetrics();return content;}}
-        internal static int LineHeight {get{EnsureMetrics();return lineHeight;}}
+    }
+        internal static Rect Frame {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutFrame);EnsureMetrics();return frame;}}
+        internal static Rect Content {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutContent);EnsureMetrics();return content;}}
+        internal static int LineHeight {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutLineHeight);EnsureMetrics();return lineHeight;}}
         internal const int PotentialGap=1;
-        internal static float RowHeight => Mathf.Max(Size,2*LineHeight+2);
-        internal static float DesignSize => Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);
+        internal static float RowHeight  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowHeight);return Mathf.Max(Size,2*LineHeight+2);}}
+        internal static float DesignSize  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDesignSize);return Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);}}
         // Reserve a usable lower viewport on short screens while keeping both groups independent.
-        internal static float Size => Mathf.Min(DesignSize,Mathf.Max(8,(Frame.height-4*Margin-2*Gap-RowGap-GridBottomGap-2*LineHeight-TitleHeight)/3));
-        internal static float ColumnGap => (Content.width-4*Size)/5;
-        internal static float RowGap => Mathf.Max(Gap+3,InventoryFrame.Unit(14));
-        internal static float GridBottomGap => Margin+3; // Include the three pixels by which Lv badges extend below the frames.
-        internal static Rect PotentialContent => InventoryFrame.Inset(PotentialGroupBounds);
-        internal static Rect PotentialHeaderBounds => new Rect(PotentialContent.x,PotentialContent.y,PotentialContent.width,Mathf.Min(TitleHeight,PotentialContent.height));
-        internal static Rect ScrollBounds => new Rect(PotentialContent.x,PotentialHeaderBounds.yMax,PotentialContent.width,Mathf.Max(0,PotentialContent.yMax-PotentialHeaderBounds.yMax));
+        internal static float Size  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutSize)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSize);return Mathf.Min(DesignSize,Mathf.Max(8,(Frame.height-4*Margin-2*Gap-RowGap-GridBottomGap-2*LineHeight-TitleHeight)/3));}}}
+        internal static float ColumnGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutColumnGap);return (Content.width-4*Size)/5;}}
+        internal static float RowGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowGap);return Mathf.Max(Gap+3,InventoryFrame.Unit(14));}}
+        internal static float GridBottomGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutGridBottomGap);return Margin+3;}} // Include the three pixels by which Lv badges extend below the frames.
+        internal static Rect PotentialContent  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialContent);return InventoryFrame.Inset(PotentialGroupBounds);}}
+        internal static Rect PotentialHeaderBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialHeaderBounds);return new Rect(PotentialContent.x,PotentialContent.y,PotentialContent.width,Mathf.Min(TitleHeight,PotentialContent.height));}}
+        internal static Rect ScrollBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutScroll)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutScrollBounds);return new Rect(PotentialContent.x,PotentialHeaderBounds.yMax,PotentialContent.width,Mathf.Max(0,PotentialContent.yMax-PotentialHeaderBounds.yMax));}}}
         internal static Rect CellBounds(int i)
         {
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutCell)) {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCellBounds);
             return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
+            }
         }
-        internal static float IntrinsicTextWidth => Content.width-Size-Gap-Margin;
-        internal static Rect IntrinsicBounds => new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Size);
-        internal static Rect IntrinsicIconBounds => new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);
-        internal static Rect IntrinsicBarBounds => IntrinsicBounds;
-        internal static Rect SkillsGroupBounds => new Rect(Frame.x,Frame.y,Frame.width,
-            Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);
-        internal static float PotentialGroupTop => IntrinsicBounds.yMax+Margin+Gap;
-        internal static Rect PotentialGroupBounds => new Rect(Frame.x,PotentialGroupTop,Frame.width,Mathf.Max(0,Frame.yMax-PotentialGroupTop));
-        internal static string PotentialTitle {get{EnsureMetrics();return potentialTitle;}}
-        internal static string ActivityTitle {get{EnsureMetrics();return activityTitle;}}
-        internal static bool CombinedTitle {get{EnsureMetrics();return combinedTitle;}}
-        internal static int TitleHeight => (CombinedTitle?1:2)*LineHeight+(GameCanvas.h<=208?Gap:2*Gap);
-        internal static Rect PotentialBounds(int i) => new Rect(Content.x,ScrollBounds.y+i*(RowHeight+PotentialGap)-(GameCanvas.panel?.SkillScroll??0),Content.width,RowHeight);
-        internal static Rect DetailBounds => InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
-        internal static Rect DetailContent => InventoryFrame.Inset(DetailBounds);
-        internal static float ControlsTop => DetailContent.yMax-100;
-        internal static Rect UpperBounds => new Rect(DetailContent.x,DetailContent.y,DetailContent.width,Mathf.Max(1,ControlsTop-Gap-DetailContent.y));
+        internal static float IntrinsicTextWidth  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicTextWidth);return Content.width-Size-Gap-Margin;}}
+        internal static Rect IntrinsicBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutIntrinsic)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBounds);return new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Size);}}}
+        internal static Rect IntrinsicIconBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicIconBounds);return new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);}}
+        internal static Rect IntrinsicBarBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBarBounds);return IntrinsicBounds;}}
+        internal static Rect SkillsGroupBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSkillsGroupBounds);return new Rect(Frame.x,Frame.y,Frame.width,
+            Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);}}
+        internal static float PotentialGroupTop  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupTop);return IntrinsicBounds.yMax+Margin+Gap;}}
+        internal static Rect PotentialGroupBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutGroups)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupBounds);return new Rect(Frame.x,PotentialGroupTop,Frame.width,Mathf.Max(0,Frame.yMax-PotentialGroupTop));}}}
+        internal static string PotentialTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialTitle);EnsureMetrics();return potentialTitle;}}
+        internal static string ActivityTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActivityTitle);EnsureMetrics();return activityTitle;}}
+        internal static bool CombinedTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCombinedTitle);EnsureMetrics();return combinedTitle;}}
+        internal static int TitleHeight  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutTitleHeight);return (CombinedTitle?1:2)*LineHeight+(GameCanvas.h<=208?Gap:2*Gap);}}
+        internal static Rect PotentialBounds(int i) {using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutPotential)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialBounds);return new Rect(Content.x,ScrollBounds.y+i*(RowHeight+PotentialGap)-(GameCanvas.panel?.SkillScroll??0),Content.width,RowHeight);}}
+        internal static Rect DetailBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutDetail)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailBounds);return InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);}}}
+        internal static Rect DetailContent  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailContent);return InventoryFrame.Inset(DetailBounds);}}
+        internal static float ControlsTop  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutControlsTop);return DetailContent.yMax-100;}}
+        internal static Rect UpperBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutUpperBounds);return new Rect(DetailContent.x,DetailContent.y,DetailContent.width,Mathf.Max(1,ControlsTop-Gap-DetailContent.y));}}
         internal static Rect KeyBounds(int i)
         {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutKeyBounds);
             Rect r=DetailContent;float width=(r.width-3*Gap)/4;
             return new Rect(r.x+i%4*(width+Gap),ControlsTop+16+i/4*28,width,24);
         }
         internal static Rect ActionBounds(int index)
         {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActionBounds);
             Rect r=DetailContent;bool book=GameCanvas.panel.SkillHasBook;
             float width=book?(r.width-Gap)/2:r.width;
             return new Rect(r.x+index*(width+Gap),r.yMax-28,width,28);
@@ -135,22 +144,27 @@ public partial class Panel
     }
     private void SyncSkillPanel()
     {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Sync)) {
         currentListLength=14;
         float contentHeight=5*SkillPanelLayout.RowHeight+4*SkillPanelLayout.PotentialGap;
         cmyLim=Mathf.Max(0,(int)System.Math.Ceiling(contentHeight-SkillPanelLayout.ScrollBounds.height));
         cmy=cmtoY=Mathf.Clamp(cmy,0,cmyLim);
+        }
     }
     private void SelectPanelSkill(int slot)
     {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Select)) {
         SkillTemplate[] templates=SkillTabState.Templates(); if(slot<0||slot>=templates.Length)return;
         skillSelectedId=templates[slot].id; skillDetailOpen=true; skillTopScroll=0; cp=null;
         HudLayout.Invalidate();
+        }
     }
     private bool UpdateSkillPanelInput()
     {
         using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Input)) {
         SyncSkillPanel();
         string hit=HudLayout.HitTest(new Vector2(GameCanvas.px,GameCanvas.py));
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Pointer)) {
         if(GameCanvas.isPointerJustDown) {
             skillPressed=hit;skillDragX=GameCanvas.px;skillDragY=GameCanvas.py;skillDragging=false;
             skillDragStart=hit==SkillPanelLayout.Upper ? skillTopScroll : cmy;
@@ -169,6 +183,8 @@ public partial class Panel
                 HudLayout.Invalidate();
             }
         }
+        }
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Release)) {
         if(GameCanvas.isPointerJustRelease) {
             bool click=GameCanvas.isPointerClick&&!skillDragging&&skillPressed==hit;skillPressed=null;
             if(click&&hit!=null) {
@@ -184,6 +200,8 @@ public partial class Panel
             }
             GameCanvas.clearAllPointerEvent();
         }
+        }
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Keys)) {
         int previous=Main.isPC?23:4,next=Main.isPC?24:6;
         if(GameCanvas.keyPressed[previous]||GameCanvas.keyPressed[next]) {
             int[] tabs=InventoryFrameTabIds;int at=Array.IndexOf(tabs,currentTabIndex),dir=GameCanvas.keyPressed[next]?1:-1;
@@ -197,11 +215,13 @@ public partial class Panel
             GameCanvas.keyPressed[up]=GameCanvas.keyPressed[down]=false;
         }
         if(GameCanvas.keyPressed[13]) {GameCanvas.keyPressed[13]=false;if(skillDetailOpen)skillDetailOpen=false;else CloseInventoryFrame();HudLayout.Invalidate();}
+        }
         return true;
         }
     }
     private bool ScrollSkillPanelMouse(int amount)
     {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Wheel)) {
         if (!SkillPanelActive) return false;
         if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
@@ -211,10 +231,12 @@ public partial class Panel
         else if (SkillPanelLayout.ScrollBounds.Contains(point)) cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim);
         if(previousBodyScroll!=skillTopScroll||previousStatScroll!=cmy)HudLayout.Invalidate();
         return true;
+        }
     }
 
     private void ActivateSkillAction()
     {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Action)) {
         SkillTemplate template=SelectedSkillTemplate;if(template==null)return;
         if(CurrentPanelLevel>=template.maxPoint)return;
         if(SkillTabState.Studying(template.id)) {SkillTabState.ConfirmQuick();return;}
@@ -222,6 +244,7 @@ public partial class Panel
         int book=SkillTabState.FindBook(template.id,CurrentPanelLevel+1);
         if(book>=0)SkillTabState.UseBook(Char.myCharz().arrItemBag[book].template.id);
         else SkillTabState.GoToTeacher();
+        }
     }
     private static string SkillFit(mFont font,string text,float width)
     {
@@ -267,13 +290,13 @@ public partial class Panel
         }
         using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Potential)) {
         InventoryFrame.Clip(g,SkillPanelLayout.PotentialGroupBounds);
-        InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialFrame))InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
         viewport=SkillPanelLayout.PotentialHeaderBounds;
         Rect title=new Rect(viewport.x+SkillPanelLayout.Margin,viewport.y,viewport.width-2*SkillPanelLayout.Margin,SkillPanelLayout.LineHeight);
-        InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,0x362413);
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialText))InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_dark,SkillPanelLayout.PotentialTitle+(SkillPanelLayout.CombinedTitle?" · "+SkillPanelLayout.ActivityTitle:""),title,viewport,0x362413);
         if(!SkillPanelLayout.CombinedTitle) {
             title.y+=SkillPanelLayout.LineHeight;
-            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,0x362413);
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialText))InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,0x362413);
         }
         PaintSkillPotential(g,SkillPanelLayout.ScrollBounds);
         }
@@ -281,9 +304,11 @@ public partial class Panel
     }
     internal static string[] SkillIntrinsicLines {
         get {
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.IntrinsicLines)) {
             string text=CleanSkillText(specialInfo);
             if(text.Length==0)text="Nội tại: chưa kích hoạt";
             return mFont.tahoma_7_green2.splitFontArray(text,Mathf.Max(1,(int)SkillPanelLayout.IntrinsicTextWidth));
+            }
         }
     }
     private static string CleanSkillText(string text) => string.IsNullOrWhiteSpace(text)||string.Equals(text.Trim(),"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text.Trim();
@@ -302,27 +327,34 @@ public partial class Panel
     }
     private void PaintSkillPotential(mGraphics g,Rect viewport)
     {
-        Char c=Char.myCharz();long[] values={c.cHPGoc,c.cMPGoc,c.cDamGoc,c.cDefGoc,c.cCriticalGoc};
-        string[] names={mResources.HP,mResources.KI,mResources.hit_point,mResources.armor,mResources.critical};
-        int[] icons={567,569,568,721,719};
-        long[] costs={c.cHPGoc+1000L,c.cMPGoc+1000L,c.cDamGoc*100L,500000L+c.cDefGoc*100000L,t_tiemnang[Mathf.Clamp(c.cCriticalGoc,0,t_tiemnang.Length-1)]};
+        long[] values,costs;string[] names;int[] icons;
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialData)) { SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray,4);
+        Char c=Char.myCharz();values=new long[]{c.cHPGoc,c.cMPGoc,c.cDamGoc,c.cDefGoc,c.cCriticalGoc};
+        names=new string[]{mResources.HP,mResources.KI,mResources.hit_point,mResources.armor,mResources.critical};
+        icons=new int[]{567,569,568,721,719};
+        costs=new long[]{c.cHPGoc+1000L,c.cMPGoc+1000L,c.cDamGoc*100L,500000L+c.cDefGoc*100000L,t_tiemnang[Mathf.Clamp(c.cCriticalGoc,0,t_tiemnang.Length-1)]};
+        }
         for(int i=0;i<5;i++) {
-            Rect row=SkillPanelLayout.PotentialBounds(i);if(row.yMax<=viewport.y||row.y>=viewport.yMax)continue;
+            Rect row;using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialRect))row=SkillPanelLayout.PotentialBounds(i);if(row.yMax<=viewport.y||row.y>=viewport.yMax)continue;
             InventoryFrame.Clip(g,viewport);
-            InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
-            InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x,row.y,SkillPanelLayout.Size,SkillPanelLayout.Size),viewport);
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialFrame))InventoryFrame.PaintSection(g,row,InventoryFrame.EquipmentBackground);
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialIcon))InventoryItemVisuals.PaintSkillIcon(g,icons[i],new Rect(row.x,row.y,SkillPanelLayout.Size,SkillPanelLayout.Size),viewport);
             float lineHeight=Mathf.Min(SkillPanelLayout.LineHeight,(row.height-2)/2);
             Rect line=new Rect(row.x+SkillPanelLayout.Size+SkillPanelLayout.Gap,row.center.y-lineHeight,row.width-SkillPanelLayout.Size-SkillPanelLayout.Gap-InventoryFrame.Padding-30,lineHeight);
-            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":""),line,viewport,0x536DCC);
+            string label;using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Concat)){SkillDiagnostics.Count(SkillDiagnostics.Counter.StringConcat);label=names[i]+" "+mResources.root+": "+NinjaUtil.getMoneys(values[i])+(i==4?"%":"");}
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialText))InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7b_blue,label,line,viewport,0x536DCC);
             line.y+=lineHeight;
-            InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,NinjaUtil.getMoneys(costs[i])+" "+mResources.potential,line,viewport,0x00552D);
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Concat)){SkillDiagnostics.Count(SkillDiagnostics.Counter.StringConcat);label=NinjaUtil.getMoneys(costs[i])+" "+mResources.potential;}
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.PotentialText))InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7_green2,label,line,viewport,0x00552D);
         }
     }
     private sealed class SkillLine {internal string Text;internal mFont Font;}
     private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width)
     {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.AddLines)) {
         if(string.IsNullOrWhiteSpace(text))return;
-        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4)))lines.Add(new SkillLine{Text=line,Font=font});
+        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4))){SkillDiagnostics.Count(SkillDiagnostics.Counter.NewLine);lines.Add(new SkillLine{Text=line,Font=font});}
+        }
     }
     private static int PaintSkillLines(mGraphics g,List<SkillLine> lines,Rect viewport,int scroll,int initial=0)
     {
@@ -347,7 +379,7 @@ public partial class Panel
         SkillLabel(g,mFont.tahoma_7,"Cấp "+level+" / "+t.maxPoint+" · "+(slot>=0?"ô "+(slot+1):"chưa gán"),InventoryFrame.Intersection(new Rect(icon.xMax+5,icon.y+nameLines.Length*12,Mathf.Max(0,upper.xMax-icon.xMax-5),15),upper));
         int headingHeight=Mathf.Max(39,nameLines.Length*12+17);
         Skill display=current!=null&&current.point>0?current:(t.skills.Length>0?t.skills[0]:null);
-        var top=new List<SkillLine>();
+        SkillDiagnostics.Count(SkillDiagnostics.Counter.NewList);var top=new List<SkillLine>();
         if(display!=null)AddSkillLines(top,mResources.KI_consume+display.manaUse+(t.manaUseType==1?"%":"")+" · "+mResources.cooldown+": "+display.strTimeReplay()+"s",mFont.tahoma_7,upper.width);
         AddSkillDamage(top,t,level,level==t.maxPoint?" (hiện tại, tối đa)":" (hiện tại)",mFont.tahoma_7b_dark,upper.width);
         if(level<t.maxPoint)AddSkillDamage(top,t,level+1,level+1==t.maxPoint?" (kế tiếp, tối đa)":" (kế tiếp)",mFont.tahoma_7_green2,upper.width);
@@ -355,7 +387,7 @@ public partial class Panel
         int tableEnd=PaintSkillLines(g,top,upper,skillTopScroll,headingHeight);
         InventoryFrame.Clip(g,upper);g.setColor(InventoryFrame.Border);
         g.fillRect((int)upper.x,(int)upper.y+tableEnd-skillTopScroll+3,(int)upper.width,1);
-        var bottom=new List<SkillLine>();
+        SkillDiagnostics.Count(SkillDiagnostics.Counter.NewList);var bottom=new List<SkillLine>();
         AddSkillLines(bottom,SkillDescription(t,current),mFont.tahoma_7,lower.width);
         bool studying=SkillTabState.Studying(t.id);
         if(studying)AddSkillLines(bottom,"Đang học cấp "+SkillTabState.LearningLevel+" · còn "+SkillTabState.Clock(SkillTabState.Remaining),mFont.tahoma_7b_dark,lower.width);
@@ -387,21 +419,24 @@ public partial class Panel
     }
     private static string SkillDescription(SkillTemplate template,Skill current)
     {
-        var description=new List<string>();
-        foreach(string line in template.description??new string[0]) {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Description)) {
+        SkillDiagnostics.Count(SkillDiagnostics.Counter.NewList);var description=new List<string>();
+        foreach(string line in template.description??DiagnosticEmptyDescription()) {
             string clean=CleanSkillText(line);if(clean.Length>0)description.Add(clean);
         }
-        if(description.Count>0)return string.Join(" ",description.ToArray());
+        if(description.Count>0){SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray);return string.Join(" ",description.ToArray());}
         // The server sends "null" for the template description; level info comes from the game data.
         string info=CleanSkillText(current?.moreInfo);
         if(info.Length==0&&template.skills.Length>0)info=CleanSkillText(template.skills[0].moreInfo);
         return info;
+        }
     }
+    private static string[] DiagnosticEmptyDescription() {SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray);return new string[0];}
     private static void AddSkillDamage(List<SkillLine> rows,SkillTemplate t,int level,string suffix,mFont font,float width)
     {
         if(level<=0||level>t.skills.Length)return;
         Skill s=t.skills[level-1];string value=s.damage+(t.damInfo!=null&&t.damInfo.Contains("%")?"%":"");
-        rows.Add(new SkillLine{Text="Cấp "+level+suffix+": "+value,Font=font});
+        SkillDiagnostics.Count(SkillDiagnostics.Counter.NewLine);rows.Add(new SkillLine{Text="Cấp "+level+suffix+": "+value,Font=font});
     }
     private static void PaintSkillButton(mGraphics g,Rect r,string text,bool enabled,bool selected)
     {

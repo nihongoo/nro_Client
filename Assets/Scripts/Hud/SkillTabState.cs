@@ -12,13 +12,13 @@ namespace Hud
         internal static short LearningBook = -1;
         internal static int LearningTemplate = -1, LearningLevel, QuickPrice;
         private static long readAt, nextRequest, firstRequest = -1;
-        internal static bool Waiting => !Ready && firstRequest >= 0 && mSystem.currentTimeMillis()-firstRequest < 2000;
+        internal static bool Waiting {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Learning)){return !Ready && firstRequest >= 0 && mSystem.currentTimeMillis()-firstRequest < 2000;}}}
         private static SkillTemplate[] panelTemplates;
         private static NClass templateClass;
         private static int teacherMap = -1, teacherId;
         private static long navigationStarted, nextWalk;
         internal static long Remaining => System.Math.Max(0, RemainingAtRead - (mSystem.currentTimeMillis() - readAt));
-        internal static bool Studying(int id) => Ready && FinishToken != -1 && LearningTemplate == id;
+        internal static bool Studying(int id) {using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Learning)){return Ready && FinishToken != -1 && LearningTemplate == id;}}
         internal static void Reset()
         {
             Ready = false; FinishToken = -1; LearningBook = -1; LearningTemplate = -1;
@@ -71,14 +71,19 @@ namespace Hud
         }
         internal static SkillTemplate[] Templates()
         {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Templates)) {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.TemplateCall);
             NClass currentClass = Char.myCharz().nClass;
             if (panelTemplates != null && ReferenceEquals(templateClass, currentClass)) return panelTemplates;
-            SkillTemplate[] available = currentClass?.availableSkillTemplates ?? new SkillTemplate[0];
+            SkillTemplate[] available = currentClass?.availableSkillTemplates ?? DiagnosticEmptyTemplates();
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray);
             var result = new SkillTemplate[System.Math.Min(8, available.Length)];
             Array.Copy(available,result,result.Length);
             templateClass = currentClass; panelTemplates = result;
             return result;
         }
+    }
+        private static SkillTemplate[] DiagnosticEmptyTemplates(){SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray);return new SkillTemplate[0];}
         internal static int SlotFor(int templateId)
         {
             if(Ready)return Array.IndexOf(Order,(sbyte)templateId);
@@ -90,6 +95,7 @@ namespace Hud
         {
             if (level < 1 || level > 7) return -1;
             if (template == 2) return level == 7 ? 86 : 78 + level;
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray,2);
             int[] ids = {0,1,3,4,5,6,7,8,9,10,11,12,13,14,17,18,19,20,21,22,23};
             int[] starts = {66,94,101,87,108,115,122,129,300,307,328,335,314,321,481,474,434,488,509,495,502};
             for (int i = 0; i < ids.Length; i++) if (ids[i] == template) return starts[i] + level - 1;
@@ -97,13 +103,17 @@ namespace Hud
         }
         internal static int FindBook(int template, int level)
         {
+        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Book)) {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.BookCall);
             int id = BookId(template,level); Item[] bag = Char.myCharz().arrItemBag;
             if (id < 0 || bag == null) return -1;
             for (int i = 0; i < bag.Length; i++) if (bag[i]?.template != null && bag[i].template.id == id && bag[i].quantity > 0) return i;
             return -1;
         }
+    }
         internal static long StudyDuration(int level)
         {
+            SkillDiagnostics.Count(SkillDiagnostics.Counter.NewArray);
             long[] times = {900000L,1800000L,3600000L,86400000L,259200000L,604800000L,1296000000L};
             return level >= 1 && level <= times.Length ? times[level - 1] : 0;
         }

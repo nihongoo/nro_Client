@@ -268,8 +268,7 @@ public partial class Panel
     private bool UpdateInventoryFrameInput()
     {
         using (SkillDiagnostics.Measure(currentTabIndex==1?SkillDiagnostics.Area.Input:SkillDiagnostics.Area.Other)) {
-        SyncInventoryFrame();
-        EnsureInventoryDetailLayout();
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameSync)) {SyncInventoryFrame();EnsureInventoryDetailLayout();}
         if (isClose || cmtoX > 0) return true;
         if (!isShow || (chatTField != null && chatTField.isShow) || InfoDlg.isShow
             || tabIcon != null && tabIcon.isShow || GameCanvas.currentDialog != null || GameCanvas.menu.showMenu) return false;
@@ -384,12 +383,17 @@ public partial class Panel
     private void PaintInventoryFrame(mGraphics g)
     {
         using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Frame)) {
-        SyncInventoryFrame(); GameScr.resetTranslate(g);
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameSync))SyncInventoryFrame();
+        Rect root;
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameBackground)) {
+        GameScr.resetTranslate(g);
         g.setColor(0, .25f); g.fillRect(0, 0, GameCanvas.w, GameCanvas.h);
-        Rect root = HudLayout.GetRect(InventoryFrame.Root);
+        root = HudLayout.GetRect(InventoryFrame.Root);
         GameCanvas.paintz.paintFrameSimple(0, 0, W, H, g);
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
+        }
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameHeader)) {
         SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
         PaintInventoryHeader(g);
@@ -397,6 +401,8 @@ public partial class Panel
         InventoryFrame.Clip(g, root);
         InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
         g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+        }
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameTabs)) {
         int[] ids = InventoryFrameTabIds;
         int activeTab = currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5) ? 6 : currentTabIndex;
         for (int i = 0; i < ids.Length; i++) {
@@ -408,6 +414,7 @@ public partial class Panel
             for (int line = 0; line < words.Length; line++)
                 (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
                     words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
+        }
         }
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
@@ -426,12 +433,14 @@ public partial class Panel
             case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
-        GameScr.resetTranslate(g); PaintInventoryMoney(g);
+        GameScr.resetTranslate(g); using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameMoney))PaintInventoryMoney(g);
+        using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.FrameDetails)) {
         if (currentTabIndex == 2) PaintSkillDetail(g);
         else {
             using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Detail)) {
                 if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
             }
+        }
         }
         if (tabIcon != null && tabIcon.isShow) tabIcon.paint(g);
         GameScr.resetTranslate(g);

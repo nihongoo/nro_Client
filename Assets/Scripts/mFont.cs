@@ -728,14 +728,18 @@ public class mFont
 
 	public string[] splitFontArray(string src, int lineWidth)
 	{
-		MyVector myVector = splitFontVector(src, lineWidth);
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.FontSplit)) {
+		Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.Split);
+        MyVector myVector = splitFontVector(src, lineWidth);
+        Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.NewArray);
 		string[] array = new string[myVector.size()];
 		for (int i = 0; i < myVector.size(); i++)
 		{
 			array[i] = (string)myVector.elementAt(i);
 		}
 		return array;
-	}
+        }
+    }
 
 	public bool compare(string strSource, string str)
 	{
@@ -751,6 +755,7 @@ public class mFont
 
 	public int getWidth(string s)
 	{
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.FontWidth)) {
 		if (mGraphics.zoomLevel == 1)
 		{
 			int num = 0;
@@ -766,22 +771,27 @@ public class mFont
 			return num;
 		}
 		return getWidthExactOf(s);
-	}
+        }
+    }
 
 	public int getWidthExactOf(string s)
 	{
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.FontExact)) {
 		try
 		{
-			GUIStyle gUIStyle = new GUIStyle();
+			Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.NewGUIStyle);
+        GUIStyle gUIStyle = new GUIStyle();
 			gUIStyle.font = myFont;
-			return (int)gUIStyle.CalcSize(new GUIContent(s)).x / mGraphics.zoomLevel;
+			Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.FontMeasure);Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.NewGUIContent);
+            return (int)gUIStyle.CalcSize(new GUIContent(s)).x / mGraphics.zoomLevel;
 		}
 		catch (Exception ex)
 		{
 			Cout.LogError("GET WIDTH OF " + s + " FAIL.\n" + ex.Message + "\n" + ex.StackTrace);
 			return getWidthNotExactOf(s);
 		}
-	}
+        }
+    }
 
 	public int getWidthNotExactOf(string s)
 	{
@@ -790,6 +800,7 @@ public class mFont
 
 	public int getHeight()
 	{
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.FontHeight)) {
 		if (mGraphics.zoomLevel == 1)
 		{
 			return height;
@@ -798,11 +809,13 @@ public class mFont
 		{
 			return height / mGraphics.zoomLevel;
 		}
-		GUIStyle gUIStyle = new GUIStyle();
+		Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.NewGUIStyle);
+        GUIStyle gUIStyle = new GUIStyle();
 		gUIStyle.font = myFont;
 		try
 		{
-			height = (int)gUIStyle.CalcSize(new GUIContent("Adg")).y + 2;
+			Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.FontMeasure);Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.NewGUIContent);
+            height = (int)gUIStyle.CalcSize(new GUIContent("Adg")).y + 2;
 		}
 		catch (Exception ex)
 		{
@@ -810,7 +823,8 @@ public class mFont
 			height = 20;
 		}
 		return height / mGraphics.zoomLevel;
-	}
+        }
+    }
 
 	public void _drawString(mGraphics g, string st, int x0, int y0, int align)
 	{

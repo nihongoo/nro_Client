@@ -142,6 +142,8 @@ public class NinjaUtil
 
 	public static string getMoneys(long m)
 	{
+        Hud.SkillDiagnostics.Count(Hud.SkillDiagnostics.Counter.FormatMoney);
+        using (Hud.SkillDiagnostics.Probe(Hud.SkillDiagnostics.Stage.MoneyFormat)) {
 		string text = string.Empty;
 		long num = m / 1000 + 1;
 		for (int i = 0; i < num; i++)
@@ -157,7 +159,8 @@ public class NinjaUtil
 			break;
 		}
 		return text;
-	}
+        }
+    }
 
 	public static string getTimeAgo(int timeRemainS)
 	{
