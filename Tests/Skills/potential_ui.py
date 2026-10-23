@@ -21,6 +21,21 @@ class PotentialUiTests {
   var c=Char.myCharz();c.nClass.availableSkillTemplates=new SkillTemplate[8];for(int i=0;i<8;i++){var t=new SkillTemplate{id=(sbyte)i};t.skills=new[]{new Skill{template=t}};c.nClass.availableSkillTemplates[i]=t;c.learned[i]=t.skills[0];}
   foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{2,3,4})foreach(int[] size in mobile?new[]{new[]{422,195},new[]{585,270}}:new[]{new[]{640,360},new[]{1280,720}}){
    MainSetup(mobile,zoom,size);Snapshot(4,0,1000000000000L);GameCanvas.panel.Tick();
+   PotentialState.Reset();PotentialState.Request();
+   SkillTabState.Read(new Message(0,-1,0,0,-1,-1,0,0,-1,-1,-1,-1,-1,-1,-1,-1));
+   Check(SkillTabState.Ready&&!PotentialState.Ready,"B1 action 0 incorrectly established B2 support");
+   mSystem.now+=2001;PotentialState.Update();
+   ShowRow(0);int unsupportedRequests=Service.gI().potentialRequests.Count;
+   Click(SkillPanelLayout.PotentialAddBounds(0));
+   Check(GameCanvas.lastDialog=="Server chưa hỗ trợ"&&PotentialState.Unsupported&&!PotentialState.Ready,"old server tap silently ignored");
+   Check(Service.gI().potentialRequests.Count==unsupportedRequests+1&&Service.gI().potentialRequests[unsupportedRequests][0]==4,"unsupported server retried a purchase instead of capability query");
+   GameCanvas.endDlg();Body(0);Check(GameCanvas.lastDialog=="Server chưa hỗ trợ"&&GameCanvas.panel.PotentialExpandedRow<0,"old server body tap silently ignored");GameCanvas.endDlg();
+   Snapshot(4,0,1207721156L,52100);Check(PotentialState.Ready&&!PotentialState.Unsupported,"late supported response did not recover");
+   foreach(int i in new[]{0,1,2,3,4})Check(PotentialState.CanRaise(i),"affordable live stat not enabled: "+i);
+   c.cHP=0;Check(!PotentialState.CanRaise(0),"dead character enabled");c.cHP=100;c.statusMe=14;Check(!PotentialState.CanRaise(0),"dead state enabled");c.statusMe=0;
+   var enabledPaint=new mGraphics();GameCanvas.panel.Paint(enabledPaint);Check(enabledPaint.texts.Exists(t=>t=="53100 Tiềm năng"),"reported HP price mismatch");
+   Snapshot(4,0,1000000000000L);
+   GameCanvas.panel.cmy=GameCanvas.panel.cmtoY=0;HudLayout.Invalidate();GameCanvas.panel.Tick();
    Rect viewport=SkillPanelLayout.ScrollBounds,money=HudLayout.GetRect(InventoryFrame.Money),detail=SkillPanelLayout.DetailBounds;
    float grid=SkillPanelLayout.CellBounds(0).y,intrinsic=SkillPanelLayout.IntrinsicBounds.y;
    ShowRow(0);Click(SkillPanelLayout.PotentialAddBounds(0));var request=Service.gI().potentialRequests[Service.gI().potentialRequests.Count-1];

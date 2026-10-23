@@ -74,7 +74,7 @@ static class GameCanvas {
  public static Command yes,no;
  public static void closeKeyBoard(){}public static void endDlg(){currentDialog=null;}
  public static void startYesNoDlg(string s,Command y,Command n){currentDialog=new object();yes=y;no=n;}
- public static void startOKDlg(string s){currentDialog=new object();}
+ public static string lastDialog;public static void startOKDlg(string s){lastDialog=s;currentDialog=new object();}
  public static void clearAllPointerEvent(){isPointerJustDown=isPointerJustRelease=isPointerClick=isPointerDown=false;}
 }
 class Service {

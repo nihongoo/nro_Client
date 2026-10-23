@@ -62,6 +62,7 @@ public partial class Panel
     private void TogglePotentialEditor(int row)
     {
         if(potentialExpanded>=0){ClosePotentialEditor();SyncSkillPanel();return;}
+        if(!PotentialState.RequireSupport())return;
         if(!PotentialState.CanRaise(row))return;
         potentialExpanded=row;
         if(potentialInput==null) {potentialInput=new TField();potentialInput.name=string.Empty;potentialInput.loginInput=true;potentialInput.setIputType(TField.INPUT_TYPE_NUMERIC);potentialInput.setMaxTextLenght(20);potentialInput.cmdDoneAction=new Command(string.Empty,new PotentialInputDone(this),0,null);}
@@ -116,9 +117,11 @@ public partial class Panel
             if(potentialExpanded>=0&&!PotentialState.Pending){SyncPotentialInput();potentialInput.setFocusWithKb(true);}return true;
         }
         if(hit==SkillPanelLayout.PotentialMax) {
+            if(!PotentialState.RequireSupport())return true;
             if(potentialExpanded>=0&&!PotentialState.Pending){BlurPotentialInput(false);RefreshPotentialQuote(false);potentialInput.setText(NinjaUtil.getMoneys(potentialMaximum));RefreshPotentialQuote(false);}return true;
         }
         if(hit==SkillPanelLayout.PotentialApply) {
+            if(!PotentialState.RequireSupport())return true;
             BlurPotentialInput(true);RefreshPotentialQuote(true);
             if(PotentialQuoteEnabled)PotentialState.Submit(potentialExpanded,potentialTarget);return true;
         }
