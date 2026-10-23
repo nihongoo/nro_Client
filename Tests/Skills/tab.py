@@ -15,10 +15,16 @@ class Item { public const int OPT_LVITEM=72,OPT_STARSLOT=107;public ItemTemplate
 class ItemTemplate {public short id;}
 class ItemOption {public ItemOptionTemplate optionTemplate;public int param;}
 class ItemOptionTemplate {public int id;}
+class NativeKeyboard {public string text;}
+class TField {
+ public static NativeKeyboard kb;public Command cmdDoneAction;public static TField currentTField;public const int INPUT_TYPE_NUMERIC=1;public string name;public bool loginInput,isFocus;public int x,y,width,height;string text="";
+ public void setIputType(int t){}public void setMaxTextLenght(int n){}public void setText(string t){text=t;}public string getText()=>text;
+ public void setFocusWithKb(bool f){isFocus=f;currentTField=f?this:null;}public void update(bool pointer){if(isFocus&&currentTField==this&&kb!=null)text=kb.text;}public bool keyPressed(int key){text+=(char)key;return true;}public void paint(mGraphics g,int x,int y,int w,int h,bool clear=true){}
+}
 class Image {}
 static class InventoryBag {public const int Columns=5;}
 static class InventoryFrameSkin {public static Image Corners(int a,int b,byte c)=>null;}
-static class InventoryItemVisuals {public static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false){}public static void PaintNativeButton(mGraphics g,Rect r,bool enabled,bool selected){}public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
+static class InventoryItemVisuals {public static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false){}public static void PaintNativeButton(mGraphics g,Rect r,bool enabled,bool selected,Rect? viewport=null){}public static void PaintCompactText(mGraphics g,mFont f,string text,Rect bounds,Rect viewport,int color,bool center=false){if(bounds.yMax>viewport.y&&bounds.y<viewport.yMax)g.texts.Add(text);}public static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport){}public static void PaintLevel(mGraphics g,Rect a,Rect b,int l,bool bag,bool compact=false){} }
 class PopUp {public static void paintPopUp(mGraphics g,int a,int b,int c,int d,int e,bool f,Image corner=null,int border=0){} }
 class mGraphics {
  public static int zoomLevel=2,addYWhenOpenKeyBoard;public List<string> texts=new List<string>();
@@ -62,18 +68,19 @@ class Command {
 }
 class Menu {public bool showMenu;}
 static class GameCanvas {
- public static int w=640,h=360,px,py,pxMouse,pyMouse;public static bool[] keyPressed=new bool[30];
+ public static int w=640,h=360,px,py,pxMouse,pyMouse,keyAsciiPress;public static bool[] keyPressed=new bool[30];
  public static bool isPointerJustDown,isPointerJustRelease,isPointerClick,isPointerDown;
  public static object currentDialog,currentScreen=GameScr.instance;public static Menu menu=new Menu();public static Panel panel=new Panel();
  public static Command yes,no;
- public static void endDlg(){currentDialog=null;}
+ public static void closeKeyBoard(){}public static void endDlg(){currentDialog=null;}
  public static void startYesNoDlg(string s,Command y,Command n){currentDialog=new object();yes=y;no=n;}
  public static void startOKDlg(string s){currentDialog=new object();}
  public static void clearAllPointerEvent(){isPointerJustDown=isPointerJustRelease=isPointerClick=isPointerDown=false;}
 }
 class Service {
  public static Service current=new Service();public static Service gI()=>current;
- public List<long[]> requests=new List<long[]>();public int opened;
+ public List<long[]> requests=new List<long[]>(),potentialRequests=new List<long[]>();public int opened;
+ public void potentialRequest(int a,int id,int type,long expected,long target){potentialRequests.Add(new long[]{a,id,type,expected,target});}
  public void skillTabRequest(int action,int value=0,int extra=0,long token=0){requests.Add(new long[]{action,value,extra,token});}
  public void openMenu(int id){opened++;}
 }
@@ -81,7 +88,7 @@ static class TileMap {public static int mapID=5;}
 namespace Mod.CuongLe {public static class AutoMap {public static int IdMapEnd;public static bool isXmaping;public static void FinishXmap(){isXmaping=false;}}}
 class Message {
  public Queue<long> values;public Message(params long[] v){values=new Queue<long>(v);}public Message reader()=>this;
- public sbyte readByte()=>(sbyte)values.Dequeue();public short readShort()=>(short)values.Dequeue();public int readInt()=>(int)values.Dequeue();public long readLong()=>values.Dequeue();
+ public bool readBool()=>values.Dequeue()!=0;public string readUTF()=>string.Empty;public sbyte readByte()=>(sbyte)values.Dequeue();public short readShort()=>(short)values.Dequeue();public int readInt()=>(int)values.Dequeue();public long readLong()=>values.Dequeue();
 }
 namespace Notifications {public static class NotificationCenter {public static bool IsOpen;}}
 class GamePad {public Rect HudVisualBounds=>new Rect();}
@@ -98,7 +105,7 @@ class GameScr {
 partial class Panel {
  public bool InventoryFrameActive=true,isShow=true,InventoryBagDetailOpen;
  public int currentTabIndex=2,cmy,cmtoY,cmyLim,currentListLength,selected,waitToPerform,ITEM_HEIGHT;
- public object cp;internal Image imgX;public static string specialInfo;public static short spearcialImage;public static long[] t_tiemnang={50000000,250000000,1250000000};
+ public object cp;internal Image imgX;public static string specialInfo;public static short spearcialImage;
  public int InventoryFrameScroll=>cmy;public int[] InventoryFrameTabIds=>new[]{0,1,2,3,6};public int InventoryBagCellCount=>0;
  public Rect InventoryDetailUpperBounds=>new Rect();public Rect InventoryDetailLowerBounds=>new Rect();public int InventoryDetailButtonCount=>0;
  public Rect InventoryDetailButtonBounds(int n)=>new Rect();
@@ -243,5 +250,5 @@ with tempfile.TemporaryDirectory(prefix="b1-", dir=output) as folder:
     exe = path / "SkillTabTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
                     str(path / "InventoryRegistry.cs"), str(path / "SkillTabTests.cs"),
-                    *[str(ROOT / "Assets/Scripts/Hud" / name) for name in ["HudLayout.cs", "SkillPanel.cs", "SkillTabState.cs"]]], check=True)
+                    *[str(ROOT / "Assets/Scripts/Hud" / name) for name in ["HudLayout.cs", "SkillPanel.cs", "SkillTabState.cs", "PotentialCost.cs", "PotentialState.cs", "PotentialPanel.cs"]]], check=True)
     subprocess.run([str(exe)], check=True)

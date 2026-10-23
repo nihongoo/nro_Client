@@ -21,13 +21,16 @@ namespace Hud
         internal static bool Studying(int id) {return Ready && FinishToken != -1 && LearningTemplate == id;}
         internal static void Reset()
         {
+            PotentialState.Reset();
             Ready = false; FinishToken = -1; LearningBook = -1; LearningTemplate = -1;
             teacherMap = -1; nextRequest = 0; firstRequest = -1; panelTemplates = null; templateClass = null;
             for (int i = 0; i < 8; i++) Order[i] = -1;
         }
         internal static void Read(Message message)
         {
-            if (message.reader().readByte() != 0) return;
+            int action=message.reader().readByte();
+            if(action==4||action==5){PotentialState.Read(action,message);return;}
+            if(action!=0)return;
             long token = message.reader().readLong(), remaining = message.reader().readLong(), duration = message.reader().readLong();
             short book = message.reader().readShort(); int template = message.reader().readByte(), level = message.reader().readByte();
             int price = message.reader().readInt();
@@ -128,6 +131,7 @@ namespace Hud
         }
         internal static void Update()
         {
+            PotentialState.Update();
             if (GameCanvas.panel != null && GameCanvas.panel.SkillPanelActive && GameCanvas.panel.isShow
                 && mSystem.currentTimeMillis() >= nextRequest) Request();
             if (teacherMap < 0) return;

@@ -219,6 +219,14 @@ namespace Hud
             }
             return grey;
         }
+        internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected,Rect viewport)
+        {
+            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
+            int zoom=Mathf.Max(1,mGraphics.zoomLevel);
+            GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
+            try {PaintNativeButton(g,new Rect(bounds.x-clip.x,bounds.y-clip.y,bounds.width,bounds.height),enabled,selected);}
+            finally {GUI.EndGroup();}
+        }
         internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected)
         {
             Image left=ButtonPart(selected?Command.btn1left:Command.btn0left,!enabled);

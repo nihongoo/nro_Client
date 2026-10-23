@@ -70,7 +70,7 @@ public partial class Panel {
  private void setTypeOption(){type=19;} private void hide(){isShow=false;isClose=true;}
  private void setTabTask(){} private void setTabInventory(bool reset){selected=-1;cmy=cmtoY=0;}
  private void SyncSkillPanel(){} private bool UpdateSkillPanelInput()=>true; private bool ScrollSkillPanelMouse(int n)=>false;
- private void setTabSkill(){} private void setTabClans(){} private void setTabMod(){} private void setTabTool(){}
+ private void ClosePotentialEditor(){} private void setTabSkill(){} private void setTabClans(){} private void setTabMod(){} private void setTabTool(){}
  private void doFireInventory(){menus++;GameCanvas.menu.showMenu=true;addItemDetail(currItem);}
  private void addItemDetail(Item item){cp=new ChatPopup{says=new[]{"item"}};}
  private void perform(int action,object item){actions++;lastAction=action;lastIndex=selected-Char.myCharz().arrItemBody.Length;}

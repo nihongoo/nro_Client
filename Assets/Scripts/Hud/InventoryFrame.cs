@@ -245,6 +245,7 @@ public partial class Panel
 
     private void CloseInventoryFrame()
     {
+        ClosePotentialEditor();
         CloseInventoryBagDetail();
         if (currentTabName.Length >= 7 && currentTabIndex == 4 && inventoryAppearanceFromSettings) {
             lastTabIndex[0] = 6;
@@ -286,6 +287,7 @@ public partial class Panel
     private void SelectInventoryFrameTab(int id)
     {
         if (id >= currentTabName.Length) return;
+        ClosePotentialEditor();
         CloseInventoryBagDetail();
         currentTabIndex = id; lastTabIndex[type] = id;
         selected = -1; cp = null; cmy = cmtoY = 0;

@@ -32,8 +32,8 @@ namespace UnityEngine {
  public class GUISkin {public GUIStyle label=new GUIStyle(null);}
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Min(float a,float b)=>Math.Min(a,b);public static float Max(float a,float b)=>Math.Max(a,b);}
  public static class GUI {
-  public static Color color=Color.white;public static GUISkin skin=new GUISkin();public static List<Texture2D> textures=new List<Texture2D>();public static List<Rect> rectangles=new List<Rect>();public static GUIStyle lastStyle;public static string lastText;public static Rect lastUv;public static int groups;
-  public static void BeginGroup(Rect r){groups++;}public static void EndGroup(){groups--;}
+  public static Color color=Color.white;public static GUISkin skin=new GUISkin();public static List<Texture2D> textures=new List<Texture2D>();public static List<Rect> rectangles=new List<Rect>();public static GUIStyle lastStyle;public static string lastText;public static Rect lastUv;public static int groups;public static Rect lastGroup;
+  public static void BeginGroup(Rect r){groups++;lastGroup=r;}public static void EndGroup(){groups--;}
   public static void Label(Rect r,string t,GUIStyle s){lastStyle=s;lastText=t;}
   public static void DrawTexture(Rect r,Texture2D t){textures.Add(t);rectangles.Add(r);}
   public static void DrawTextureWithTexCoords(Rect r,Texture2D t,Rect uv){DrawTexture(r,t);lastUv=uv;}
@@ -95,6 +95,9 @@ class RenderTests {
    }
    Command.btn0left=new Image(10*zoom,24*zoom,"orange-left");Command.btn0mid=new Image(10*zoom,24*zoom,"orange-mid");Command.btn0right=new Image(10*zoom,24*zoom,"orange-right");
    Command.btn1left=new Image(10*zoom,24*zoom,"green-left");Command.btn1mid=new Image(10*zoom,24*zoom,"green-mid");Command.btn1right=new Image(10*zoom,24*zoom,"green-right");
+   GUI.textures.Clear();Hud.InventoryItemVisuals.PaintNativeButton(g,new Rect(10,20,50,22),true,false,new Rect(0,30,100,6));
+   Check(GUI.groups==0&&GUI.textures.Count==3,"clipped native button lost pieces or leaked GUI group");
+   Check(GUI.lastGroup.x==10*zoom&&GUI.lastGroup.y==30*zoom&&GUI.lastGroup.width==50*zoom&&GUI.lastGroup.height==6*zoom,"native button escaped scroll clip");
    foreach(bool enabled in new[]{false,true})foreach(bool selected in new[]{false,true})foreach(int width in new[]{22,40,130}) {
     Rect button=new Rect(10,20,width,22);GUI.textures.Clear();GUI.rectangles.Clear();
     Hud.InventoryItemVisuals.PaintNativeButton(g,button,enabled,selected);
