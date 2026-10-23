@@ -17,9 +17,9 @@ internal enum Stage { Sync, HitTest, Pointer, Release, Keys, Wheel, Select, Acti
             Metrics, IntrinsicLines, Description, AddLines, FontSplit, FontWidth, FontExact, FontHeight,
             HudGetRect, HudResolve, HudVisible, PotentialData, PotentialRect, PotentialFrame, PotentialIcon,
             PotentialText, MoneyFormat, Concat, FrameSync, FrameBackground, FrameHeader, FrameTabs,
-            FrameMoney, FrameDetails, PopUp, CompactText, LayoutScroll, LayoutSize, LayoutCell, LayoutPotential, LayoutIntrinsic, LayoutGroups, LayoutDetail, Learning, Platform, Count }
+            FrameMoney, FrameDetails, PopUp, CompactText, LayoutScroll, LayoutSize, LayoutCell, LayoutPotential, LayoutIntrinsic, LayoutGroups, LayoutDetail, Learning, Platform, FrameMetrics, Count }
 internal enum Counter { BeginFrame, ViewportChange, GetRect, RectMiss, HitTest, Visible,
-            MetricsCall, MetricsRebuild, MobileLayoutReads, Split, FontMeasure, NewList, NewArray, NewLine, NewGUIStyle,
+            MetricsCall, MetricsRebuild, FrameMetricsCall, FrameMetricsRebuild, MobileLayoutReads, Split, FontMeasure, NewList, NewArray, NewLine, NewGUIStyle,
             NewGUIContent, StringConcat, FormatMoney, TemplateCall, BookCall,
             LayoutFrame, LayoutContent, LayoutLineHeight, LayoutRowHeight, LayoutDesignSize, LayoutSize,
             LayoutColumnGap, LayoutRowGap, LayoutGridBottomGap, LayoutPotentialContent, LayoutPotentialHeaderBounds,

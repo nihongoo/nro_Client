@@ -15,103 +15,141 @@ namespace Hud
         private static bool Visible => InventoryFrame.Visible && GameCanvas.panel.SkillPanelActive;
         private static bool DetailVisible => Visible && GameCanvas.panel.SkillDetailOpen;
         internal const int Margin=InventoryFrame.Padding, Gap=InventoryFrame.Gap;
-        private static bool metricsReady,metricsMobile,combinedTitle;
-        private static int metricsWidth,metricsHeight,metricsZoom,lineHeight;
-        private static long metricsPotential,metricsActivity;
-        private static mFont metricsTitleFont,metricsBlueFont,metricsGreenFont;
-        private static Rect frame,content;
-        private static float metricsRootWidth,metricsMoneyY;
-        private static string potentialTitle,activityTitle;
+        internal const int PotentialGap=1;
+        private struct LayoutMetrics
+        {
+            internal Rect Frame,Content,PotentialContent,PotentialHeaderBounds,ScrollBounds,IntrinsicBounds,IntrinsicIconBounds,
+                SkillsGroupBounds,PotentialGroupBounds,DetailBounds,DetailContent,UpperBounds;
+            internal float RowHeight,DesignSize,Size,ColumnGap,RowGap,GridBottomGap,IntrinsicTextWidth,PotentialGroupTop,ControlsTop;
+            internal int LineHeight,TitleHeight,Width,Height,Zoom;
+            internal string PotentialTitle,ActivityTitle;
+            internal bool CombinedTitle,DetailOpen,HasBook;
+            internal long FrameVersion,Potential,Activity;
+            internal mFont TitleFont,BlueFont,GreenFont,FrameFont;
+            internal Panel Panel;
+        }
+        private static LayoutMetrics metrics;
+        private static readonly Rect[] cells=new Rect[8],keys=new Rect[8],actions=new Rect[2],potentialRows=new Rect[5];
+        private static bool metricsReady;
+        private static long checkedFrame=-1,checkedState=-1,metricsVersion,rectVersion,rectMetrics=-1,rectState=-1;
+        private static int rectScroll;
         private static void EnsureMetrics()
         {
-        using (SkillDiagnostics.Probe(SkillDiagnostics.Stage.Metrics)) {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsCall);
-            Rect root=HudLayout.GetRect(InventoryFrame.Root),money=HudLayout.GetRect(InventoryFrame.Money);
-            Char character=Char.myCharz();bool mobile=HudLayout.IsMobileLayout;
-            if(metricsReady&&metricsWidth==GameCanvas.w&&metricsHeight==GameCanvas.h&&metricsZoom==mGraphics.zoomLevel
-                &&metricsRootWidth==root.width&&metricsMoneyY==money.y&&metricsMobile==mobile
-                &&metricsPotential==character.cTiemNang&&metricsActivity==character.cNangdong
-                &&ReferenceEquals(metricsTitleFont,mFont.tahoma_7b_dark)&&ReferenceEquals(metricsBlueFont,mFont.tahoma_7b_blue)
-                &&ReferenceEquals(metricsGreenFont,mFont.tahoma_7_green2))return;
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsRebuild);
-            metricsWidth=GameCanvas.w;metricsHeight=GameCanvas.h;metricsZoom=mGraphics.zoomLevel;
-            metricsRootWidth=root.width;metricsMoneyY=money.y;metricsMobile=mobile;
-            metricsPotential=character.cTiemNang;metricsActivity=character.cNangdong;
-            metricsTitleFont=mFont.tahoma_7b_dark;metricsBlueFont=mFont.tahoma_7b_blue;metricsGreenFont=mFont.tahoma_7_green2;
-            frame=new Rect(InventoryFrame.FrameInset,73,root.width-2*InventoryFrame.FrameInset,Mathf.Max(0,money.y-Gap-73));
-            content=InventoryFrame.Inset(frame);
-            lineHeight=Mathf.Max(12,Mathf.Max(metricsBlueFont.getHeight(),metricsGreenFont.getHeight()));
-            potentialTitle="Tiềm năng · "+NinjaUtil.getMoneys(metricsPotential);
-            activityTitle=mResources.active_point+": "+NinjaUtil.getMoneys(metricsActivity);
-            combinedTitle=GameCanvas.h<=208||metricsTitleFont.getWidth(potentialTitle+" · "+activityTitle)<=content.width-2*Margin;
-            metricsReady=true;
-        }
-    }
-        internal static Rect Frame {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutFrame);EnsureMetrics();return frame;}}
-        internal static Rect Content {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutContent);EnsureMetrics();return content;}}
-        internal static int LineHeight {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutLineHeight);EnsureMetrics();return lineHeight;}}
-        internal const int PotentialGap=1;
-        internal static float RowHeight  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowHeight);return Mathf.Max(Size,2*LineHeight+2);}}
-        internal static float DesignSize  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDesignSize);return Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 60),(Content.width-3*Gap)/4);}}
-        // Reserve a usable lower viewport on short screens while keeping both groups independent.
-        internal static float Size  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutSize)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSize);return Mathf.Min(DesignSize,Mathf.Max(8,(Frame.height-4*Margin-2*Gap-RowGap-GridBottomGap-2*LineHeight-TitleHeight)/3));}}}
-        internal static float ColumnGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutColumnGap);return (Content.width-4*Size)/5;}}
-        internal static float RowGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowGap);return Mathf.Max(Gap+3,InventoryFrame.Unit(14));}}
-        internal static float GridBottomGap  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutGridBottomGap);return Margin+3;}} // Include the three pixels by which Lv badges extend below the frames.
-        internal static Rect PotentialContent  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialContent);return InventoryFrame.Inset(PotentialGroupBounds);}}
-        internal static Rect PotentialHeaderBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialHeaderBounds);return new Rect(PotentialContent.x,PotentialContent.y,PotentialContent.width,Mathf.Min(TitleHeight,PotentialContent.height));}}
-        internal static Rect ScrollBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutScroll)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutScrollBounds);return new Rect(PotentialContent.x,PotentialHeaderBounds.yMax,PotentialContent.width,Mathf.Max(0,PotentialContent.yMax-PotentialHeaderBounds.yMax));}}}
-        internal static Rect CellBounds(int i)
-        {
-            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutCell)) {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCellBounds);
-            return new Rect(Content.x+ColumnGap+i%4*(Size+ColumnGap),Content.y+i/4*(Size+RowGap),Size,Size);
+            Char character=Char.myCharz();Panel panel=GameCanvas.panel;
+            long tick=HudLayout.FrameId,state=HudLayout.StateGeneration;
+            // Validate mutable state once per game tick/invalidation. Cheap data checks also
+            // catch a stat/font/viewport update between input and paint in the same tick.
+            if(metricsReady&&checkedFrame==tick&&checkedState==state&&metrics.Width==GameCanvas.w&&metrics.Height==GameCanvas.h
+                &&metrics.Zoom==mGraphics.zoomLevel&&ReferenceEquals(metrics.Panel,panel)
+                &&metrics.Potential==character.cTiemNang&&metrics.Activity==character.cNangdong
+                &&ReferenceEquals(metrics.TitleFont,mFont.tahoma_7b_dark)&&ReferenceEquals(metrics.BlueFont,mFont.tahoma_7b_blue)
+                &&ReferenceEquals(metrics.GreenFont,mFont.tahoma_7_green2)&&ReferenceEquals(metrics.FrameFont,mFont.tahoma_7_yellow))return;
+            using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.Metrics)) {
+                SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsCall);
+                long frameVersion=InventoryFrame.MetricsVersion;
+                bool detailOpen=panel!=null&&panel.SkillDetailOpen,hasBook=panel!=null&&panel.SkillHasBook;
+                checkedFrame=tick;checkedState=state;
+                if(metricsReady&&metrics.FrameVersion==frameVersion&&ReferenceEquals(metrics.Panel,panel)
+                    &&metrics.Potential==character.cTiemNang&&metrics.Activity==character.cNangdong
+                    &&metrics.DetailOpen==detailOpen&&metrics.HasBook==hasBook
+                    &&ReferenceEquals(metrics.TitleFont,mFont.tahoma_7b_dark)&&ReferenceEquals(metrics.BlueFont,mFont.tahoma_7b_blue)
+                    &&ReferenceEquals(metrics.GreenFont,mFont.tahoma_7_green2)&&ReferenceEquals(metrics.FrameFont,mFont.tahoma_7_yellow))return;
+                SkillDiagnostics.Count(SkillDiagnostics.Counter.MetricsRebuild);
+                var next=new LayoutMetrics {Width=GameCanvas.w,Height=GameCanvas.h,Zoom=mGraphics.zoomLevel,Panel=panel,
+                    FrameVersion=frameVersion,Potential=character.cTiemNang,Activity=character.cNangdong,DetailOpen=detailOpen,HasBook=hasBook,
+                    TitleFont=mFont.tahoma_7b_dark,BlueFont=mFont.tahoma_7b_blue,GreenFont=mFont.tahoma_7_green2,FrameFont=mFont.tahoma_7_yellow};
+                Rect root=HudLayout.GetRect(InventoryFrame.Root),money=HudLayout.GetRect(InventoryFrame.Money);
+                next.Frame=new Rect(InventoryFrame.FrameInset,73,root.width-2*InventoryFrame.FrameInset,Mathf.Max(0,money.y-Gap-73));
+                next.Content=InventoryFrame.Inset(next.Frame);
+                next.LineHeight=Mathf.Max(12,Mathf.Max(next.BlueFont.getHeight(),next.GreenFont.getHeight()));
+                next.PotentialTitle="Tiềm năng · "+NinjaUtil.getMoneys(next.Potential);
+                next.ActivityTitle=mResources.active_point+": "+NinjaUtil.getMoneys(next.Activity);
+                next.CombinedTitle=GameCanvas.h<=208||next.TitleFont.getWidth(next.PotentialTitle+" · "+next.ActivityTitle)<=next.Content.width-2*Margin;
+                next.TitleHeight=(next.CombinedTitle?1:2)*next.LineHeight+(GameCanvas.h<=208?Gap:2*Gap);
+                next.RowGap=Mathf.Max(Gap+3,InventoryFrame.Unit(14));
+                next.GridBottomGap=Margin+3;
+                next.DesignSize=Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout?44:60),(next.Content.width-3*Gap)/4);
+                next.Size=Mathf.Min(next.DesignSize,Mathf.Max(8,(next.Frame.height-4*Margin-2*Gap-next.RowGap-next.GridBottomGap-2*next.LineHeight-next.TitleHeight)/3));
+                next.RowHeight=Mathf.Max(next.Size,2*next.LineHeight+2);
+                next.ColumnGap=(next.Content.width-4*next.Size)/5;
+                for(int i=0;i<8;i++)cells[i]=new Rect(next.Content.x+next.ColumnGap+i%4*(next.Size+next.ColumnGap),next.Content.y+i/4*(next.Size+next.RowGap),next.Size,next.Size);
+                next.IntrinsicTextWidth=next.Content.width-next.Size-Gap-Margin;
+                next.IntrinsicBounds=new Rect(next.Content.x,cells[4].yMax+next.GridBottomGap,next.Content.width,next.Size);
+                next.IntrinsicIconBounds=new Rect(next.IntrinsicBounds.x,next.IntrinsicBounds.center.y-next.Size/2,next.Size,next.Size);
+                next.SkillsGroupBounds=new Rect(next.Frame.x,next.Frame.y,next.Frame.width,Mathf.Max(cells[4].yMax+3+Margin,next.IntrinsicBounds.yMax+Margin)-next.Frame.y);
+                next.PotentialGroupTop=next.IntrinsicBounds.yMax+Margin+Gap;
+                next.PotentialGroupBounds=new Rect(next.Frame.x,next.PotentialGroupTop,next.Frame.width,Mathf.Max(0,next.Frame.yMax-next.PotentialGroupTop));
+                next.PotentialContent=InventoryFrame.Inset(next.PotentialGroupBounds);
+                next.PotentialHeaderBounds=new Rect(next.PotentialContent.x,next.PotentialContent.y,next.PotentialContent.width,Mathf.Min(next.TitleHeight,next.PotentialContent.height));
+                next.ScrollBounds=new Rect(next.PotentialContent.x,next.PotentialHeaderBounds.yMax,next.PotentialContent.width,Mathf.Max(0,next.PotentialContent.yMax-next.PotentialHeaderBounds.yMax));
+                for(int i=0;i<5;i++)potentialRows[i]=new Rect(next.Content.x,next.ScrollBounds.y+i*(next.RowHeight+PotentialGap),next.Content.width,next.RowHeight);
+                next.DetailBounds=InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);
+                next.DetailContent=InventoryFrame.Inset(next.DetailBounds);
+                next.ControlsTop=next.DetailContent.yMax-100;
+                next.UpperBounds=new Rect(next.DetailContent.x,next.DetailContent.y,next.DetailContent.width,Mathf.Max(1,next.ControlsTop-Gap-next.DetailContent.y));
+                float keyWidth=(next.DetailContent.width-3*Gap)/4;
+                for(int i=0;i<8;i++)keys[i]=new Rect(next.DetailContent.x+i%4*(keyWidth+Gap),next.ControlsTop+16+i/4*28,keyWidth,24);
+                float actionWidth=hasBook?(next.DetailContent.width-Gap)/2:next.DetailContent.width;
+                for(int i=0;i<2;i++)actions[i]=new Rect(next.DetailContent.x+i*(actionWidth+Gap),next.DetailContent.yMax-28,actionWidth,28);
+                metrics=next;metricsReady=true;metricsVersion++;
             }
         }
-        internal static float IntrinsicTextWidth  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicTextWidth);return Content.width-Size-Gap-Margin;}}
-        internal static Rect IntrinsicBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutIntrinsic)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBounds);return new Rect(Content.x,CellBounds(4).yMax+GridBottomGap,Content.width,Size);}}}
-        internal static Rect IntrinsicIconBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicIconBounds);return new Rect(IntrinsicBounds.x,IntrinsicBounds.center.y-Size/2,Size,Size);}}
-        internal static Rect IntrinsicBarBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBarBounds);return IntrinsicBounds;}}
-        internal static Rect SkillsGroupBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSkillsGroupBounds);return new Rect(Frame.x,Frame.y,Frame.width,
-            Mathf.Max(CellBounds(4).yMax+3+Margin,IntrinsicBounds.yMax+Margin)-Frame.y);}}
-        internal static float PotentialGroupTop  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupTop);return IntrinsicBounds.yMax+Margin+Gap;}}
-        internal static Rect PotentialGroupBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutGroups)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupBounds);return new Rect(Frame.x,PotentialGroupTop,Frame.width,Mathf.Max(0,Frame.yMax-PotentialGroupTop));}}}
-        internal static string PotentialTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialTitle);EnsureMetrics();return potentialTitle;}}
-        internal static string ActivityTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActivityTitle);EnsureMetrics();return activityTitle;}}
-        internal static bool CombinedTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCombinedTitle);EnsureMetrics();return combinedTitle;}}
-        internal static int TitleHeight  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutTitleHeight);return (CombinedTitle?1:2)*LineHeight+(GameCanvas.h<=208?Gap:2*Gap);}}
-        internal static Rect PotentialBounds(int i) {using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutPotential)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialBounds);return new Rect(Content.x,ScrollBounds.y+i*(RowHeight+PotentialGap)-(GameCanvas.panel?.SkillScroll??0),Content.width,RowHeight);}}
-        internal static Rect DetailBounds  {get{using(SkillDiagnostics.Probe(SkillDiagnostics.Stage.LayoutDetail)) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailBounds);return InventoryFrame.Inset(HudLayout.GetRect(InventoryFrame.Detail),InventoryFrame.FrameInset);}}}
-        internal static Rect DetailContent  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailContent);return InventoryFrame.Inset(DetailBounds);}}
-        internal static float ControlsTop  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutControlsTop);return DetailContent.yMax-100;}}
-        internal static Rect UpperBounds  {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutUpperBounds);return new Rect(DetailContent.x,DetailContent.y,DetailContent.width,Mathf.Max(1,ControlsTop-Gap-DetailContent.y));}}
-        internal static Rect KeyBounds(int i)
+        // Rect/hit-test invalidation includes scroll; the layout key above deliberately does not.
+        private static long RectVersion
         {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutKeyBounds);
-            Rect r=DetailContent;float width=(r.width-3*Gap)/4;
-            return new Rect(r.x+i%4*(width+Gap),ControlsTop+16+i/4*28,width,24);
+            get {
+                EnsureMetrics();long state=HudLayout.StateGeneration;int scroll=GameCanvas.panel?.SkillScroll??0;
+                if(rectMetrics!=metricsVersion||rectState!=state||rectScroll!=scroll) {
+                    rectMetrics=metricsVersion;rectState=state;rectScroll=scroll;rectVersion++;
+                }
+                return rectVersion;
+            }
         }
-        internal static Rect ActionBounds(int index)
-        {
-            SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActionBounds);
-            Rect r=DetailContent;bool book=GameCanvas.panel.SkillHasBook;
-            float width=book?(r.width-Gap)/2:r.width;
-            return new Rect(r.x+index*(width+Gap),r.yMax-28,width,28);
-        }
+        internal static Rect Frame {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutFrame);EnsureMetrics();return metrics.Frame;}}
+        internal static Rect Content {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutContent);EnsureMetrics();return metrics.Content;}}
+        internal static int LineHeight {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutLineHeight);EnsureMetrics();return metrics.LineHeight;}}
+        internal static float RowHeight {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowHeight);EnsureMetrics();return metrics.RowHeight;}}
+        internal static float DesignSize {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDesignSize);EnsureMetrics();return metrics.DesignSize;}}
+        internal static float Size {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSize);EnsureMetrics();return metrics.Size;}}
+        internal static float ColumnGap {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutColumnGap);EnsureMetrics();return metrics.ColumnGap;}}
+        internal static float RowGap {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutRowGap);EnsureMetrics();return metrics.RowGap;}}
+        internal static float GridBottomGap {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutGridBottomGap);EnsureMetrics();return metrics.GridBottomGap;}}
+        internal static Rect PotentialContent {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialContent);EnsureMetrics();return metrics.PotentialContent;}}
+        internal static Rect PotentialHeaderBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialHeaderBounds);EnsureMetrics();return metrics.PotentialHeaderBounds;}}
+        internal static Rect ScrollBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutScrollBounds);EnsureMetrics();return metrics.ScrollBounds;}}
+        internal static float IntrinsicTextWidth {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicTextWidth);EnsureMetrics();return metrics.IntrinsicTextWidth;}}
+        internal static Rect IntrinsicBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBounds);EnsureMetrics();return metrics.IntrinsicBounds;}}
+        internal static Rect IntrinsicIconBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicIconBounds);EnsureMetrics();return metrics.IntrinsicIconBounds;}}
+        internal static Rect SkillsGroupBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutSkillsGroupBounds);EnsureMetrics();return metrics.SkillsGroupBounds;}}
+        internal static float PotentialGroupTop {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupTop);EnsureMetrics();return metrics.PotentialGroupTop;}}
+        internal static Rect PotentialGroupBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialGroupBounds);EnsureMetrics();return metrics.PotentialGroupBounds;}}
+        internal static string PotentialTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialTitle);EnsureMetrics();return metrics.PotentialTitle;}}
+        internal static string ActivityTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActivityTitle);EnsureMetrics();return metrics.ActivityTitle;}}
+        internal static bool CombinedTitle {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCombinedTitle);EnsureMetrics();return metrics.CombinedTitle;}}
+        internal static int TitleHeight {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutTitleHeight);EnsureMetrics();return metrics.TitleHeight;}}
+        internal static Rect DetailBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailBounds);EnsureMetrics();return metrics.DetailBounds;}}
+        internal static Rect DetailContent {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutDetailContent);EnsureMetrics();return metrics.DetailContent;}}
+        internal static float ControlsTop {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutControlsTop);EnsureMetrics();return metrics.ControlsTop;}}
+        internal static Rect UpperBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutUpperBounds);EnsureMetrics();return metrics.UpperBounds;}}
+        internal static Rect IntrinsicBarBounds {get{SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutIntrinsicBarBounds);EnsureMetrics();return metrics.IntrinsicBounds;}}
+        internal static Rect CellBounds(int i) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutCellBounds);EnsureMetrics();return cells[i];}
+        internal static Rect PotentialBounds(int i) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutPotentialBounds);EnsureMetrics();Rect row=potentialRows[i];row.y-=GameCanvas.panel?.SkillScroll??0;return row;}
+        internal static Rect KeyBounds(int i) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutKeyBounds);EnsureMetrics();return keys[i];}
+        internal static Rect ActionBounds(int i) {SkillDiagnostics.Count(SkillDiagnostics.Counter.LayoutActionBounds);EnsureMetrics();return actions[i];}
         internal static void Register()
         {
-            HudLayout.Register(Left,()=>ScrollBounds,HudLayout.OverlayOrder+11,()=>Visible);
+            HudLayout.Register(Left,()=>ScrollBounds,HudLayout.OverlayOrder+11,()=>Visible,cacheVersion:()=>RectVersion);
             for(int i=0;i<8;i++) {
                 int slot=i;
-                HudLayout.Register(Cell(i),()=>InventoryFrame.Intersection(CellBounds(slot),Content),HudLayout.OverlayOrder+12,()=>Visible&&slot<SkillTabState.Templates().Length);
-                HudLayout.Register(Key(i),()=>KeyBounds(slot),HudLayout.OverlayOrder+17,()=>DetailVisible);
+                HudLayout.Register(Cell(i),()=>InventoryFrame.Intersection(CellBounds(slot),Content),HudLayout.OverlayOrder+12,()=>Visible&&slot<SkillTabState.Templates().Length,cacheVersion:()=>RectVersion);
+                HudLayout.Register(Key(i),()=>KeyBounds(slot),HudLayout.OverlayOrder+17,()=>DetailVisible,cacheVersion:()=>RectVersion);
             }
-            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,Content),HudLayout.OverlayOrder+12,()=>Visible);
-            for(int i=0;i<5;i++) { int row=i; HudLayout.Register(Potential(i),()=>InventoryFrame.Intersection(PotentialBounds(row),ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible); }
-            HudLayout.Register(Detail,()=>DetailBounds,HudLayout.OverlayOrder+14,()=>DetailVisible);
-            HudLayout.Register(Upper,()=>UpperBounds,HudLayout.OverlayOrder+15,()=>DetailVisible);
-            HudLayout.Register(Close,()=>new Rect(DetailBounds.xMax-Margin-18,DetailBounds.y+Margin,18,18),HudLayout.OverlayOrder+18,()=>DetailVisible);
-            for(int i=0;i<2;i++) { int button=i; HudLayout.Register(Action(i),()=>ActionBounds(button),HudLayout.OverlayOrder+17,()=>DetailVisible&&(button==0||GameCanvas.panel.SkillHasBook)); }
+            HudLayout.Register(Intrinsic,()=>InventoryFrame.Intersection(IntrinsicBounds,Content),HudLayout.OverlayOrder+12,()=>Visible,cacheVersion:()=>RectVersion);
+            for(int i=0;i<5;i++) { int row=i; HudLayout.Register(Potential(i),()=>InventoryFrame.Intersection(PotentialBounds(row),ScrollBounds),HudLayout.OverlayOrder+12,()=>Visible,cacheVersion:()=>RectVersion); }
+            HudLayout.Register(Detail,()=>DetailBounds,HudLayout.OverlayOrder+14,()=>DetailVisible,cacheVersion:()=>RectVersion);
+            HudLayout.Register(Upper,()=>UpperBounds,HudLayout.OverlayOrder+15,()=>DetailVisible,cacheVersion:()=>RectVersion);
+            HudLayout.Register(Close,()=>new Rect(DetailBounds.xMax-Margin-18,DetailBounds.y+Margin,18,18),HudLayout.OverlayOrder+18,()=>DetailVisible,cacheVersion:()=>RectVersion);
+            for(int i=0;i<2;i++) { int button=i; HudLayout.Register(Action(i),()=>ActionBounds(button),HudLayout.OverlayOrder+17,()=>DetailVisible&&(button==0||GameCanvas.panel.SkillHasBook),cacheVersion:()=>RectVersion); }
         }
     }
 }
@@ -178,9 +216,10 @@ public partial class Panel
             int delta=GameCanvas.py-skillDragY;
             if(System.Math.Abs(delta)>4||System.Math.Abs(GameCanvas.px-skillDragX)>4)skillDragging=true;
             if(skillDragging) {
+                int previousStatScroll=cmy;
                 if(upper)skillTopScroll=Mathf.Clamp(skillDragStart-delta,0,Mathf.Max(0,skillUpperHeight-(int)SkillPanelLayout.UpperBounds.height));
                 else cmy=cmtoY=Mathf.Clamp(skillDragStart-delta,0,cmyLim);
-                HudLayout.Invalidate();
+                if(previousStatScroll!=cmy)HudLayout.Invalidate();
             }
         }
         }
@@ -225,11 +264,11 @@ public partial class Panel
         if (!SkillPanelActive) return false;
         if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
-        int previousBodyScroll=skillTopScroll,previousStatScroll=cmy;
+        int previousStatScroll=cmy;
         if (SkillDetailOpen && SkillPanelLayout.UpperBounds.Contains(point))
             skillTopScroll = Mathf.Clamp(skillTopScroll - amount * 24, 0, Mathf.Max(0, skillUpperHeight - (int)SkillPanelLayout.UpperBounds.height));
         else if (SkillPanelLayout.ScrollBounds.Contains(point)) cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim);
-        if(previousBodyScroll!=skillTopScroll||previousStatScroll!=cmy)HudLayout.Invalidate();
+        if(previousStatScroll!=cmy)HudLayout.Invalidate();
         return true;
         }
     }
