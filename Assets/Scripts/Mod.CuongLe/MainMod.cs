@@ -1557,10 +1557,11 @@ namespace Mod.CuongLe
     		try
     		{
                 string[] array = launchArgs[1].Split('|');
-                if (array.Length < 4 || string.IsNullOrWhiteSpace(array[1]))
+                if (array.Length < 4 || string.IsNullOrWhiteSpace(array[1])
+                    || !int.TryParse(array[2], out int selectedServer) || selectedServer < 1)
                     throw new FormatException();
     			account = array[1];
-    			server = int.Parse(array[2]);
+    			server = selectedServer;
     			password = DecryptString(array[3], "ud");
                 RunAccountManagerAction(() =>
                 {
@@ -1647,12 +1648,19 @@ namespace Mod.CuongLe
     	{
     		Thread.Sleep(1000);
             if (accountManagerLoginStopped) return;
+            int attempts = 0;
             while (!accountManagerLoginStopped)
     		{
     			try
     			{
     				if (string.IsNullOrEmpty(Char.myCharz().cName))
     				{
+                        if (++attempts > 3) {
+                            StopAccountManagerLogin();
+                            Interlocked.Exchange(ref accountManagerFailure,
+                                "Đã thử đăng nhập 3 lần. Vui lòng kiểm tra tài khoản hoặc mạng rồi đăng nhập thủ công.");
+                            return;
+                        }
     					Thread.Sleep(100);
                         if (accountManagerLoginStopped) return;
                         if (!WaitForAccountManager(() => ServerListScreen.loadScreen, 60000,

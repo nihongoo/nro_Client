@@ -419,9 +419,10 @@ public class LoginScr : mScreen, IActionListener
 							int num = str.IndexOf(":");
 							string text = str.Substring(0, num);
 							string s = str.Substring(num + 1);
+							if (!int.TryParse(s, out int port) || port < 1 || port > 65535) return;
 							GameMidlet.IP = text;
-							GameMidlet.PORT = int.Parse(s);
-							Session_ME.gI().connect(text, int.Parse(s));
+							GameMidlet.PORT = port;
+							Session_ME.gI().connect(text, port);
 							isTryGetIPFromWap = true;
 						}
 					}
