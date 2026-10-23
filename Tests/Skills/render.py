@@ -18,7 +18,8 @@ namespace UnityEngine {
  public struct Vector2 {public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;}}
  public struct Color {public float r,g,b,a;public Color(float r,float g,float b,float a){this.r=r;this.g=g;this.b=b;this.a=a;}public static Color white=>new Color(1,1,1,1);}
  public struct Color32 {public byte r,g,b,a;public Color32(byte r,byte g,byte b,byte a){this.r=r;this.g=g;this.b=b;this.a=a;}}
- public class Texture2D {public int width,height;public string name;public Texture2D(int w,int h,string n){width=w;height=h;name=n;}}
+ public enum FilterMode {Point,Bilinear}
+ public class Texture2D {public FilterMode filterMode;public int width,height;public string name;public Texture2D(int w,int h,string n){width=w;height=h;name=n;}}
  public class Font {public int fontSize=20;}
  public enum TextAnchor {MiddleLeft,MiddleCenter}
  public class RectOffset {}
@@ -32,8 +33,8 @@ namespace UnityEngine {
  public class GUISkin {public GUIStyle label=new GUIStyle(null);}
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Min(float a,float b)=>Math.Min(a,b);public static float Max(float a,float b)=>Math.Max(a,b);}
  public static class GUI {
-  public static Color color=Color.white;public static GUISkin skin=new GUISkin();public static List<Texture2D> textures=new List<Texture2D>();public static List<Rect> rectangles=new List<Rect>();public static GUIStyle lastStyle;public static string lastText;public static Rect lastUv;public static int groups;
-  public static void BeginGroup(Rect r){groups++;}public static void EndGroup(){groups--;}
+  public static Color color=Color.white;public static GUISkin skin=new GUISkin();public static List<Texture2D> textures=new List<Texture2D>();public static List<Rect> rectangles=new List<Rect>();public static GUIStyle lastStyle;public static string lastText;public static Rect lastUv;public static int groups;public static Rect lastGroup;
+  public static void BeginGroup(Rect r){groups++;lastGroup=r;}public static void EndGroup(){groups--;}
   public static void Label(Rect r,string t,GUIStyle s){lastStyle=s;lastText=t;}
   public static void DrawTexture(Rect r,Texture2D t){textures.Add(t);rectangles.Add(r);}
   public static void DrawTextureWithTexCoords(Rect r,Texture2D t,Rect uv){DrawTexture(r,t);lastUv=uv;}
@@ -56,7 +57,8 @@ namespace Hud {
   public static Rect Inset(Rect r,float padding)=>new Rect(r.x+padding,r.y+padding,r.width-2*padding,r.height-2*padding);public static void Clip(mGraphics g,Rect r){}public static void Rounded(mGraphics g,Rect r,int color,int alpha,int border){fallbackFrames++;}
  }
  static class HudButtonSkin {
-  public static Image CopyNative(Image image,Action<Color32[],int,int> edit){var pixels=new[]{new Color32(255,170,0,255)};edit(pixels,1,1);RenderTests.Check(pixels[0].r==pixels[0].g&&pixels[0].g==pixels[0].b,"disabled button not grey");return new Image(image.texture.width,image.texture.height,"grey");}
+  public static int copies;
+  public static Image CopyNative(Image image,Action<Color32[],int,int> edit,FilterMode filter=FilterMode.Point){copies++;var pixels=new[]{new Color32(255,170,0,255)};edit(pixels,1,1);bool grey=pixels[0].r==pixels[0].g&&pixels[0].g==pixels[0].b;var copy=new Image(image.texture.width,image.texture.height,grey?"grey":image.texture.name);copy.texture.filterMode=filter;return copy;}
  }
  static class InventoryItemVisuals { METHODS }
 }
@@ -95,6 +97,13 @@ class RenderTests {
    }
    Command.btn0left=new Image(10*zoom,24*zoom,"orange-left");Command.btn0mid=new Image(10*zoom,24*zoom,"orange-mid");Command.btn0right=new Image(10*zoom,24*zoom,"orange-right");
    Command.btn1left=new Image(10*zoom,24*zoom,"green-left");Command.btn1mid=new Image(10*zoom,24*zoom,"green-mid");Command.btn1right=new Image(10*zoom,24*zoom,"green-right");
+   GUI.textures.Clear();Hud.InventoryItemVisuals.PaintNativeButton(g,new Rect(10,20,50,22),true,false,new Rect(0,30,100,6));
+   Check(GUI.groups==0&&GUI.textures.Count==3,"clipped native button lost pieces or leaked GUI group");
+   Check(GUI.lastGroup.x==10*zoom&&GUI.lastGroup.y==30*zoom&&GUI.lastGroup.width==50*zoom&&GUI.lastGroup.height==6*zoom,"native button escaped scroll clip");
+   foreach(var texture in GUI.textures)Check(texture.filterMode==FilterMode.Bilinear,"small button edge uses point sampling");
+   int copies=Hud.HudButtonSkin.copies;
+   Hud.InventoryItemVisuals.PaintNativeButton(g,new Rect(10,20,50,22),true,false,new Rect(0,30,100,6));
+   Check(Hud.HudButtonSkin.copies==copies,"small button recopied textures every frame");
    foreach(bool enabled in new[]{false,true})foreach(bool selected in new[]{false,true})foreach(int width in new[]{22,40,130}) {
     Rect button=new Rect(10,20,width,22);GUI.textures.Clear();GUI.rectangles.Clear();
     Hud.InventoryItemVisuals.PaintNativeButton(g,button,enabled,selected);

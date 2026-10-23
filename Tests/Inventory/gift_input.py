@@ -44,6 +44,8 @@ panel_paint = block(paint, paint.index(condition))
 prop = re.search(r"internal static bool IsGameplayPanelActive =>[^;]+;", canvas)
 field = read("Assets/Scripts/TField.cs")
 focus_methods = "\n".join(method(field, name) for name in ["update", "setTextBox", "setFocus", "setFocusWithKb"])
+if "public void update(bool handlePointer)" in field:
+    focus_methods += "\n" + block(field, field.index("public void update(bool handlePointer)"))
 client = read("Assets/Scripts/Assets.src.g/ClientInput.cs", args.input_ref)
 assert "currentScreen == GameScr.instance" in read("Assets/Scripts/Hud/InventoryFrame.cs")
 

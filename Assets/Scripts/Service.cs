@@ -943,6 +943,17 @@ public class Service
 		}
 	}
 
+    public void potentialRequest(int action,int id,int type,long expected,long target)
+    {
+        Message request=null;
+        try {
+            request=new Message(Hud.SkillTabState.CommandId);request.writer().writeByte((sbyte)action);
+            if(action==5){request.writer().writeInt(id);request.writer().writeByte((sbyte)type);request.writer().writeLong(expected);request.writer().writeLong(target);}
+            session.sendMessage(request);
+        } catch(Exception e){Cout.println(e.ToString());}
+        finally {if(request!=null)request.cleanup();}
+    }
+
     public void skillTabRequest(int action, int value = 0, int extra = 0, long token = 0)
     {
         Message request = null;
