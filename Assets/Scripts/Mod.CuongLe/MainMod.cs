@@ -693,9 +693,7 @@ namespace Mod.CuongLe
     				ChatTextField.gI().startChat2(getInstance(), string.Empty);
     			}
     			break;
-    		case 11:
-    			smethod_2();
-    			break;
+
     		case 12:
     			isAutoLockControl = !isAutoLockControl;
     			GameScr.info1.addInfo("Auto Khống Chế\n" + (isAutoLockControl ? "[STATUS: ON]" : "[STATUS: OFF]"), 0);
@@ -704,9 +702,7 @@ namespace Mod.CuongLe
     			isAutoTeleport = !isAutoTeleport;
     			GameScr.info1.addInfo("Auto Teleport\n" + (isAutoTeleport ? "[STATUS: ON]" : "[STATUS: OFF]"), 0);
     			break;
-    		case 14:
-    			smethod_3();
-    			break;
+
     		case 15:
     			ChatTextField.gI().strChat = inputCharID[0];
     			ChatTextField.gI().tfChat.name = inputCharID[1];
@@ -732,9 +728,7 @@ namespace Mod.CuongLe
     			}
     			break;
     		}
-    		case 18:
-    			smethod_0();
-    			break;
+
     		case 19:
     			isAutoAttackBoss = !isAutoAttackBoss;
     			GameScr.info1.addInfo("Tấn Công Boss\n" + (isAutoAttackBoss ? "[STATUS: ON]" : "[STATUS: OFF]"), 0);
@@ -744,9 +738,7 @@ namespace Mod.CuongLe
     			ChatTextField.gI().tfChat.name = inputHPLimit[1];
     			ChatTextField.gI().startChat2(getInstance(), string.Empty);
     			break;
-    		case 21:
-    			smethod_1();
-    			break;
+
     		case 22:
     			isAutoAttackOtherChars = !isAutoAttackOtherChars;
     			GameScr.info1.addInfo("Tàn Sát Người\n" + (isAutoAttackOtherChars ? "[STATUS: ON]" : "[STATUS: OFF]"), 0);
@@ -1095,22 +1087,6 @@ namespace Mod.CuongLe
     		GameCanvas.menu.startAt(myVector, 3);
     	}
 
-    	public static void smethod_0()
-    	{
-    	}
-
-    	public static void smethod_1()
-    	{
-    	}
-
-    	public static void smethod_2()
-    	{
-    	}
-
-    	public static void smethod_3()
-    	{
-    	}
-
     	public static void ResetChatTextField()
     	{
     		ChatTextField.gI().strChat = "Chat";
@@ -1240,14 +1216,6 @@ namespace Mod.CuongLe
     			return TileMap.mapID <= 91;
     		}
     		return false;
-    	}
-
-    	public static void smethod_4()
-    	{
-    	}
-
-    	public static void smethod_5()
-    	{
     	}
 
     	public static bool smethod_6(int int_0)
@@ -1838,14 +1806,6 @@ namespace Mod.CuongLe
     			return Char.myCharz().cMP >= skillToUse.manaUse;
     		}
     		return Char.myCharz().cMP >= skillToUse.manaUse * Char.myCharz().cMPFull / 100;
-    	}
-
-    	public static void smethod_14()
-    	{
-    	}
-
-    	public static void smethod_16()
-    	{
     	}
 
     	public static string DecryptString(string str, string key)
