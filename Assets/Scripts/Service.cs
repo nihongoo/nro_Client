@@ -2659,6 +2659,7 @@ public class Service
 
     public void guestLogin(string secret, string device)
     {
+        if(GuestCredentials.DeletePending){requestGuestDeletion(secret,device);return;}
         Message message = new Message(GuestCredentials.Command);
         try {
             message.writer().writeByte(0);
@@ -2673,6 +2674,13 @@ public class Service
         Message message = new Message(GuestCredentials.Command);
         try { message.writer().writeByte(2); message.writer().writeUTF(email); session.sendMessage(message); }
         finally { message.cleanup(); }
+    }
+
+    public void requestGuestDeletion(string secret,string device)
+    {
+        Message message=new Message(GuestCredentials.Command);
+        try{message.writer().writeByte(8);message.writer().writeUTF(secret);message.writer().writeUTF(device);session.sendMessage(message);}
+        finally{message.cleanup();}
     }
 
     public void requestAccountState()

@@ -881,12 +881,12 @@ public class ServerListScreen : mScreen, IActionListener
 		}
 		if (idAction == 10100)
 		{
+            if(GuestCredentials.IsGuest||GuestCredentials.DeletePending){GuestSwitchFlow.Open();return;}
 			if (GameCanvas.loginScr == null)
 			{
 				GameCanvas.loginScr = new LoginScr();
 			}
 			GameCanvas.loginScr.switchToMe();
-			if (GuestCredentials.IsDev) GuestCredentials.NewDevGuest();
             GameCanvas.loginScr.doGuestLogin();
 			Res.outz("tao user ao");
 			GameCanvas.startWaitDlg();

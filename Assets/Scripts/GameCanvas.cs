@@ -520,6 +520,7 @@ public class GameCanvas : IActionListener
 	public void update()
 	{
         EmailLinkFlow.Update();
+        GuestSwitchFlow.Update();
 		Mod.CuongLe.MainMod.ShowAccountManagerNotice();
 		Mod.CuongLe.MainMod.UpdateAccountManager();
 		LoginScr.updateLoginAttempt();
@@ -1010,6 +1011,11 @@ public class GameCanvas : IActionListener
 	}
 
 	public void switchAccount()
+	{
+        GuestSwitchFlow.Open();
+    }
+
+    public void completeAccountSwitch()
 	{
 		LoginScr.requireManualLogin();
 		// Cancels endpoint deadlines and advances the network generation before clearing callbacks.

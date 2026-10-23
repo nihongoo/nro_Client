@@ -31,6 +31,7 @@ class TField {
  public void setMaxTextLenght(int value){max=value;}public void setIputType(int value){type=value;max=500;}
 }
 class Panel : IActionListener {public int switches;public void hide(){} public void perform(int idAction,object value){@@ACCOUNT_SWITCH@@} }
+static class GuestSwitchFlow {public static void Read(myReader reader){reader.readBool();reader.readUTF();}}
 class CanvasActions {public void switchAccount(){GameCanvas.panel.switches++;}}
 class Menu {public bool showMenu;public MyVector options;public void startAt(MyVector value,int index){options=value;} }
 class LoginScr {public bool isLogin2=true;public TField tfUser=new TField(),tfPass=new TField();}
@@ -94,9 +95,9 @@ class Tests {
   GuestCredentials.GetSecret();EmailLinkFlow.Read(Packet(7,true,false));EmailLinkFlow.Update();
   Check(GuestCredentials.IsGuest&&!GuestCredentials.IsPermanent,"stale permanent state overrode server guest restrictions");
   beforeOpen=Service.gI().stateRequests;GameCanvas.endDlg();
-  staleSwitch.Click();Check(GameCanvas.panel.switches==1,"stale account menu switched a guest account");
-  Check(GameCanvas.currentScreen is ClientInput,"stale account menu did not route guest to linking");
-  ((ClientInput)GameCanvas.currentScreen).left.Click();EmailLinkFlow.Open();
+  staleSwitch.Click();Check(GameCanvas.panel.switches==2,"stale account menu bypassed centralized switch confirmation");
+  EmailLinkFlow.Open();Check(GameCanvas.menu.options.commands.Count==2,"guest account options missing");GameCanvas.menu.options.commands[0].Click();
+  ((ClientInput)GameCanvas.currentScreen).left.Click();EmailLinkFlow.Open();GameCanvas.menu.options.commands[0].Click();
   Check(Service.gI().stateRequests==beforeOpen,"guest email button sent a state query");
   ClientInput email=(ClientInput)GameCanvas.currentScreen;
   Check(email.tf.Length==1&&email.tf[0].loginInput&&email.tf[0].max==254,"email input length/keyboard");
@@ -120,7 +121,7 @@ class Tests {
   Check(GuestCredentials.IsGuest&&GameCanvas.currentScreen==verify,"rejection retired guest/lost form");
   verify.center.Click();Check(Service.gI().confirms==2,"rejection prevented retry");
   verify.left.Click();Check(verify.tf[1].getText()==""&&verify.tf[2].getText()=="","cancel retained password");
-  GameCanvas.endDlg();EmailLinkFlow.Open();Check(GameCanvas.menu.options.commands.Count==2,"pending OTP resume/resend missing");
+  GameCanvas.endDlg();EmailLinkFlow.Open();Check(GameCanvas.menu.options.commands.Count==3,"pending OTP resume/resend/switch missing");
   GameCanvas.menu.options.commands[0].Click();Check(((ClientInput)GameCanvas.currentScreen).tf.Length==3,"resume OTP");
   EmailLinkFlow.Read(Packet(5,true,"converted","player@example.com"));EmailLinkFlow.Update();
   Check(!GuestCredentials.IsGuest&&!GuestCredentials.HasToken&&!GuestCredentials.Preferred,"conversion retained guest credentials");
