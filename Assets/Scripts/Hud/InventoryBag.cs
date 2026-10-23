@@ -54,6 +54,8 @@ namespace Hud
                 if (filter == InventoryBagFilter.All || bag[i] != null && Category(bag[i]) == filter) result.Add(i);
         }
         internal static int Rows(int count) => System.Math.Max(MinimumRows, (count + Columns - 1) / Columns);
+        internal static int DisplaySlots(int allocated, InventoryBagFilter filter)
+            => Rows(filter == InventoryBagFilter.All ? System.Math.Max(80, allocated) : allocated) * Columns;
         internal static Rect BadgeBounds(Rect cell, float width, float height)
             => new Rect(cell.xMax + 2 - width, cell.yMax + 2 - height, width, height);
         internal static string Quantity(int quantity)

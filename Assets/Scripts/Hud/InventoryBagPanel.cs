@@ -164,7 +164,7 @@ public partial class Panel
             }
         }
         if (viewport.height <= 0) return;
-        int cells = InventoryBag.Rows(inventoryBagMap.Count) * InventoryBag.Columns;
+        int cells = InventoryBag.DisplaySlots(inventoryBagMap.Count, inventoryBagFilter);
         Item[] bag = Char.myCharz().arrItemBag;
         for (int visual = 0; visual < cells; visual++) {
             Rect cell = InventoryFrame.BagCellBounds(visual);
@@ -176,7 +176,13 @@ public partial class Panel
             InventoryFrame.Clip(g, viewport);
             InventoryFrame.Rounded(g, cell, chosen ? InventoryFrame.Accent : allocated ? InventoryFrame.SlotBackground : InventoryFrame.MoneyBackground,
                 allocated ? (byte)255 : (byte)100);
-            if (!allocated) continue;
+            if (!allocated) {
+                if (inventoryBagFilter == InventoryBagFilter.All && bag != null) {
+                    InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
+                    PaintClosedBagSlot(g, cell);
+                }
+                continue;
+            }
             if (item?.template == null) continue;
             if (item.template.type >= 0 && item.template.type <= 4) {
                 int setColor = InventoryFrame.SetColor(item);
@@ -192,5 +198,22 @@ public partial class Panel
             if (item.quantity > 1) InventoryBagBadge.Paint(g, cell, viewport, item.quantity);
         }
         InventoryFrame.Clip(g, viewport);
+    }
+
+    private static void PaintClosedBagSlot(mGraphics g, Rect cell)
+    {
+        mFont font = mFont.tahoma_7_grey;
+        int line = font.getHeight();
+        if (font.getWidth("Chưa") + 2 <= cell.width && 2 * line <= cell.height) {
+            font.drawString(g, "Chưa", (int)cell.center.x, (int)cell.center.y - line, mFont.CENTER);
+            font.drawString(g, "mở", (int)cell.center.x, (int)cell.center.y, mFont.CENTER);
+        } else {
+            // Keep the locked state recognizable on small logical cells.
+            int size = (int)Mathf.Max(4, Mathf.Min(10, cell.width - 4));
+            int x = (int)cell.center.x - size / 2, y = (int)cell.center.y - size / 2;
+            g.setColor(InventoryFrame.Border);
+            g.drawRect(x + size / 4, y - size / 4, size / 2, size / 2);
+            g.fillRect(x, y, size, size * 3 / 4);
+        }
     }
 }

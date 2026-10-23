@@ -12,6 +12,16 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[2]
 source = (ROOT / "Assets/Scripts/Hud/InventoryFrame.cs").read_text(encoding="utf-8-sig")
+bag_panel = (ROOT / "Assets/Scripts/Hud/InventoryBagPanel.cs").read_text(encoding="utf-8-sig")
+assert "InventoryBag.DisplaySlots(inventoryBagMap.Count, inventoryBagFilter)" in source
+assert "InventoryBag.DisplaySlots(inventoryBagMap.Count, inventoryBagFilter)" in bag_panel
+locked_start = bag_panel.index("    private static void PaintClosedBagSlot(")
+locked_begin = bag_panel.index("{", locked_start)
+depth, locked_end = 1, locked_begin + 1
+while depth:
+    depth += (bag_panel[locked_end] == "{") - (bag_panel[locked_end] == "}")
+    locked_end += 1
+locked_painter = bag_panel[locked_start:locked_end]
 assert "InventoryFrame.Option(item, Item.OPT_STARSLOT)" in source
 assert "InventoryFrame.Option(item, Item.OPT_MAXSTARSLOT)" not in source
 assert "inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 }" in source
@@ -71,6 +81,10 @@ class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
 class ItemOptionTemplate { public int id; }
 class mFont {
     public static mFont tahoma_7_yellow=new mFont();
+    public static mFont tahoma_7_grey=new mFont();public const int CENTER=2;
+    public readonly List<string> drawn=new List<string>();
+    public int getHeight()=>8;
+    public void drawString(mGraphics g,string text,int x,int y,int align){drawn.Add(text);}
     public int getWidth(string text)=>text.Length*5;
 }
 class Image {}
@@ -78,6 +92,7 @@ static class InventoryFrameSkin { public static Image Corners(int fill,int borde
 class PopUp { public static bool fail; public static void paintPopUp(mGraphics g,int x,int y,int w,int h,int color,bool isButton,Image corner=null,int borderColor=0){if(fail)throw new Exception("skin fixture");} }
 class mGraphics {
     public static int zoomLevel=2,addYWhenOpenKeyBoard;
+    public int lockOutlines;public void drawRect(int x,int y,int w,int h){lockOutlines++;}
     public void setColor(int color){} public void fillRect(int x,int y,int w,int h){} public void setClip(int x,int y,int w,int h){}
 }
 partial class Panel {
@@ -170,8 +185,10 @@ class InventoryTests {
                 Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Close).center)==null,"closed frame captures input");GameCanvas.panel.isShow=true;
                 HudLayout.Invalidate();
                 Rect viewport=HudLayout.GetRect(InventoryFrame.Bag);
-                foreach(int capacity in new[]{0,30,35,36,80,255}){
+                foreach(int capacity in new[]{0,30,35,36,40,55,75,79,80,100,255}){
                     GameCanvas.panel.InventoryBagCellCount=capacity;
+                    int display=InventoryBag.DisplaySlots(capacity,InventoryBagFilter.All);
+                    Check(display>=Math.Max(80,capacity)&&display%5==0,"locked-slot layout hides legacy capacity");
                     int rows=InventoryBag.Rows(capacity);
                     Check(rows>=7&&rows*5>=capacity,"bag capacity hidden or manufactured");
                     Rect last=InventoryFrame.BagCellBounds(rows*5-1);
@@ -192,6 +209,12 @@ class InventoryTests {
                     if(capacity<35){
                         Rect ghost=InventoryFrame.BagCellBounds(34);
                         Check(HudLayout.HitTest(ghost.center)!=InventoryFrame.BagCell(34),"padding slot accepts input");
+                    }
+                    if(capacity>=35&&capacity<80){
+                        Rect closed=InventoryFrame.BagCellBounds(capacity);
+                        GameCanvas.panel.cmy+=(int)(closed.y-viewport.y);HudLayout.Invalidate();
+                        closed=InventoryFrame.BagCellBounds(capacity);
+                        Check(HudLayout.HitTest(closed.center)!=InventoryFrame.BagCell(capacity),"unopened slot accepts input");
                     }
                     Check(HudLayout.HitTest(new Vector2(10,50))==InventoryFrame.Tab(0),"scrolled inventory steals tab input");
                     GameCanvas.panel.cmy=0;HudLayout.Invalidate();
@@ -247,6 +270,20 @@ class InventoryTests {
         Check(InventoryBag.CanEquip(earring)&&!InventoryBag.HasLevel(earring),"known earring equip/level classification");
         tap.Reset();Check(!tap.Tap(4,earring,100)&&tap.Tap(4,earring,200),"known earring should dispatch equip, never consumable use");
         Check(InventoryBag.Category(new Item{template=new ItemTemplate{id=933,type=27}})==InventoryBagFilter.Material,"earring fragment misclassified as consumable");
+        foreach(int capacity in new[]{35,40,55,75,80,100}){
+            Item[] legacy=new Item[capacity];
+            for(int i=0;i<capacity;i++)legacy[i]=new Item{template=new ItemTemplate{id=(short)i,type=0}};
+            var slots=new System.Collections.Generic.List<int>();
+            InventoryBag.Map(legacy,InventoryBagFilter.All,slots);
+            Check(slots.Count==capacity&&slots[capacity-1]==capacity-1,"full legacy bag lost an occupied slot");
+        }
+        Check(InventoryBag.DisplaySlots(3,InventoryBagFilter.Equipment)==35,"filtered padding presented as locked capacity");
+        var lockedGraphics=new mGraphics();
+        Panel.PaintClosedForTest(lockedGraphics,new Rect(0,0,30,30));
+        Check(string.Join(" ",mFont.tahoma_7_grey.drawn)=="Chưa mở","closed slot label missing");
+        mFont.tahoma_7_grey.drawn.Clear();
+        Panel.PaintClosedForTest(lockedGraphics,new Rect(0,0,12,12));
+        Check(mFont.tahoma_7_grey.drawn.Count==0&&lockedGraphics.lockOutlines==1,"small closed slot lacks lock icon");
         Console.WriteLine("PASS: "+checks+" inventory registry/metadata checks; no Unity build");
     }
 }
@@ -260,13 +297,15 @@ with tempfile.TemporaryDirectory(prefix="inventory-", dir=output) as folder:
     (path / "InventoryRegistry.cs").write_text(source[:source.index("public partial class Panel")], encoding="utf-8")
     tab_members = source[source.index("    internal int[] InventoryFrameTabIds"):source.index("    private static readonly int[] inventoryBodySlots")]
     (path / "PanelTabs.cs").write_text("using System; partial class Panel {\n" + tab_members + "\n}", encoding="utf-8")
+    (path / "PanelLocked.cs").write_text("using UnityEngine; using Hud; partial class Panel {\n" + locked_painter
+        + "\npublic static void PaintClosedForTest(mGraphics g,Rect cell){PaintClosedBagSlot(g,cell);}\n}", encoding="utf-8")
     (path / "InventoryTests.cs").write_text(fixture, encoding="utf-8")
     item_source = (ROOT / "Assets/Scripts/Item.cs").read_text(encoding="utf-8-sig")
     item_body = item_source[item_source.index("    public bool isTypeBody()"):item_source.index("    public string getLockstring()")]
     (path / "ItemBody.cs").write_text("partial class Item {\n" + item_body + "\n}", encoding="utf-8")
     exe = path / "InventoryTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
-                    str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"),
+                    str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"), str(path / "PanelLocked.cs"),
                     str(path / "ItemBody.cs"), str(ROOT / "Assets/Scripts/Hud/InventoryBag.cs"),
                     str(ROOT / "Assets/Scripts/Hud/HudLayout.cs")], check=True)
     subprocess.run([str(exe)], check=True)
