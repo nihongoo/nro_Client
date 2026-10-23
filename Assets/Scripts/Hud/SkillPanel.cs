@@ -148,6 +148,7 @@ public partial class Panel
     }
     private bool UpdateSkillPanelInput()
     {
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Input)) {
         SyncSkillPanel();
         string hit=HudLayout.HitTest(new Vector2(GameCanvas.px,GameCanvas.py));
         if(GameCanvas.isPointerJustDown) {
@@ -197,6 +198,7 @@ public partial class Panel
         }
         if(GameCanvas.keyPressed[13]) {GameCanvas.keyPressed[13]=false;if(skillDetailOpen)skillDetailOpen=false;else CloseInventoryFrame();HudLayout.Invalidate();}
         return true;
+        }
     }
     private bool ScrollSkillPanelMouse(int amount)
     {
@@ -234,8 +236,10 @@ public partial class Panel
     }
     private void PaintSkillPanel(mGraphics g)
     {
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Panel)) {
         SyncSkillPanel();InventoryFrame.Clip(g,SkillPanelLayout.Frame);InventoryFrame.PaintSection(g,SkillPanelLayout.SkillsGroupBounds,InventoryFrame.PanelBackground);
         Rect viewport=SkillPanelLayout.Content;SkillTemplate[] templates=SkillTabState.Templates();
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Grid)) {
         for(int i=0;i<templates.Length;i++) {
             SkillTemplate t=templates[i];Skill skill=Char.myCharz().getSkill(t);Rect cell=SkillPanelLayout.CellBounds(i);
             InventoryFrame.Clip(g,viewport);
@@ -243,6 +247,8 @@ public partial class Panel
             InventoryItemVisuals.PaintLevel(g,cell,viewport,skill?.point??0,false,true);
             if(SkillTabState.Studying(t.id))PaintStudyClock(g,cell,viewport);
         }
+        }
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Intrinsic)) {
         viewport=SkillPanelLayout.Content;
         Rect intrinsic=SkillPanelLayout.IntrinsicBounds;
         Rect intrinsicIcon=SkillPanelLayout.IntrinsicIconBounds;
@@ -258,6 +264,8 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,i==0?mFont.tahoma_7b_dark:mFont.tahoma_7,lines[i],new Rect(intrinsicText.x,textY,intrinsicText.width,lineHeight),viewport,i==0?0x00552D:0x6E5A3D);
             textY+=lineHeight;
         }
+        }
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Potential)) {
         InventoryFrame.Clip(g,SkillPanelLayout.PotentialGroupBounds);
         InventoryFrame.PaintSection(g,SkillPanelLayout.PotentialGroupBounds,InventoryFrame.PanelBackground);
         viewport=SkillPanelLayout.PotentialHeaderBounds;
@@ -268,6 +276,8 @@ public partial class Panel
             InventoryItemVisuals.PaintCompactText(g,mFont.tahoma_7,SkillPanelLayout.ActivityTitle,title,viewport,0x362413);
         }
         PaintSkillPotential(g,SkillPanelLayout.ScrollBounds);
+        }
+        }
     }
     internal static string[] SkillIntrinsicLines {
         get {
@@ -322,6 +332,7 @@ public partial class Panel
     }
     private void PaintSkillDetail(mGraphics g)
     {
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Detail)) {
         if(!SkillDetailOpen)return;
         Rect r=SkillPanelLayout.DetailBounds,upper=SkillPanelLayout.UpperBounds,lower=upper;
         SkillTemplate t=SelectedSkillTemplate;Skill current=CurrentPanelSkill;int level=current?.point??0;
@@ -372,6 +383,7 @@ public partial class Panel
         Rect close=HudLayout.GetRect(SkillPanelLayout.Close);InventoryFrame.Clip(g,close);InventoryFrame.Rounded(g,close,InventoryFrame.EquipmentBackground);
         g.drawImage(imgX,(int)close.center.x,(int)close.center.y,mGraphics.HCENTER|mGraphics.VCENTER);
         InventoryFrame.Clip(g,HudLayout.ScreenBounds);
+        }
     }
     private static string SkillDescription(SkillTemplate template,Skill current)
     {

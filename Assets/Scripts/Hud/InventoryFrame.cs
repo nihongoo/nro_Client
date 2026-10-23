@@ -267,6 +267,7 @@ public partial class Panel
 
     private bool UpdateInventoryFrameInput()
     {
+        using (SkillDiagnostics.Measure(currentTabIndex==1?SkillDiagnostics.Area.Input:SkillDiagnostics.Area.Other)) {
         SyncInventoryFrame();
         EnsureInventoryDetailLayout();
         if (isClose || cmtoX > 0) return true;
@@ -353,6 +354,7 @@ public partial class Panel
             }
         }
         return true;
+        }
     }
 
     // Header ownership follows the active tab; body rendering never paints over it.
@@ -381,6 +383,7 @@ public partial class Panel
 
     private void PaintInventoryFrame(mGraphics g)
     {
+        using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Frame)) {
         SyncInventoryFrame(); GameScr.resetTranslate(g);
         g.setColor(0, .25f); g.fillRect(0, 0, GameCanvas.w, GameCanvas.h);
         Rect root = HudLayout.GetRect(InventoryFrame.Root);
@@ -410,10 +413,12 @@ public partial class Panel
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
+                using (SkillDiagnostics.Measure(SkillDiagnostics.Area.InventoryBody)) {
                 InventoryFrame.PaintSection(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
                 mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 + InventoryFrame.Padding - cmy, mFont.CENTER);
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 PaintInventoryBag(g);
+                }
                 break;
             case 2: PaintSkillPanel(g); break;
             case 3: paintClans(g); break;
@@ -423,9 +428,14 @@ public partial class Panel
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
         if (currentTabIndex == 2) PaintSkillDetail(g);
-        else if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
+        else {
+            using (SkillDiagnostics.Measure(SkillDiagnostics.Area.Detail)) {
+                if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
+            }
+        }
         if (tabIcon != null && tabIcon.isShow) tabIcon.paint(g);
         GameScr.resetTranslate(g);
+        }
     }
 
     private void PaintInventoryEquipment(mGraphics g, int slot)

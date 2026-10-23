@@ -38,6 +38,14 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using Hud;
+namespace Hud {
+ static class SkillDiagnostics {
+  internal enum Area { Frame,Panel,Grid,Intrinsic,Potential,Detail,Input,InventoryBody,Other }
+  internal struct Scope:IDisposable {public void Dispose(){}}
+  internal static Scope Measure(Area area)=>new Scope();
+  internal static void Tick(){}
+ }
+}
 namespace UnityEngine {
     public enum RuntimePlatform { WindowsPlayer,Android,IPhonePlayer }
     public struct Color { public byte r; }
