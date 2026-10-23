@@ -6,7 +6,10 @@ namespace Hud
 {
     internal static partial class SkillPanelLayout
     {
-        internal const float PotentialEditorHeight=80;
+        // TField.paintInputTf draws a native 27px-high frame regardless of its
+        // logical height. Reserve that complete frame so the bottom isn't clipped.
+        private const float PotentialInputHeight=27;
+        internal const float PotentialEditorHeight=85;
         internal const string PotentialInput="skills.potential.input",PotentialMax="skills.potential.max",PotentialApply="skills.potential.apply",PotentialEditor="skills.potential.editor";
         internal static string PotentialAdd(int i)=>"skills.potential.add."+i;
         private static readonly Rect[] potentialAdds=new Rect[5];
@@ -21,8 +24,8 @@ namespace Hud
             Rect row=potentialRows[m.Expanded];
             potentialEditor=new Rect(row.x,row.yMax,row.width,PotentialEditorHeight);
             Rect content=InventoryFrame.Inset(potentialEditor);
-            potentialInput=new Rect(content.x,content.y,Mathf.Max(1,content.width-Gap-44),22);
-            potentialMax=new Rect(potentialInput.xMax+Gap,content.y,44,22);
+            potentialInput=new Rect(content.x,content.y,Mathf.Max(1,content.width-Gap-44),PotentialInputHeight);
+            potentialMax=new Rect(potentialInput.xMax+Gap,content.y,44,PotentialInputHeight);
             potentialCost=new Rect(content.x,potentialInput.yMax+Gap,content.width,14);
             potentialApply=new Rect(content.x,potentialCost.yMax+Gap,content.width,24);
         }
