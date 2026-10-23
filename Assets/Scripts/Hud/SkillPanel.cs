@@ -182,7 +182,7 @@ public partial class Panel
         SkillTemplate[] templates=SkillTabState.Templates();
         bool found=false;foreach(SkillTemplate t in templates) found|=t.id==skillSelectedId;
         if(!found) skillSelectedId=templates.Length>0 ? templates[0].id : -1;
-        skillDetailOpen=skillSelectedId>=0; SkillTabState.Request(); SyncSkillPanel();
+        skillDetailOpen=false; SkillTabState.Request(); SyncSkillPanel();
     }
     private void SyncSkillPanel()
     {

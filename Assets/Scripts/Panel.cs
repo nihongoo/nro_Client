@@ -3063,7 +3063,7 @@ public partial class Panel : IActionListener, IChatable
     private void setTabTool()
     {
         SoundMn.gI().getSoundOption();
-        currentListLength = strTool.Length + (InventoryFrameActive ? 3 : 0);
+        currentListLength = strTool.Length + (InventoryFrameActive ? 2 : 0);
         ITEM_HEIGHT = 24;
         selected = (GameCanvas.isTouch ? (-1) : 0);
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -4355,7 +4355,8 @@ public partial class Panel : IActionListener, IChatable
             }
             g.setColor((i != selected) ? 15196114 : 16383818);
             g.fillRect(num, num2, num3, h);
-            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : i == strTool.Length + 1 ? "Rương đồ" : GuestCredentials.AccountMenuLabel;
+            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : "Rương đồ";
+            if (label == mResources.change_account) label = GuestCredentials.AccountMenuLabel;
             mFont.tahoma_7b_dark.drawString(g, label, xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
             if (!label.Equals(mResources.gameInfo))
             {
@@ -7321,8 +7322,10 @@ public partial class Panel : IActionListener, IChatable
         {
             return;
         }
+        if (selected < strTool.Length && strTool[selected] == mResources.change_account) {
+            EmailLinkFlow.Open(); return;
+        }
         if (InventoryFrameActive && selected >= strTool.Length) {
-            if (selected == strTool.Length + 2) { EmailLinkFlow.Open(); return; }
             if (selected == strTool.Length) { CloseInventoryBagDetail(); inventoryAppearanceFromSettings = false; SelectInventoryFrameTab(4); }
             else if (selected == strTool.Length + 1) {
                 if (Char.myCharz().arrItemBox == null) { GameCanvas.startOKDlg("Chưa có dữ liệu rương. Hãy mở rương tại NPC."); return; }
@@ -7373,9 +7376,6 @@ public partial class Panel : IActionListener, IChatable
                 case 7:
                     setTypeOption();
                     break;
-                case 8:
-                    GameCanvas.loginScr.backToRegister();
-                    break;
                 case 9:
                     if (GameCanvas.loginScr.isLogin2)
                     {
@@ -7423,9 +7423,6 @@ public partial class Panel : IActionListener, IChatable
                 break;
             case 8:
                 setTypeOption();
-                break;
-            case 9:
-                GameCanvas.loginScr.backToRegister();
                 break;
             case 10:
                 if (GameCanvas.loginScr.isLogin2)
@@ -8903,7 +8900,11 @@ public partial class Panel : IActionListener, IChatable
         }
         if (idAction == 10019)
         {
-            GameCanvas.instance.switchAccount();
+            // Recheck a menu opened before an account-state update. Registration-screen
+            // confirmations still use the existing switch action outside the game.
+            if (GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance && !GuestCredentials.IsPermanent)
+                EmailLinkFlow.Open();
+            else GameCanvas.instance.switchAccount();
         }
         if (idAction == 10020)
         {

@@ -132,6 +132,10 @@ class SkillTabTests {
    global::Main.isPC=!mobile;UnityEngine.Device.Application.platform=mobile?RuntimePlatform.Android:RuntimePlatform.WindowsPlayer;
    GameCanvas.w=viewport[0];GameCanvas.h=viewport[1];mGraphics.zoomLevel=zoom;SkillTabState.Reset();GameCanvas.panel.Show();
    Check(SkillTabState.Waiting,"initial request must have bounded loading state");
+   Check(!GameCanvas.panel.SkillDetailOpen,"opening the tab automatically opens a skill detail");
+   var initialPaint=new mGraphics();GameCanvas.panel.Paint(initialPaint);
+   Check(!initialPaint.texts.Contains("Ô phím"),"initial tab paints the detail controls");
+   Click(SkillPanelLayout.CellBounds(0));Check(GameCanvas.panel.SkillDetailOpen,"tapping a skill did not open detail");
    foreach(Skill learned in c.learned)learned.point=7;
    var maxPaint=new mGraphics();GameCanvas.panel.Paint(maxPaint);
    Check(maxPaint.texts.Contains("Đã tối đa")&&!maxPaint.texts.Contains("Đang tải..."),"max level waits for server");
@@ -218,6 +222,9 @@ class SkillTabTests {
    var descriptionPaint=new mGraphics();GameCanvas.panel.Paint(descriptionPaint);
    Check(descriptionPaint.texts.Exists(text=>text.Contains("Thông tin cấp")),"real per-level description missing");
   }
+  GameCanvas.panel.Show();Check(!GameCanvas.panel.SkillDetailOpen,"reopening tab retained an open detail");
+  Click(SkillPanelLayout.CellBounds(0));Check(GameCanvas.panel.SkillDetailOpen,"reopened tab cannot select a skill");
+  GameCanvas.panel.Show();Check(!GameCanvas.panel.SkillDetailOpen,"switching back to tab reopened detail");
   Check(SkillTabState.BookId(2,7)==86&&SkillTabState.BookId(2,6)==84,"Demon book gap lost");
   Check(SkillTabState.Clock(90061000)=="25:01:01","long countdown wrapped at 24 hours");
   GameCanvas.panel.Show();TileMap.mapID=5;GameScr.npc=new Npc{cx=c.cx,cy=c.cy};SkillTabState.GoToTeacher();SkillTabState.Update();
