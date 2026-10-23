@@ -109,32 +109,24 @@ namespace Hud
         internal static Rect Frame {get{EnsureMetrics();return metrics.Frame;}}
         internal static Rect Content {get{EnsureMetrics();return metrics.Content;}}
         internal static int LineHeight {get{EnsureMetrics();return metrics.LineHeight;}}
-        internal static float RowHeight {get{EnsureMetrics();return metrics.RowHeight;}}
         internal static float DesignSize {get{EnsureMetrics();return metrics.DesignSize;}}
         internal static float Size {get{EnsureMetrics();return metrics.Size;}}
-        internal static float ColumnGap {get{EnsureMetrics();return metrics.ColumnGap;}}
-        internal static float RowGap {get{EnsureMetrics();return metrics.RowGap;}}
-        internal static float GridBottomGap {get{EnsureMetrics();return metrics.GridBottomGap;}}
-        internal static Rect PotentialContent {get{EnsureMetrics();return Scrolled(metrics.PotentialContent);}}
         internal static Rect PotentialHeaderBounds {get{EnsureMetrics();return Scrolled(metrics.PotentialHeaderBounds);}}
         internal static Rect ScrollBounds {get{EnsureMetrics();return metrics.ScrollBounds;}}
         internal static float IntrinsicTextWidth {get{EnsureMetrics();return metrics.IntrinsicTextWidth;}}
         internal static Rect IntrinsicBounds {get{EnsureMetrics();return Scrolled(metrics.IntrinsicBounds);}}
         internal static Rect IntrinsicIconBounds {get{EnsureMetrics();return Scrolled(metrics.IntrinsicIconBounds);}}
         internal static Rect SkillsGroupBounds {get{EnsureMetrics();return Scrolled(metrics.SkillsGroupBounds);}}
-        internal static float PotentialGroupTop {get{EnsureMetrics();return metrics.PotentialGroupTop-(GameCanvas.panel?.SkillScroll??0);}}
         internal static Rect PotentialGroupBounds {get{EnsureMetrics();return Scrolled(metrics.PotentialGroupBounds);}}
         internal static string PotentialTitle {get{EnsureMetrics();return metrics.PotentialTitle;}}
         internal static string ActivityTitle {get{EnsureMetrics();return metrics.ActivityTitle;}}
         internal static bool CombinedTitle {get{EnsureMetrics();return metrics.CombinedTitle;}}
-        internal static int TitleHeight {get{EnsureMetrics();return metrics.TitleHeight;}}
         internal static Rect DetailBounds {get{EnsureMetrics();return metrics.DetailBounds;}}
         internal static Rect DetailContent {get{EnsureMetrics();return metrics.DetailContent;}}
         internal static float ControlsTop {get{EnsureMetrics();return metrics.ControlsTop;}}
         internal static Rect UpperBounds {get{EnsureMetrics();return metrics.UpperBounds;}}
         internal static float ContentHeight {get{EnsureMetrics();return metrics.ContentHeight;}}
         private static Rect Scrolled(Rect rect) {rect.y-=GameCanvas.panel?.SkillScroll??0;return rect;}
-        internal static Rect IntrinsicBarBounds {get{EnsureMetrics();return Scrolled(metrics.IntrinsicBounds);}}
         internal static Rect CellBounds(int i) {EnsureMetrics();return Scrolled(cells[i]);}
         internal static Rect PotentialBounds(int i) {EnsureMetrics();return Scrolled(potentialRows[i]);}
         internal static Rect KeyBounds(int i) {EnsureMetrics();return keys[i];}
@@ -310,7 +302,7 @@ public partial class Panel
         Rect intrinsicIcon=SkillPanelLayout.IntrinsicIconBounds;
         // One frame encloses the icon and description, exactly as tall as the skill icon.
         InventoryFrame.Clip(g,viewport);
-        InventoryFrame.PaintSection(g,SkillPanelLayout.IntrinsicBarBounds,InventoryFrame.EquipmentBackground);
+        InventoryFrame.PaintSection(g,SkillPanelLayout.IntrinsicBounds,InventoryFrame.EquipmentBackground);
         InventoryItemVisuals.PaintSkillIcon(g,spearcialImage,intrinsicIcon,viewport);
         Rect intrinsicText=new Rect(intrinsicIcon.xMax+SkillPanelLayout.Gap,intrinsic.y,SkillPanelLayout.IntrinsicTextWidth,intrinsic.height);
         string[] lines=SkillIntrinsicLines;

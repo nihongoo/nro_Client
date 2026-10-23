@@ -1,19 +1,5 @@
 public class Skill
 {
-    public const sbyte ATT_STAND = 0;
-
-    public const sbyte ATT_FLY = 1;
-
-    public const sbyte SKILL_AUTO_USE = 0;
-
-    public const sbyte SKILL_CLICK_USE_ATTACK = 1;
-
-    public const sbyte SKILL_CLICK_USE_BUFF = 2;
-
-    public const sbyte SKILL_CLICK_NPC = 3;
-
-    public const sbyte SKILL_CLICK_LIVE = 4;
-
     public static bool isDisabled(int templateId)
     {
         return templateId == 24 || templateId == 25 || templateId == 26;
