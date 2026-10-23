@@ -1971,10 +1971,6 @@ public partial class Panel : IActionListener, IChatable
         updateKeyScrollView();
     }
 
-    private void updateKeyPetSkill()
-    {
-    }
-
     private void keyGiaodich()
     {
         updateKeyScrollView();
@@ -3053,10 +3049,6 @@ public partial class Panel : IActionListener, IChatable
         {
             cmy = (cmtoY = cmyLim);
         }
-    }
-
-    private void setTabPetSkill()
-    {
     }
 
     private void setTabTool()
