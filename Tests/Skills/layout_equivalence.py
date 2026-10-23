@@ -1,5 +1,6 @@
 """Temporary SKILLDIAG comparison against the approved pre-memoization source.
-No Unity build. Compare every skills.* / inventory.* registry rect and cached metrics.
+No Unity build. Compare unchanged geometry and apply the intended shared scroll/clip
+to every skills.* / inventory.* registry rect; preserve cache reuse.
 """
 from pathlib import Path
 import re
@@ -36,14 +37,26 @@ class LayoutEquivalence {
   Check(names.Count==oldNames.Count,"registered name count");
   for(int i=0;i<names.Count;i++){
    Check(names[i]==oldNames[i],"registered names differ");
-   RectEqual(LegacyHudLayout.GetRect(names[i]),HudLayout.GetRect(names[i]),names[i]);
+   Rect expected=LegacyHudLayout.GetRect(names[i]);
+   if(names[i]==SkillPanelLayout.Left)expected=LegacySkillPanelLayout.Frame;
+   else if(names[i].StartsWith("skills.cell.")) {expected=LegacySkillPanelLayout.CellBounds(int.Parse(names[i].Substring("skills.cell.".Length)));expected.y-=GameCanvas.panel.cmy;expected=InventoryFrame.Intersection(expected,LegacySkillPanelLayout.Frame);}
+   else if(names[i]==SkillPanelLayout.Intrinsic) {expected=LegacySkillPanelLayout.IntrinsicBounds;expected.y-=GameCanvas.panel.cmy;expected=InventoryFrame.Intersection(expected,LegacySkillPanelLayout.Frame);}
+   else if(names[i].StartsWith("skills.potential."))expected=InventoryFrame.Intersection(LegacySkillPanelLayout.PotentialBounds(int.Parse(names[i].Substring("skills.potential.".Length))),LegacySkillPanelLayout.Frame);
+   RectEqual(expected,HudLayout.GetRect(names[i]),names[i]);
   }
   foreach(var property in typeof(SkillPanelLayout).GetProperties(System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic)) {
    if(property.Name=="RectVersion")continue;
    var old=typeof(LegacySkillPanelLayout).GetProperty(property.Name,System.Reflection.BindingFlags.Static|System.Reflection.BindingFlags.NonPublic);
    if(old==null)continue;
    object expected=old.GetValue(null,null),actual=property.GetValue(null,null);
-   if(expected is Rect)RectEqual((Rect)expected,(Rect)actual,"property:"+property.Name);
+   if(expected is Rect) {
+    Rect before=(Rect)expected,after=(Rect)actual;
+    if(property.Name=="ScrollBounds")before=LegacySkillPanelLayout.Frame;
+    else if(property.Name=="IntrinsicBounds"||property.Name=="IntrinsicIconBounds"||property.Name=="IntrinsicBarBounds"||property.Name=="SkillsGroupBounds"||property.Name=="PotentialGroupBounds"||property.Name=="PotentialContent"||property.Name=="PotentialHeaderBounds")before.y-=GameCanvas.panel.cmy;
+    if(property.Name=="PotentialGroupBounds"||property.Name=="PotentialContent")before.height=after.height; // Expanded to contain all five stat rows.
+    RectEqual(before,after,"property:"+property.Name);
+   }
+   else if(property.Name=="PotentialGroupTop")Check((float)expected-GameCanvas.panel.cmy==(float)actual,"potential group offset");
    else Check(expected.Equals(actual),"property:"+property.Name+" old="+expected+" new="+actual);
   }
   cases++;
