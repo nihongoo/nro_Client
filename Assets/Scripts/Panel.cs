@@ -3320,7 +3320,7 @@ public partial class Panel : IActionListener, IChatable
     private void setTabSkill()
     {
         ITEM_HEIGHT = 30;
-        currentListLength = Char.myCharz().nClass.skillTemplates.Length + 6;
+        currentListLength = Char.myCharz().nClass.availableSkillTemplates.Length + 6;
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
         if (cmyLim < 0)
         {
@@ -4471,7 +4471,8 @@ public partial class Panel : IActionListener, IChatable
         g.setColor(16711680);
         g.setClip(xScroll, yScroll, wScroll, hScroll);
         g.translate(0, -cmy);
-        int num = Char.myCharz().nClass.skillTemplates.Length;
+        SkillTemplate[] skillTemplates = Char.myCharz().nClass.availableSkillTemplates;
+        int num = skillTemplates.Length;
         for (int i = 0; i < num + 6; i++)
         {
             int num2 = xScroll + 30;
@@ -4555,7 +4556,7 @@ public partial class Panel : IActionListener, IChatable
                 continue;
             }
             int num9 = i - 6;
-            SkillTemplate skillTemplate = Char.myCharz().nClass.skillTemplates[num9];
+            SkillTemplate skillTemplate = skillTemplates[num9];
             SmallImage.drawSmallImage(g, skillTemplate.iconId, num5 + 4, num6 + 4, 0, 0);
             Skill skill = Char.myCharz().getSkill(skillTemplate);
             if (skill != null)
@@ -8303,7 +8304,7 @@ public partial class Panel : IActionListener, IChatable
         if (selected != 0 && selected != 1 && selected != 2 && selected != 3 && selected != 4 && selected != 5)
         {
             int num = selected - 6;
-            SkillTemplate skillTemplate = Char.myCharz().nClass.skillTemplates[num];
+            SkillTemplate skillTemplate = Char.myCharz().nClass.availableSkillTemplates[num];
             Skill skill = Char.myCharz().getSkill(skillTemplate);
             Skill skill2 = null;
             MyVector myVector = new MyVector(string.Empty);

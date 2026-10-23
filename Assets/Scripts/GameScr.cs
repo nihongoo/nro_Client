@@ -480,7 +480,7 @@ public class GameScr : mScreen, IChatable
 
     private static Command[] cmdTestLogin;
 
-    public const int numSkill = 10;
+    public const int numSkill = 8;
 
     public const int numSkill_2 = 5;
 
@@ -1229,13 +1229,13 @@ public class GameScr : mScreen, IChatable
     public void onOSkill(sbyte[] oSkillID)
     {
         Cout.println("GET onScreenSkill!");
-        onScreenSkill = new Skill[10];
+        onScreenSkill = new Skill[numSkill];
         if (oSkillID == null)
         {
             loadDefaultonScreenSkill();
             return;
         }
-        for (int i = 0; i < oSkillID.Length; i++)
+        for (int i = 0; i < oSkillID.Length && i < onScreenSkill.Length; i++)
         {
             for (int j = 0; j < Char.myCharz().vSkillFight.size(); j++)
             {
@@ -1252,13 +1252,13 @@ public class GameScr : mScreen, IChatable
     public void onKSkill(sbyte[] kSkillID)
     {
         Cout.println("GET KEYSKILL!");
-        keySkill = new Skill[10];
+        keySkill = new Skill[numSkill];
         if (kSkillID == null)
         {
             loadDefaultKeySkill();
             return;
         }
-        for (int i = 0; i < kSkillID.Length; i++)
+        for (int i = 0; i < kSkillID.Length && i < keySkill.Length; i++)
         {
             for (int j = 0; j < Char.myCharz().vSkillFight.size(); j++)
             {
@@ -1327,7 +1327,7 @@ public class GameScr : mScreen, IChatable
     {
         Skill skill = Char.myCharz().getSkill(skillTemplate);
         MyVector myVector = new MyVector();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < numSkill; i++)
         {
             object[] p = new object[2]
             {
@@ -1350,7 +1350,7 @@ public class GameScr : mScreen, IChatable
         Skill skill = Char.myCharz().getSkill(skillTemplate);
         string[] array = ((!TField.isQwerty) ? mResources.key_skill : mResources.key_skill_qwerty);
         MyVector myVector = new MyVector();
-        for (int i = 0; i < 10; i++)
+        for (int i = 0; i < numSkill; i++)
         {
             object[] p = new object[2]
             {
@@ -1402,6 +1402,7 @@ public class GameScr : mScreen, IChatable
 
     public void addSkillShortcut(Skill skill)
     {
+        if (skill == null || skill.template == null || Skill.isDisabled(skill.template.id)) return;
         Cout.println("ADD SKILL SHORTCUT TO SKILL " + skill.template.id);
         for (int i = 0; i < onScreenSkill.Length; i++)
         {
@@ -2751,20 +2752,6 @@ public class GameScr : mScreen, IChatable
                                 doSelectSkill(keySkill[7], isShortcut: true);
                             }
                         }
-                        else if (GameCanvas.keyPressed[9])
-                        {
-                            if (keySkill[8] != null)
-                            {
-                                doSelectSkill(keySkill[8], isShortcut: true);
-                            }
-                        }
-                        else if (GameCanvas.keyPressed[0])
-                        {
-                            if (keySkill[9] != null)
-                            {
-                                doSelectSkill(keySkill[9], isShortcut: true);
-                            }
-                        }
                         else if (GameCanvas.keyAsciiPress == 114)
                         {
                             ChatTextField.gI().startChat(this, string.Empty);
@@ -2793,7 +2780,7 @@ public class GameScr : mScreen, IChatable
                     }
                     else if (GameCanvas.keyAsciiPress == 57)
                     {
-                        if (keySkill[(!Main.isPC) ? 2 : 21] != null)
+                        if (keySkill[2] != null)
                         {
                             doSelectSkill(keySkill[2], isShortcut: true);
                         }
@@ -3950,7 +3937,9 @@ public class GameScr : mScreen, IChatable
 
     public void doSelectSkill(Skill skill, bool isShortcut)
     {
-        if (Char.myCharz().isCreateDark || isCharging() || Char.myCharz().taskMaint.taskId <= 1)
+        if (skill == null || Skill.isDisabled(skill.template.id) || Char.myCharz().cHP <= 0
+            || Char.myCharz().statusMe == 5 || Char.myCharz().statusMe == 14
+            || Char.myCharz().isCreateDark || isCharging() || Char.myCharz().taskMaint.taskId <= 1)
         {
             return;
         }
@@ -3963,7 +3952,7 @@ public class GameScr : mScreen, IChatable
             lastSkill = skill;
             selectedIndexSkill = -1;
             gI().auto = 0;
-            return;
+            if (!skill.template.isBuffToPlayer()) return;
         }
         if (Char.myCharz().isUseSkillSpec())
         {
@@ -3997,7 +3986,7 @@ public class GameScr : mScreen, IChatable
         }
         if (Char.myCharz().charFocus != null || !Char.myCharz().isSelectingSkillBuffToPlayer())
         {
-            if (Char.myCharz().focusToAttack())
+            if (Char.myCharz().isSelectingSkillBuffToPlayer() || Char.myCharz().focusToAttack())
             {
                 doFire(isShortcut, skipWaypoint: true);
                 doSeleckSkillFlag = true;
@@ -6859,8 +6848,8 @@ public class GameScr : mScreen, IChatable
         img_ct_bar_0 = mSystem.loadImage("/mainImage/i_pve_bar_0.png");
         img_ct_bar_1 = mSystem.loadImage("/mainImage/i_pve_bar_1.png");
         cmdTestLogin = null;
-        keySkill = new Skill[10];
-        onScreenSkill = new Skill[10];
+        keySkill = new Skill[numSkill];
+        onScreenSkill = new Skill[numSkill];
         tam = 0;
         isPaint = true;
         shock_x = new int[4] { 1, -1, 1, -1 };

@@ -14,6 +14,11 @@ public class Skill
 
     public const sbyte SKILL_CLICK_LIVE = 4;
 
+    public static bool isDisabled(int templateId)
+    {
+        return templateId == 24 || templateId == 25 || templateId == 26;
+    }
+
     public SkillTemplate template;
 
     public short skillId;
