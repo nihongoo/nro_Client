@@ -640,9 +640,11 @@ public class TField : IActionListener
 		}
 	}
 
-	public void paint(mGraphics g)
-	{
-		g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
+	public void paint(mGraphics g) { paint(g,0,0,GameCanvas.w,GameCanvas.h); }
+
+    public void paint(mGraphics g,int clipLeft,int clipTop,int clipWidth,int clipHeight,bool showClear=true)
+    {
+        g.setClip(clipLeft,clipTop,clipWidth,clipHeight);
 		bool flag = isFocused();
 		if (inputType == INPUT_TYPE_PASSWORD && !revealPassword)
 		{
@@ -655,7 +657,8 @@ public class TField : IActionListener
         string composition = name == "chat" && Main.isPC && isFocus ? UnityEngine.Input.compositionString : string.Empty;
         string displayText = string.IsNullOrEmpty(composition) ? paintedText : paintedText.Insert(caretPos, composition);
 		paintInputTf(g, flag, x, y - 1, width, height + 5, TEXT_GAP_X + offsetX + x + 1, y + (height - mFont.tahoma_8b.getHeight()) / 2 + 2, displayText, name);
-		g.setClip(x + 3, y + 1, width - 4, height - 2);
+		int left=System.Math.Max(x+3,clipLeft),top=System.Math.Max(y+1,clipTop);
+        g.setClip(left,top,System.Math.Max(0,System.Math.Min(x+width-1,clipLeft+clipWidth)-left),System.Math.Max(0,System.Math.Min(y+height-1,clipTop+clipHeight)-top));
 		g.setColor(0);
 		if (flag && isPaintMouse && isPaintCarret)
 		{
@@ -665,7 +668,7 @@ public class TField : IActionListener
 				g.fillRect(TEXT_GAP_X + 1 + offsetX + x + mFont.tahoma_8b.getWidth(paintedText.Substring(0, caretPos) + "a") - CARET_WIDTH - mFont.tahoma_8b.getWidth("a"), y + (height - CARET_HEIGHT) / 2 + 5, CARET_WIDTH, CARET_HEIGHT);
 			}
 			GameCanvas.resetTrans(g);
-			if (text != null && text.Length > 0 && GameCanvas.isTouch)
+			if (showClear && text != null && text.Length > 0 && GameCanvas.isTouch)
 			{
 				g.drawImage(GameCanvas.imgClear, x + width - 13, y + height / 2 + 3, mGraphics.VCENTER | mGraphics.HCENTER);
 			}
@@ -711,8 +714,10 @@ public class TField : IActionListener
 		}
 	}
 
-	public void update()
-	{
+	public void update() { update(true); }
+
+    public void update(bool handlePointer)
+    {
 		isPaintCarret = true;
 		if (Main.isPC)
 		{
@@ -780,7 +785,7 @@ public class TField : IActionListener
 		{
 			showCaretCounter--;
 		}
-		if (GameCanvas.isPointerJustRelease)
+		if (handlePointer && GameCanvas.isPointerJustRelease)
 		{
 			setTextBox();
 		}

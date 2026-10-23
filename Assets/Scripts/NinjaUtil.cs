@@ -157,7 +157,7 @@ public class NinjaUtil
 			break;
 		}
 		return text;
-	}
+    }
 
 	public static string getTimeAgo(int timeRemainS)
 	{

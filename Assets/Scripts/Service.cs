@@ -943,6 +943,31 @@ public class Service
 		}
 	}
 
+    public void potentialRequest(int action,int id,int type,long expected,long target)
+    {
+        Message request=null;
+        try {
+            request=new Message(Hud.SkillTabState.CommandId);request.writer().writeByte((sbyte)action);
+            if(action==5){request.writer().writeInt(id);request.writer().writeByte((sbyte)type);request.writer().writeLong(expected);request.writer().writeLong(target);}
+            session.sendMessage(request);
+        } catch(Exception e){Cout.println(e.ToString());}
+        finally {if(request!=null)request.cleanup();}
+    }
+
+    public void skillTabRequest(int action, int value = 0, int extra = 0, long token = 0)
+    {
+        Message request = null;
+        try {
+            request = new Message(Hud.SkillTabState.CommandId);
+            request.writer().writeByte((sbyte)action);
+            if (action == 1) { request.writer().writeShort(value); request.writer().writeLong(token); request.writer().writeInt(extra); }
+            if (action == 2) { request.writer().writeByte((sbyte)value); request.writer().writeByte((sbyte)extra); }
+            if (action == 3) request.writer().writeShort(value);
+            session.sendMessage(request);
+        } catch (Exception e) { Cout.println(e.ToString()); }
+        finally { if (request != null) request.cleanup(); }
+    }
+
 	public void charMove()
 	{
 		int num = Char.myCharz().cx - Char.myCharz().cxSend;

@@ -673,6 +673,7 @@ public class GameScr : mScreen, IChatable
         Hud.CombatPcHud.Register();
         Hud.DeadStateHud.Register();
         Hud.InventoryFrame.Register();
+        Hud.SkillPanelLayout.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
             () => GameCanvas.currentScreen == instance && (GameCanvas.currentDialog != null || GameCanvas.panel.isShow
@@ -1321,45 +1322,6 @@ public class GameScr : mScreen, IChatable
             keySkill[i] = skill;
         }
         saveKeySkillToRMS();
-    }
-
-    public void doSetOnScreenSkill(SkillTemplate skillTemplate)
-    {
-        Skill skill = Char.myCharz().getSkill(skillTemplate);
-        MyVector myVector = new MyVector();
-        for (int i = 0; i < numSkill; i++)
-        {
-            object[] p = new object[2]
-            {
-                skill,
-                i + string.Empty
-            };
-            Command command = new Command(mResources.into_place + (i + 1), 11120, p);
-            if (onScreenSkill[i] != null)
-            {
-                command.isDisplay = true;
-            }
-            myVector.addElement(command);
-        }
-        GameCanvas.menu.startAt(myVector, 0);
-    }
-
-    public void doSetKeySkill(SkillTemplate skillTemplate)
-    {
-        Cout.println("DO SET KEY SKILL");
-        Skill skill = Char.myCharz().getSkill(skillTemplate);
-        string[] array = ((!TField.isQwerty) ? mResources.key_skill : mResources.key_skill_qwerty);
-        MyVector myVector = new MyVector();
-        for (int i = 0; i < numSkill; i++)
-        {
-            object[] p = new object[2]
-            {
-                skill,
-                i + string.Empty
-            };
-            myVector.addElement(new Command(array[i], 11121, p));
-        }
-        GameCanvas.menu.startAt(myVector, 0);
     }
 
     public void saveonScreenSkillToRMS()
@@ -4292,6 +4254,7 @@ public class GameScr : mScreen, IChatable
     public override void update()
     {
         MainMod.Update();
+        Hud.SkillTabState.Update();
         if (GameCanvas.keyPressed[16])
         {
             GameCanvas.keyPressed[16] = false;
@@ -6150,38 +6113,6 @@ public class GameScr : mScreen, IChatable
                     Service.gI().playerMenuAction(Char.myCharz().charFocus.charID, (short)Char.myCharz().charFocus.menuSelect);
                 }
                 break;
-            case 11120:
-                {
-                    object[] array2 = (object[])p;
-                    Skill skill4 = (Skill)array2[0];
-                    int num2 = int.Parse((string)array2[1]);
-                    for (int j = 0; j < onScreenSkill.Length; j++)
-                    {
-                        if (onScreenSkill[j] == skill4)
-                        {
-                            onScreenSkill[j] = null;
-                        }
-                    }
-                    onScreenSkill[num2] = skill4;
-                    saveonScreenSkillToRMS();
-                    break;
-                }
-            case 11121:
-                {
-                    object[] array = (object[])p;
-                    Skill skill3 = (Skill)array[0];
-                    int num = int.Parse((string)array[1]);
-                    for (int i = 0; i < keySkill.Length; i++)
-                    {
-                        if (keySkill[i] == skill3)
-                        {
-                            keySkill[i] = null;
-                        }
-                    }
-                    keySkill[num] = skill3;
-                    saveKeySkillToRMS();
-                    break;
-                }
             case 11067:
                 if (TileMap.zoneID != indexSelect)
                 {

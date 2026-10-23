@@ -208,7 +208,8 @@ namespace Mod.CuongLe
 
         private static int frameCount = 0;
 
-        private static long lastTime = 1000; 
+        private static long lastTime = -1;
+        private static int lastRenderedFrame = -1;
 
         private static int fps = 0;
 
@@ -294,21 +295,24 @@ namespace Mod.CuongLe
     	}
 
 
-        public static int CalculateFPS()
+        // A getter must not count repaint callbacks as new frames. Main records completed draws.
+        public static int CalculateFPS() => fps;
+
+        public static void RecordRenderedFrame()
         {
-            frameCount++;
-            long currentTime = mSystem.currentTimeMillis();
-
-            long deltaTime = currentTime - lastTime;
-
-            if (deltaTime >= 500) 
-            {
-                fps = (int)(frameCount * 1000.0 / deltaTime + 0.5); 
-                frameCount = 0;
-                lastTime = currentTime;
+            int currentFrame=Time.frameCount;
+            if(currentFrame==lastRenderedFrame)return;
+            lastRenderedFrame=currentFrame;
+            long currentTime=mSystem.currentTimeMillis();
+            if(lastTime<0||currentTime<lastTime) {
+                lastTime=currentTime;frameCount=0;return;
             }
-
-            return fps;
+            frameCount++;
+            long deltaTime=currentTime-lastTime;
+            if(deltaTime>=500) {
+                fps=(int)(frameCount*1000.0/deltaTime+0.5);
+                frameCount=0;lastTime=currentTime;
+            }
         }
 
         public static void Paint(mGraphics g)

@@ -14,30 +14,76 @@ namespace Hud
         internal static string Filter(int index) => "inventory.filter." + index;
         // Original Panel.paintInventory / paintBottomMoneyInfo colors.
         internal const int Border = 6702080, Accent = 16383818,
-            EquipmentBackground = 15196114, SlotBackground = 9993045, MoneyBackground = 11837316;
+            EquipmentBackground = 15196114, SlotBackground = 9993045, MoneyBackground = 11837316, PanelBackground = 14338484;
+        internal const int Padding=6, Gap=4, FrameInset=3, FrameBorder=0xC78A36;
         internal const float MoneyIconHeight = 10, MoneyGap = 3;
+        internal static Rect Inset(Rect rect,float padding=Padding) => new Rect(rect.x+padding,rect.y+padding,Mathf.Max(0,rect.width-2*padding),Mathf.Max(0,rect.height-2*padding));
+        internal static void PaintSection(mGraphics g,Rect rect,int background) => Rounded(g,rect,background,255,FrameBorder);
         internal static bool Visible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
             && GameCanvas.panel != null && GameCanvas.panel.isShow
             && GameCanvas.panel.InventoryFrameActive && GameCanvas.panel.InventoryFrameTabIds.Length > 0
             && GameCanvas.currentDialog == null
             && !GameCanvas.menu.showMenu && !Notifications.NotificationCenter.IsOpen;
-        // Mockup pixels are reference-design pixels, as in CombatMobileHud. Font and
-        // native game icons remain logical-sized; MotherCanvas zoom is not changed.
-        internal static float Unit(float pixels) => HudLayout.PixelsToLogical(pixels)
-            * (GameCanvas.h * Mathf.Max(1, mGraphics.zoomLevel) / HudLayout.DesignReference.y);
+        // Cache the fixed frame geometry; scrolling is applied only by row providers.
+        private struct FrameMetrics
+        {
+            internal int Width, Height, Zoom;
+            internal bool Mobile;
+            internal mFont Font;
+            internal float FitScale, EquipmentSize, EquipmentGap, EquipmentLeft, BagSize, BagGap, BagLeft;
+            internal Rect Root, Close, Tabs, Money, Bag, Detail;
+        }
+        private static FrameMetrics metrics;
+        private static bool metricsReady;
+        private static long metricsFrame=-1, metricsState=-1, metricsVersion;
+        internal static long MetricsVersion {get{EnsureMetrics();return metricsVersion;}}
+        private static float Unit(float pixels,int zoom,float fitScale) => pixels / Mathf.Max(1,zoom) * fitScale;
+        private static void EnsureMetrics()
+        {
+            long tick=HudLayout.FrameId,state=HudLayout.StateGeneration;
+            if(metricsReady&&metricsFrame==tick&&metricsState==state&&metrics.Width==GameCanvas.w
+                &&metrics.Height==GameCanvas.h&&metrics.Zoom==mGraphics.zoomLevel&&ReferenceEquals(metrics.Font,mFont.tahoma_7_yellow))return;
+
+                bool mobile=HudLayout.IsMobileLayout;
+                metricsFrame=tick;metricsState=state;
+                if(metricsReady&&metrics.Width==GameCanvas.w&&metrics.Height==GameCanvas.h&&metrics.Zoom==mGraphics.zoomLevel
+                    &&metrics.Mobile==mobile&&ReferenceEquals(metrics.Font,mFont.tahoma_7_yellow))return;
+
+                var next=new FrameMetrics {Width=GameCanvas.w,Height=GameCanvas.h,Zoom=mGraphics.zoomLevel,Mobile=mobile,Font=mFont.tahoma_7_yellow};
+                next.FitScale=GameCanvas.h * Mathf.Max(1,mGraphics.zoomLevel) / (mobile?390f:720f);
+                float width=Mathf.Max(Unit(mobile?300:380,next.Zoom,next.FitScale),
+                    next.Font.getWidth("99.999.999.999")+next.Font.getWidth("1.000.000")+42);
+                next.Root=HudLayout.Anchor(HorizontalAnchor.Left,VerticalAnchor.Top,new Vector2(width,GameCanvas.h),Vector2.zero);
+                next.Close=new Rect(next.Root.xMax-21,3,18,18);
+                next.Tabs=new Rect(2,48,next.Root.width-4,24);
+                next.Money=new Rect(1,next.Root.yMax-20,next.Root.width-2,19);
+                next.Bag=new Rect(3,73,next.Root.width-6,Mathf.Max(0,next.Money.y-75));
+                next.Detail=HudLayout.Anchor(HorizontalAnchor.Right,VerticalAnchor.Top,
+                    new Vector2(Mathf.Min(Unit(mobile?250:320,next.Zoom,next.FitScale),Mathf.Max(0,GameCanvas.w-next.Root.width-8)),GameCanvas.h),Vector2.zero);
+                next.EquipmentSize=Unit(mobile?40:64,next.Zoom,next.FitScale);
+                next.EquipmentGap=Mathf.Max(4,Unit(12,next.Zoom,next.FitScale));
+                next.EquipmentLeft=(next.Root.width-next.EquipmentSize*3-next.EquipmentGap*2)/2;
+                next.BagSize=Unit(mobile?44:56,next.Zoom,next.FitScale);
+                next.BagGap=Mathf.Max(6,Unit(12,next.Zoom,next.FitScale));
+                next.BagLeft=(next.Root.width-next.BagSize*InventoryBag.Columns-next.BagGap*(InventoryBag.Columns-1))/2;
+                metrics=next;metricsReady=true;metricsVersion++;
+        }
+        // Preserve the original operation order, including division before multiplication.
+        internal static float Unit(float pixels) {EnsureMetrics();return Unit(pixels,metrics.Zoom,metrics.FitScale);}
+        private static Rect RootBounds {get{EnsureMetrics();return metrics.Root;}}
+        private static Rect CloseBounds {get{EnsureMetrics();return metrics.Close;}}
+        private static Rect TabsBounds {get{EnsureMetrics();return metrics.Tabs;}}
+        private static Rect MoneyBounds {get{EnsureMetrics();return metrics.Money;}}
+        private static Rect BagBounds {get{EnsureMetrics();return metrics.Bag;}}
+        private static Rect DetailBounds {get{EnsureMetrics();return metrics.Detail;}}
         internal static string Slot(int i) => "inventory.equipment." + i;
         internal static string Tab(int i) => "inventory.tab." + i;
         internal static void Register()
         {
             for (int i = 0; i < bagCells.Length; i++) bagCells[i] = "inventory.bag.cell." + i;
-            HudLayout.Register(Root, () => HudLayout.Anchor(HorizontalAnchor.Left, VerticalAnchor.Top,
-                new Vector2(Mathf.Max(Unit(HudLayout.IsMobileLayout ? 300 : 380),
-                    mFont.tahoma_7_yellow.getWidth("99.999.999.999") + mFont.tahoma_7_yellow.getWidth("1.000.000") + 42), GameCanvas.h), Vector2.zero),
-                HudLayout.OverlayOrder + 10, () => Visible);
-            HudLayout.Register(Close, () => new Rect(HudLayout.GetRect(Root).xMax - 21, 3, 18, 18),
-                HudLayout.OverlayOrder + 12, () => Visible);
-            HudLayout.Register(Tabs, () => new Rect(2, 48, HudLayout.GetRect(Root).width - 4, 24),
-                HudLayout.OverlayOrder + 11, () => false, false);
+            HudLayout.Register(Root,()=>RootBounds,HudLayout.OverlayOrder+10,()=>Visible,cacheVersion:()=>MetricsVersion);
+            HudLayout.Register(Close,()=>CloseBounds,HudLayout.OverlayOrder+12,()=>Visible,cacheVersion:()=>MetricsVersion);
+            HudLayout.Register(Tabs,()=>TabsBounds,HudLayout.OverlayOrder+11,()=>false,false,()=>MetricsVersion);
             // Keep old internal tab IDs: the remapping never changes gameplay handlers.
             for (int i = 0; i < 5; i++) {
                 int slot = i;
@@ -56,14 +102,8 @@ namespace Hud
             }
             HudLayout.Register(Equipment, () => HudLayout.GetRect(Bag), HudLayout.OverlayOrder + 11,
                 () => Visible && GameCanvas.panel.currentTabIndex == 1);
-            HudLayout.Register(Money, () => {
-                Rect panel = HudLayout.GetRect(Root);
-                return new Rect(1, panel.yMax - 20, panel.width - 2, 19);
-            }, HudLayout.OverlayOrder + 11, () => Visible);
-            HudLayout.Register(Bag, () => {
-                Rect panel = HudLayout.GetRect(Root), money = HudLayout.GetRect(Money);
-                return new Rect(3, 73, panel.width - 6, Mathf.Max(0, money.y - 75));
-            }, HudLayout.OverlayOrder + 11, () => Visible && GameCanvas.panel.currentTabIndex == 1);
+            HudLayout.Register(Money,()=>MoneyBounds,HudLayout.OverlayOrder+11,()=>Visible,cacheVersion:()=>MetricsVersion);
+            HudLayout.Register(Bag,()=>BagBounds,HudLayout.OverlayOrder+11,()=>Visible&&GameCanvas.panel.currentTabIndex==1,cacheVersion:()=>MetricsVersion);
             for (int i = 0; i < bagCells.Length; i++) {
                 int slot = i;
                 HudLayout.Register(BagCell(i), () => {
@@ -79,9 +119,8 @@ namespace Hud
                 HudLayout.Register(Filter(i), () => Intersection(FilterBounds(filter), new Rect(3, 73, HudLayout.GetRect(Root).width - 6, Mathf.Max(0, HudLayout.GetRect(Money).y - 75))),
                     HudLayout.OverlayOrder + 13, () => Visible && GameCanvas.panel.currentTabIndex == 1);
             }
-            HudLayout.Register(Detail, () => HudLayout.Anchor(HorizontalAnchor.Right, VerticalAnchor.Top,
-                new Vector2(Mathf.Min(Unit(HudLayout.IsMobileLayout ? 250 : 320), Mathf.Max(0, GameCanvas.w - HudLayout.GetRect(Root).width - 8)), GameCanvas.h), Vector2.zero),
-                HudLayout.OverlayOrder + 14, () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
+            HudLayout.Register(Detail,()=>DetailBounds,HudLayout.OverlayOrder+14,
+                ()=>Visible&&GameCanvas.panel.InventoryBagDetailOpen,cacheVersion:()=>MetricsVersion);
             HudLayout.Register(DetailClose, () => new Rect(HudLayout.GetRect(Detail).xMax - 21, 3, 18, 18),
                 HudLayout.OverlayOrder + 15, () => Visible && GameCanvas.panel.InventoryBagDetailOpen);
             HudLayout.Register(DetailUpper, () => GameCanvas.panel.InventoryDetailUpperBounds, HudLayout.OverlayOrder + 15,
@@ -96,17 +135,16 @@ namespace Hud
         }
         internal static Rect EquipmentBounds(int slot)
         {
-            float size = Unit(HudLayout.IsMobileLayout ? 40 : 64);
-            float gap = Mathf.Max(4, Unit(12));
-            float left = (HudLayout.GetRect(Root).width - size * 3 - gap * 2) / 2;
-            return new Rect(left + slot % 3 * (size + gap), 86 + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
+            EnsureMetrics();
+            float size=metrics.EquipmentSize,gap=metrics.EquipmentGap,left=metrics.EquipmentLeft;
+            return new Rect(left + slot % 3 * (size + gap), 73 + Padding + 12 + Gap + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
         }
         internal static float EquipmentBottom => EquipmentBounds(8).yMax + 10;
         internal static Rect Intersection(Rect a, Rect b) => Rect.MinMaxRect(Mathf.Max(a.xMin, b.xMin),
             Mathf.Max(a.yMin, b.yMin), Mathf.Max(Mathf.Max(a.xMin, b.xMin), Mathf.Min(a.xMax, b.xMax)),
             Mathf.Max(Mathf.Max(a.yMin, b.yMin), Mathf.Min(a.yMax, b.yMax)));
-        internal static float BagSize => Unit(HudLayout.IsMobileLayout ? 44 : 56);
-        internal static float BagGap => Mathf.Max(6, Unit(12));
+        internal static float BagSize {get{EnsureMetrics();return metrics.BagSize;}}
+        internal static float BagGap {get{EnsureMetrics();return metrics.BagGap;}}
         internal static Rect FilterBounds(int index)
         {
             Rect panel = HudLayout.GetRect(Root);
@@ -114,7 +152,7 @@ namespace Hud
         }
         internal static Rect BagCellBounds(int index)
         {
-            float left = (HudLayout.GetRect(Root).width - BagSize * InventoryBag.Columns - BagGap * (InventoryBag.Columns - 1)) / 2;
+            EnsureMetrics();float left=metrics.BagLeft;
             return new Rect(left + index % InventoryBag.Columns * (BagSize + BagGap),
                 FilterBounds(0).yMax + 6 + index / InventoryBag.Columns * (BagSize + BagGap), BagSize, BagSize);
         }
@@ -207,6 +245,7 @@ public partial class Panel
 
     private void CloseInventoryFrame()
     {
+        ClosePotentialEditor();
         CloseInventoryBagDetail();
         if (currentTabName.Length >= 7 && currentTabIndex == 4 && inventoryAppearanceFromSettings) {
             lastTabIndex[0] = 6;
@@ -237,6 +276,8 @@ public partial class Panel
             int previousScroll = cmy;
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
             if (cmy != previousScroll) HudLayout.Invalidate();
+        } else if (currentTabIndex == 2) {
+            SyncSkillPanel();
         } else if (currentTabIndex == 4 || currentTabIndex == 5 || currentTabIndex == 6) {
             cmyLim = Mathf.Max(0, currentListLength * ITEM_HEIGHT - hScroll);
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
@@ -246,6 +287,7 @@ public partial class Panel
     private void SelectInventoryFrameTab(int id)
     {
         if (id >= currentTabName.Length) return;
+        ClosePotentialEditor();
         CloseInventoryBagDetail();
         currentTabIndex = id; lastTabIndex[type] = id;
         selected = -1; cp = null; cmy = cmtoY = 0;
@@ -262,11 +304,11 @@ public partial class Panel
 
     private bool UpdateInventoryFrameInput()
     {
-        SyncInventoryFrame();
-        EnsureInventoryDetailLayout();
+         SyncInventoryFrame();EnsureInventoryDetailLayout();
         if (isClose || cmtoX > 0) return true;
         if (!isShow || (chatTField != null && chatTField.isShow) || InfoDlg.isShow
             || tabIcon != null && tabIcon.isShow || GameCanvas.currentDialog != null || GameCanvas.menu.showMenu) return false;
+        if (currentTabIndex == 2) return UpdateSkillPanelInput();
         string hit = HudLayout.HitTest(new Vector2(GameCanvas.px, GameCanvas.py));
         if (GameCanvas.isPointerJustDown) {
             inventoryPressed = hit;
@@ -358,10 +400,7 @@ public partial class Panel
             mFont.tahoma_7_yellow.drawString(g, mResources.vitality + ": " + character.cStamina + "/" + character.cMaxStamina, 46, 12, 0);
             mFont.tahoma_7_yellow.drawString(g, character.me ? character.getStrLevel() : character.currStrLevel, 46, 23, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.power + ": " + NinjaUtil.getMoneys(character.cPower), 46, 34, 0);
-        } else if (currentTabIndex == 2) {
-            // Reuse the original skill header, including the current potential value.
-            paintSkillInfo(g);
-        } else if (currentTabIndex == 1) {
+        } else if (currentTabIndex == 1 || currentTabIndex == 2) {
             mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + ": " + character.cDamFull + "  " + mResources.critical + ": " + character.cCriticalFull + "%", 46, 23, 0);
@@ -378,12 +417,16 @@ public partial class Panel
 
     private void PaintInventoryFrame(mGraphics g)
     {
-        SyncInventoryFrame(); GameScr.resetTranslate(g);
+        SyncInventoryFrame();
+        Rect root;
+
+        GameScr.resetTranslate(g);
         g.setColor(0, .25f); g.fillRect(0, 0, GameCanvas.w, GameCanvas.h);
-        Rect root = HudLayout.GetRect(InventoryFrame.Root);
+        root = HudLayout.GetRect(InventoryFrame.Root);
         GameCanvas.paintz.paintFrameSimple(0, 0, W, H, g);
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
+
         SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
         PaintInventoryHeader(g);
@@ -391,6 +434,7 @@ public partial class Panel
         InventoryFrame.Clip(g, root);
         InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
         g.drawImage(imgX, (int)close.center.x, (int)close.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+
         int[] ids = InventoryFrameTabIds;
         int activeTab = currentTabName.Length >= 7 && (currentTabIndex == 4 || currentTabIndex == 5) ? 6 : currentTabIndex;
         for (int i = 0; i < ids.Length; i++) {
@@ -403,23 +447,31 @@ public partial class Panel
                 (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
                     words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
         }
+
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
             case 0: paintTask(g); break;
             case 1:
-                InventoryFrame.Rounded(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
-                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 - cmy, mFont.CENTER);
+
+                InventoryFrame.PaintSection(g, new Rect(3, 73 - cmy, W - 6, InventoryFrame.EquipmentBottom + cmy - 73), InventoryFrame.EquipmentBackground);
+                mFont.tahoma_7b_dark.drawString(g, "Trang bị", W / 2, 73 + InventoryFrame.Padding - cmy, mFont.CENTER);
                 for (int slot = 0; slot < 9; slot++) PaintInventoryEquipment(g, slot);
                 PaintInventoryBag(g);
+
                 break;
-            case 2: paintSkill(g); break;
+            case 2: PaintSkillPanel(g); break;
             case 3: paintClans(g); break;
             case 4: paintModTabs(g); break;
             case 5: paintBox(g); break;
             case 6: paintTools(g); break;
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
-        if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
+
+        if (currentTabIndex == 2) PaintSkillDetail(g);
+        else {
+                if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
+        }
+
         if (tabIcon != null && tabIcon.isShow) tabIcon.paint(g);
         GameScr.resetTranslate(g);
     }

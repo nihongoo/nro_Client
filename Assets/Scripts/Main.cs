@@ -46,21 +46,11 @@ public class Main : MonoBehaviour
 
 	public const sbyte IP_JB = 3;
 
-	private int updateCount;
-
-	private int paintCount;
-
 	private int count;
-
-	private int fps;
-
-	private int max;
 
 	private int up;
 
 	private int upmax;
-
-	private long timefps;
 
 	private long timeup;
 
@@ -78,6 +68,7 @@ public class Main : MonoBehaviour
 
 	private Vector2 lastMousePos = default(Vector2);
 	private bool pointerInViewport;
+    private int lastWheelInputFrame=-1, lastLegacyPointerFrame=-1;
 
 	public static int a = 1;
 
@@ -148,27 +139,16 @@ public class Main : MonoBehaviour
 	{
 		if (count >= 10)
 		{
-			if (fps == 0)
-			{
-				timefps = mSystem.currentTimeMillis();
-			}
-			else if (mSystem.currentTimeMillis() - timefps > 1000)
-			{
-				max = fps;
-				fps = 0;
-				timefps = mSystem.currentTimeMillis();
-			}
-			fps++;
 			checkInput();
 			Session_ME.update();
 			Session_ME2.update();
-			if (Event.current.type.Equals(EventType.Repaint) && paintCount <= updateCount)
+			if (Event.current.type == EventType.Repaint)
 			{
 				ScaleGUI.BeginGUI();
 				try
 				{
 					GameMidlet.gameCanvas.paint(g);
-					paintCount++;
+                    Mod.CuongLe.MainMod.RecordRenderedFrame();
 				}
 				finally
 				{
@@ -301,7 +281,6 @@ public class Main : MonoBehaviour
 			}
 			up++;
 			setsizeChange();
-			updateCount++;
 			ipKeyboard.update();
 			GameMidlet.gameCanvas.update();
 			Image.update();
@@ -370,24 +349,7 @@ public class Main : MonoBehaviour
 		int pointerY = (int)(guiPoint.y / mGraphics.zoomLevel) + mGraphics.addYWhenOpenKeyBoard;
 		bool mobileInput = Hud.MobileCombatPointers.Poll();
 		bool combatInput = !mobileInput && Hud.CombatPcPointer.Poll(rawPoint,new Vector2(pointerX,pointerY));
-		if (combatInput) pointerInViewport = false;
-		if (!mobileInput && !combatInput && Input.GetMouseButtonDown(0))
-		{
-			pointerInViewport = ScaleGUI.Viewport.Contains(rawPoint);
-			if (pointerInViewport) GameMidlet.gameCanvas.pointerPressed(pointerX, pointerY);
-			lastMousePos = guiPoint / mGraphics.zoomLevel;
-		}
-		if (!mobileInput && !combatInput && Input.GetMouseButton(0) && pointerInViewport)
-		{
-			GameMidlet.gameCanvas.pointerDragged(pointerX, pointerY);
-			lastMousePos = guiPoint / mGraphics.zoomLevel;
-		}
-		if (!mobileInput && !combatInput && Input.GetMouseButtonUp(0) && pointerInViewport)
-		{
-			lastMousePos = guiPoint / mGraphics.zoomLevel;
-			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
-			pointerInViewport = false;
-		}
+        PollLegacyPointer(mobileInput,combatInput,rawPoint,guiPoint,pointerX,pointerY);
         // Text comes from the OS/IME character event, not the physical key map.
         if (isPC && GameCanvas.currentScreen == GameScr.instance && ChatTextField.gI().isShow && GameCanvas.currentDialog == null) {
             Input.imeCompositionMode = IMECompositionMode.On;
@@ -439,12 +401,44 @@ public class Main : MonoBehaviour
 		}
 		if (isPC)
 		{
-			GameMidlet.gameCanvas.scrollMouse((int)(Input.GetAxis("Mouse ScrollWheel") * 10f));
 			int x2 = (int)guiPoint.x / mGraphics.zoomLevel;
 			int y2 = (int)guiPoint.y / mGraphics.zoomLevel;
-			GameMidlet.gameCanvas.pointerMouse(x2, y2);
+            PollDesktopWheel(x2,y2);
 		}
 	}
+
+    private void PollLegacyPointer(bool mobileInput,bool combatInput,Vector2 rawPoint,Vector2 guiPoint,int pointerX,int pointerY)
+    {
+        if(lastLegacyPointerFrame==Time.frameCount)return;
+        lastLegacyPointerFrame=Time.frameCount;
+		if (combatInput) pointerInViewport = false;
+		if (!mobileInput && !combatInput && Input.GetMouseButtonDown(0))
+		{
+			pointerInViewport = ScaleGUI.Viewport.Contains(rawPoint);
+			if (pointerInViewport) GameMidlet.gameCanvas.pointerPressed(pointerX, pointerY);
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
+		}
+		if (!mobileInput && !combatInput && Input.GetMouseButton(0) && pointerInViewport)
+		{
+			GameMidlet.gameCanvas.pointerDragged(pointerX, pointerY);
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
+		}
+		if (!mobileInput && !combatInput && Input.GetMouseButtonUp(0) && pointerInViewport)
+		{
+			lastMousePos = guiPoint / mGraphics.zoomLevel;
+			GameMidlet.gameCanvas.pointerReleased(pointerX, pointerY);
+			pointerInViewport = false;
+		}
+    }
+
+    private void PollDesktopWheel(int x,int y)
+    {
+        GameMidlet.gameCanvas.pointerMouse(x,y);
+        // OnGUI runs Layout/Repaint/input events in one Unity frame. Consume the axis once.
+        if(lastWheelInputFrame==Time.frameCount)return;
+        lastWheelInputFrame=Time.frameCount;
+        GameMidlet.gameCanvas.scrollMouse((int)(Input.GetAxis("Mouse ScrollWheel")*10f));
+    }
 
 	private void OnApplicationQuit()
 	{

@@ -1120,7 +1120,6 @@ public class GameCanvas : IActionListener
 					drawSun1(g);
 					drawSun2(g);
 				}
-
 			}
 			else
 			{
@@ -2357,7 +2356,7 @@ public class GameCanvas : IActionListener
 				g.setClip(0, 0, w, h);
 			}
 		}
-		catch (Exception)
+		catch
 		{
 		}
 	}

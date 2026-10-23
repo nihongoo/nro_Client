@@ -53,6 +53,8 @@ class VisualTests {
   foreach(float size in new float[]{20,22,28,32,40,44,56,64}){
    Rect cell=new Rect(10,20,size,size),level=InventoryItemVisuals.LevelBounds(cell,24,false);
    Rect first=InventoryItemVisuals.StarBounds(cell,0),last=InventoryItemVisuals.StarBounds(cell,5);
+   Rect compact=InventoryItemVisuals.CompactLevelBounds(cell,24);
+   Check(compact.height==level.height&&compact.width<=cell.width,"skill Lv badge squashes native corners or exceeds icon width");
    Check(Math.Abs((first.x+last.xMax)/2-cell.center.x)<.01,"star row not centered");
    for(int i=0;i<6;i++){
     Rect star=InventoryItemVisuals.StarBounds(cell,i);

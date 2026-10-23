@@ -12,6 +12,8 @@ assert command not in {int(value) for value in re.findall(r"case (-?\d+):", lega
 assert "case -124:" in legacy, "HOLD/effect packet handler must remain intact"
 controller = (ROOT / "Assets/Scripts/Controller.cs").read_text(encoding="utf-8-sig")
 assert controller.index("if (msg.command == GuestCredentials.Command)") < controller.index("Controller2.readMessage(msg)")
+panel_source = (ROOT / "Assets/Scripts/Panel.cs").read_text(encoding="utf-8-sig")
+account_switch = panel_source[panel_source.index("        if (idAction == 10019)"):panel_source.index("        if (idAction == 10020)")]
 fixture = r'''
 using System;
 using System.Collections.Generic;
@@ -28,11 +30,12 @@ class TField {
  string text=""; public void setText(string s){text=s;}public string getText()=>text;
  public void setMaxTextLenght(int value){max=value;}public void setIputType(int value){type=value;max=500;}
 }
-class Panel : IActionListener {public int switches;public void hide(){} public void perform(int action,object value){if(action==10019)switches++;} }
+class Panel : IActionListener {public int switches;public void hide(){} public void perform(int idAction,object value){@@ACCOUNT_SWITCH@@} }
+class CanvasActions {public void switchAccount(){GameCanvas.panel.switches++;}}
 class Menu {public bool showMenu;public MyVector options;public void startAt(MyVector value,int index){options=value;} }
 class LoginScr {public bool isLogin2=true;public TField tfUser=new TField(),tfPass=new TField();}
 static class GameCanvas {
- public static object currentScreen,currentDialog;public static Panel panel=new Panel();public static Menu menu=new Menu();public static LoginScr loginScr=new LoginScr();
+ public static CanvasActions instance=new CanvasActions();public static object currentScreen,currentDialog;public static Panel panel=new Panel();public static Menu menu=new Menu();public static LoginScr loginScr=new LoginScr();
  public static string error;public static void startOKDlg(string value){error=value;currentDialog=new object();} public static void endDlg(){currentDialog=null;}
  public static void closeKeyBoard(){} public static void clearAllPointerEvent(){}public static void clearKeyPressed(){}public static void clearKeyHold(){}
 }
@@ -86,10 +89,14 @@ class Tests {
   Check(GameCanvas.menu.options.commands.Count==1&&GameCanvas.menu.options.commands[0].caption=="Đổi tài khoản"&&Service.gI().stateRequests==beforeOpen,"permanent account did not open switch menu immediately");
   Check(object.ReferenceEquals(GameCanvas.menu.options.commands[0].actionListener,GameCanvas.panel)&&GameCanvas.menu.options.commands[0].idAction==10019,"switch did not reuse existing Panel account-switch action");
   GameCanvas.menu.options.commands[0].Click();Check(GameCanvas.panel.switches==1,"switch menu did not dispatch account switch");
+  Command staleSwitch=GameCanvas.menu.options.commands[0];
   // Reproduce stale state: receiving server guest state must update the menu before any click.
   GuestCredentials.GetSecret();EmailLinkFlow.Read(Packet(7,true,false));EmailLinkFlow.Update();
   Check(GuestCredentials.IsGuest&&!GuestCredentials.IsPermanent,"stale permanent state overrode server guest restrictions");
-  beforeOpen=Service.gI().stateRequests;GameCanvas.endDlg();EmailLinkFlow.Open();
+  beforeOpen=Service.gI().stateRequests;GameCanvas.endDlg();
+  staleSwitch.Click();Check(GameCanvas.panel.switches==1,"stale account menu switched a guest account");
+  Check(GameCanvas.currentScreen is ClientInput,"stale account menu did not route guest to linking");
+  ((ClientInput)GameCanvas.currentScreen).left.Click();EmailLinkFlow.Open();
   Check(Service.gI().stateRequests==beforeOpen,"guest email button sent a state query");
   ClientInput email=(ClientInput)GameCanvas.currentScreen;
   Check(email.tf.Length==1&&email.tf[0].loginInput&&email.tf[0].max==254,"email input length/keyboard");
@@ -129,6 +136,7 @@ class Tests {
  }
 }
 '''
+fixture=fixture.replace("@@ACCOUNT_SWITCH@@",account_switch)
 output = ROOT / "Build/guest-tests"
 output.mkdir(parents=True, exist_ok=True)
 with tempfile.TemporaryDirectory(prefix="email-flow-", dir=output) as folder:

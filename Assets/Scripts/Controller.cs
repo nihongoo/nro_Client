@@ -2805,6 +2805,9 @@ public class Controller : IMessageHandler
 			case -28:
 				messageNotMap(msg);
 				break;
+            case Hud.SkillTabState.CommandId:
+                Hud.SkillTabState.Read(msg);
+                break;
 			case -30:
 				messageSubCommand(msg);
 				break;
@@ -5449,6 +5452,7 @@ public class Controller : IMessageHandler
 				RadarScr.list = new MyVector();
 				Teleport.vTeleport.removeAllElements();
 				GameScr.vCharInMap.removeAllElements();
+                Hud.SkillTabState.Reset();
 				GameScr.vItemMap.removeAllElements();
 				Char.vItemTime.removeAllElements();
 				GameScr.loadImg();
@@ -5952,6 +5956,7 @@ public class Controller : IMessageHandler
 				short num = msg.reader().readShort();
 				Skill skill = Skills.get(num);
 				useSkill(skill);
+                Hud.SkillTabState.ApplyOrder();
 				if (num != 0 && num != 14 && num != 28)
 				{
 					GameScr.info1.addInfo(mResources.LEARN_SKILL + " " + skill.template.name, 0);
@@ -6433,6 +6438,7 @@ public class Controller : IMessageHandler
 				{
 					Char.myCharz().myskill = skill3;
 				}
+                Hud.SkillTabState.ApplyOrder();
 				GameScr.info1.addInfo(mResources.hasJustUpgrade1 + skill3.template.name + mResources.hasJustUpgrade2 + skill3.point, 0);
 			}
 		}

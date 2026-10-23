@@ -220,7 +220,7 @@ public class PopUp
 		}
 		g.setColor((color != 1) ? 16770503 : 12052656);
 		g.fillRect(x + 10, y + 10, w - 20, h - 20);
-	}
+    }
 
 	public void paint(mGraphics g)
 	{

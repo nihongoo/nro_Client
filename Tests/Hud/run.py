@@ -36,10 +36,13 @@ choices = re.findall(r"new Command\(mResources.DIES\[(\d)\], (11038\d)\)", game)
 assert choices == [("1", "110381"), ("2", "110382"), ("3", "110383")]
 
 fixture = r'''
+
+
 #pragma warning disable 0649
 using System;
 using System.Collections.Generic;
 using Hud;
+
 namespace UnityEngine {
     public enum RuntimePlatform { WindowsPlayer,Android,IPhonePlayer }
     public struct Vector2 {

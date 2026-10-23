@@ -19,6 +19,7 @@ namespace Hud
             public string Name;
             public Func<Rect> Resolve;
             public Func<bool> Visible;
+            public Func<long> CacheVersion;
             public int Order, Serial;
             public bool BlocksPointer, Resolving;
             public long Generation = -1;
@@ -27,14 +28,18 @@ namespace Hud
         private static readonly Dictionary<string, Entry> byName = new Dictionary<string, Entry>(StringComparer.Ordinal);
         private static readonly List<Entry> backToFront = new List<Entry>();
         private static bool legacyRegistered;
-        private static long generation;
+        private static long generation, stateGeneration, frameId;
+        internal static long FrameId => frameId;
+        internal static long StateGeneration => stateGeneration;
         private static int width = -1, height, zoom, keyboardY;
         private static RuntimePlatform platform;
 
         // Device.Application reports the simulated Android/iOS platform in Device Simulator.
         // Read-only, no Editor override, preferences, RMS flag or mod toggle.
-        public static bool IsMobileLayout => UnityEngine.Device.Application.platform == RuntimePlatform.Android
-            || UnityEngine.Device.Application.platform == RuntimePlatform.IPhonePlayer;
+        public static bool IsMobileLayout {get{
+            return UnityEngine.Device.Application.platform == RuntimePlatform.Android
+                || UnityEngine.Device.Application.platform == RuntimePlatform.IPhonePlayer;
+        }}
         public static Vector2 DesignReference => IsMobileLayout ? new Vector2(844, 390) : new Vector2(1280, 720);
         public static Rect ScreenBounds => new Rect(0, 0, GameCanvas.w, GameCanvas.h);
         internal static bool IsPlayerDead => Char.myCharz().meDead || Char.myCharz().cHP <= 0
@@ -63,12 +68,13 @@ namespace Hud
             new Rect(left, top, Mathf.Max(0, GameCanvas.w - left - right), Mathf.Max(0, GameCanvas.h - top - bottom));
 
         // Register once when the component is introduced. Its provider is evaluated once per
-        // frame/viewport generation; drawing, hit tests and obstacle collection share that result.
-        public static void Register(string name, Func<Rect> resolve, int order, Func<bool> visible = null, bool blocksPointer = true)
+        // frame/viewport generation (or an explicit stable version for fixed geometry).
+        // Drawing, hit tests and obstacle collection share the same resolved rectangle.
+        public static void Register(string name, Func<Rect> resolve, int order, Func<bool> visible = null, bool blocksPointer = true, Func<long> cacheVersion = null)
         {
             if (string.IsNullOrEmpty(name) || resolve == null) throw new ArgumentException("HUD name/rect provider is required.");
             if (byName.ContainsKey(name)) throw new InvalidOperationException("HUD rect already registered: " + name);
-            var entry = new Entry { Name = name, Resolve = resolve, Order = order, Serial = byName.Count, Visible = visible, BlocksPointer = blocksPointer };
+            var entry = new Entry { Name = name, Resolve = resolve, Order = order, Serial = byName.Count, Visible = visible, BlocksPointer = blocksPointer, CacheVersion = cacheVersion };
             byName.Add(name, entry); backToFront.Add(entry);
             backToFront.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : a.Serial.CompareTo(b.Serial));
         }
@@ -84,12 +90,17 @@ namespace Hud
 
         public static void BeginFrame()
         {
-            generation++;
+            // Dynamic world HUD providers still require a fresh frame. Fixed panel providers
+            // opt into a state/geometry version and retain their cached rectangles.
+            generation++; frameId++;
+
             EnsureViewport();
         }
         // State can change between input and paint (modal open/close, tabs, scrolling).
-        // Retain the same providers, but discard their pre-change cached rectangles.
-        public static void Invalidate() => generation++;
+        // State-dependent providers discard pre-change rectangles; fixed frame geometry
+        // keeps its own version until its viewport/font key changes.
+        public static void Invalidate()
+        {  generation++; stateGeneration++; }
         private static void EnsureViewport()
         {
             RuntimePlatform current = UnityEngine.Device.Application.platform;
@@ -97,7 +108,7 @@ namespace Hud
                 || keyboardY != mGraphics.addYWhenOpenKeyBoard || platform != current)
             {
                 width = GameCanvas.w; height = GameCanvas.h; zoom = mGraphics.zoomLevel;
-                keyboardY = mGraphics.addYWhenOpenKeyBoard; platform = current; generation++;
+                keyboardY = mGraphics.addYWhenOpenKeyBoard; platform = current; generation++; stateGeneration++;
             }
             if (!legacyRegistered && GameScr.instance != null)
             {
@@ -107,21 +118,24 @@ namespace Hud
         }
         private static Rect Resolve(Entry entry)
         {
-            if (entry.Generation != generation) {
+            long version = entry.CacheVersion == null ? generation : entry.CacheVersion();
+            if (entry.Generation != version) {
+
                 if (entry.Resolving) throw new InvalidOperationException("Circular HUD rect dependency: " + entry.Name);
                 entry.Resolving = true;
-                try { entry.Bounds = entry.Resolve(); entry.Generation = generation; }
-                finally { entry.Resolving = false; }
+                try { entry.Bounds = entry.Resolve(); entry.Generation = version; }
+                finally { entry.Resolving = false;  }
             }
             return entry.Bounds;
         }
-        private static bool IsVisible(Entry entry) => entry.Visible == null || entry.Visible();
+        private static bool IsVisible(Entry entry)
+        {    return entry.Visible == null || entry.Visible();  }
         public static Rect GetRect(string name)
         {
             EnsureViewport();
             if (!byName.TryGetValue(name, out Entry entry)) throw new KeyNotFoundException("HUD rect not registered: " + name);
             return Resolve(entry);
-        }
+    }
         public static bool TryGetRect(string name, out Rect bounds)
         {
             EnsureViewport();
@@ -143,13 +157,14 @@ namespace Hud
         public static string HitTest(Vector2 point)
         {
             EnsureViewport();
+
             for (int i = backToFront.Count - 1; i >= 0; i--)
             {
                 Entry entry = backToFront[i];
                 if (entry.BlocksPointer && IsVisible(entry) && Resolve(entry).Contains(point)) return entry.Name;
             }
             return null;
-        }
+    }
         public static bool IsTopmost(string name, Vector2 point) => HitTest(point) == name;
         // Read existing combat-control adapters without resolving the lists that are currently
         // computing their own bounds (and without constructing another set of hitboxes).
