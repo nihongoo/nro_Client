@@ -28,13 +28,13 @@ public partial class Panel
     private int inventoryDetailTopScroll, inventoryDetailBottomScroll;
     private float inventoryDetailWidth, inventoryDetailHeight;
     private Item[] inventoryDetailBody;
-    private bool inventoryDetailQuick, inventoryDetailDiscard;
+    private bool inventoryDetailQuick, inventoryDetailDiscard, inventoryDetailPet;
     internal int InventoryDetailButtonCount => inventoryDetailButtons.Count;
     private int InventoryDetailBottomCount
     {
         get { int count = 0; foreach (var button in inventoryDetailButtons) if (button.Group == 0) count++; return count; }
     }
-    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 26 : 0) + (inventoryDetailDiscard ? 26 : 0);
+    private float InventoryDetailControlsHeight => (inventoryDetailQuick ? 26 : 0) + (inventoryDetailDiscard ? 26 : 0) + (inventoryDetailPet ? 26 : 0);
     private float InventoryDetailActionTop => HudLayout.GetRect(InventoryFrame.Detail).height - 5
         - ((InventoryDetailBottomCount + 1) / 2) * 26 - InventoryDetailControlsHeight;
     private float InventoryDetailDividerY => Mathf.Min(HudLayout.GetRect(InventoryFrame.Detail).height / 2, InventoryDetailActionTop - 20);
@@ -55,6 +55,7 @@ public partial class Panel
             float w = Mathf.Max(0, (r.width - 16) / 3);
             return InventoryDetailNativeButtonRect(r.x + 6 + button.Position * (w + 2), InventoryDetailActionTop, w);
         }
+        if (button.Group == 3) return InventoryDetailNativeButtonRect(r.x + 6, InventoryDetailActionTop, r.width - 12);
         if (button.Group == 2) return InventoryDetailNativeButtonRect(r.x + 6, r.height - 5 - ((InventoryDetailBottomCount + 1) / 2) * 26 - 26, r.width - 12);
         bool fullRow = InventoryDetailBottomCount % 2 == 1 && button.Position == InventoryDetailBottomCount - 1;
         float width = Mathf.Max(0, fullRow ? r.width - 12 : (r.width - 16) / 2);
@@ -68,7 +69,7 @@ public partial class Panel
         inventoryDetailCommands = null; inventoryDetailButtons.Clear(); inventoryDetailInfo.Clear(); inventoryDetailDescription.Clear();
         inventoryDetailWidth = inventoryDetailHeight = 0; inventoryDetailBody = null;
         inventoryDetailTopScroll = inventoryDetailBottomScroll = 0;
-        inventoryDetailQuick = inventoryDetailDiscard = false;
+        inventoryDetailQuick = inventoryDetailDiscard = inventoryDetailPet = false;
     }
     private void AddInventoryDetailButton(string text, Command command, int group, int position)
     {
@@ -77,21 +78,27 @@ public partial class Panel
     }
     private void BuildInventoryDetail()
     {
-        inventoryDetailButtons.Clear(); inventoryDetailQuick = inventoryDetailDiscard = false;
+        inventoryDetailButtons.Clear(); inventoryDetailQuick = inventoryDetailDiscard = inventoryDetailPet = false;
         inventoryDetailCommands = null;
         if (DisciplePanelActive) {
             if (!DiscipleFused) AddInventoryDetailButton("Tháo", new Command("Tháo", this, 2106, inventoryBagDetailItem), 0, 0);
             inventoryDetailTopScroll = inventoryDetailBottomScroll = 0;
             PrepareInventoryBagDetail(); HudLayout.Invalidate(); return;
         }
-        doFireInventory(true); // Build exactly the old commands, without opening its menu.
         Item item = inventoryBagDetailItem;
         if (item?.template == null) return;
+        bool rune = item.template.type == DiscipleRuneType;
+        if (!rune) doFireInventory(true); // Keep the original player-use and discard commands.
         bool worn = selected >= 0 && selected < (Char.myCharz().arrItemBody?.Length ?? 0);
         bool equipment = InventoryBag.CanEquip(item);
-        bool consumable = !worn && !equipment && InventoryBag.Category(item) == InventoryBagFilter.Consumable;
+        bool consumable = !rune && !worn && !equipment && InventoryBag.Category(item) == InventoryBagFilter.Consumable;
         int bottom = 0;
-        if (!worn && equipment) AddInventoryDetailButton("Mặc", new Command("Mặc", this, 2000, item), 0, bottom++);
+        if (!worn && CanEquipForDisciple(item)) {
+            inventoryDetailPet = true;
+            AddInventoryDetailButton("Mặc cho đệ tử", new Command("Mặc cho đệ tử", this, 2105, item), 3, 0);
+        }
+        if (rune && !worn) AddInventoryDetailButton("Bỏ", new Command("Bỏ", this, 2003, item), 0, bottom++);
+        if (!rune && !worn && equipment) AddInventoryDetailButton("Mặc", new Command("Mặc", this, 2000, item), 0, bottom++);
         if (inventoryDetailCommands != null) for (int i = 0; i < inventoryDetailCommands.size(); i++) {
             Command command = inventoryDetailCommands.elementAt(i) as Command;
             if (command == null) continue;
@@ -181,9 +188,10 @@ public partial class Panel
             }
         }
         AddInventoryDetailComparison(item, worn);
+        if (!worn && CanEquipForDisciple(item)) AddInventoryDetailComparison(item, false, Char.myPetz().arrItemBody);
         AddInventoryDetailText(inventoryDetailInfo, "Số lượng: " + item.quantity, mFont.tahoma_7b_dark);
         if (item.template.strRequire > 1) AddInventoryDetailText(inventoryDetailInfo, mResources.pow_request + ": " + item.template.strRequire,
-            Char.myCharz().cPower < item.template.strRequire ? mFont.tahoma_7_red : mFont.tahoma_7_grey);
+            (DisciplePanelActive ? Char.myPetz().cPower : Char.myCharz().cPower) < item.template.strRequire ? mFont.tahoma_7_red : mFont.tahoma_7_grey);
         if (!DisciplePanelActive && worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
         AddInventoryDetailText(inventoryDetailDescription, item.template.description, mFont.tahoma_7b_dark);
         if (!string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
@@ -194,13 +202,16 @@ public partial class Panel
             button.Lines = font.splitFontArray(button.Text, Mathf.Max(10, (int)InventoryDetailButtonBounds(i).width - 4));
         }
     }
-    private void AddInventoryDetailComparison(Item item, bool worn)
+    private void AddInventoryDetailComparison(Item item, bool worn, Item[] petBody = null)
     {
         int type = item.template.type;
-        if (worn || !InventoryBag.HasLevel(item)) return;
-        int index = type == 32 ? 6 : type;
-        string slot = type == 32 ? "GLT" : inventorySlotLabels[type];
-        Item other = inventoryDetailBody != null && index < inventoryDetailBody.Length ? inventoryDetailBody[index] : null;
+        bool pet = petBody != null;
+        if (worn || (!pet && !InventoryBag.HasLevel(item))) return;
+        int index = pet ? DiscipleSlot(item) : type == 32 ? 6 : type;
+        string slot = pet ? "đệ tử" : type == 32 ? "GLT" : inventorySlotLabels[type];
+        Item[] body = pet ? petBody : inventoryDetailBody;
+        Item other = body != null && index >= 0 && index < body.Length ? body[index] : null;
+        if (pet && other?.template != null) AddInventoryDetailText(inventoryDetailInfo, "Đệ đang mặc: " + other.template.name, mFont.tahoma_7_grey);
         if (other?.template == null) { AddInventoryDetailText(inventoryDetailInfo, "So với ô " + slot + ": đang trống", mFont.tahoma_7_grey); return; }
         if (item.itemOption != null && other.itemOption != null) foreach (ItemOption option in item.itemOption) {
             if (option?.optionTemplate == null) continue;
@@ -224,6 +235,7 @@ public partial class Panel
         if (!InventoryBagDetailOpen || !int.TryParse(hit.Substring(prefix.Length), out int index) || index < 0 || index >= inventoryDetailButtons.Count) return true;
         if (Char.myCharz().statusMe == 14) { GameCanvas.startOKDlg(mResources.can_not_do_when_die); return true; }
         Command action = inventoryDetailButtons[index].Action;
+        if (action?.idAction == 2105) { EquipForDisciple(inventoryBagDetailItem); return true; }
         if (action?.idAction == 2106) {
             if (!DiscipleFused && Char.myCharz().havePet) Service.gI().getItem(PET_BAG, (sbyte)selected);
             CloseInventoryBagDetail(); return true;

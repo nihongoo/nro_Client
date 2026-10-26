@@ -20,6 +20,7 @@ public partial class Panel
 
     private void SyncInventoryBag()
     {
+        if (mSystem.currentTimeMillis() >= discipleNextRequest) RequestDiscipleInfo();
         Item[] bag = Char.myCharz().arrItemBag;
         InventoryBag.Map(bag, inventoryBagFilter, inventoryBagMap);
         if (inventoryBagDetailOpen) {
@@ -127,12 +128,15 @@ public partial class Panel
     }
     private bool ScrollInventoryBagMouse(int amount)
     {
-        if (!InventoryFrameActive || currentTabIndex != 1) return false;
+        if (!InventoryFrameActive || (currentTabIndex != 1 && !DisciplePanelActive)) return false;
         if (amount == 0 || GameCanvas.menu.showMenu || GameCanvas.currentDialog != null) return true;
         Vector2 point = new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse);
         if (InventoryBagDetailOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point))
             ScrollInventoryDetail(point, -amount * 24);
-        else if (HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
+        else if (DiscipleSkillOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point)) {
+            discipleSkillScroll = Math.Max(0, discipleSkillScroll - amount * 24);
+        }
+        else if (currentTabIndex == 1 && HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
             inventoryBagDoubleTap.Reset();
             inventoryEquipmentDoubleTap.Reset();
             cmy = cmtoY = Mathf.Clamp(cmy - amount * 24, 0, cmyLim); HudLayout.Invalidate();

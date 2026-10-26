@@ -71,8 +71,10 @@ public partial class Panel
     private readonly Rect[] discipleRuneBounds = new Rect[1];
     private static readonly string[] discipleRuneLabel = { "NGỌC" };
     private readonly Rect[] discipleStatusBounds = new Rect[5];
-    private int discipleSkill = -1, discipleFocus;
+    private int discipleSkill = -1, discipleFocus, discipleSkillScroll, discipleSkillLines;
     private bool discipleLoaded;
+    private int discipleKind = -1;
+    private Char discipleOwner;
     private long discipleNextRequest, discipleFusionUntil;
     internal bool DisciplePanelActive => InventoryFrameActive && Char.myCharz().havePet && currentTabIndex == DiscipleTab;
     internal bool DiscipleSkillOpen => DisciplePanelActive && discipleSkill >= 0;
@@ -81,9 +83,9 @@ public partial class Panel
 
     internal void ClearDiscipleInfo()
     {
-        discipleLoaded = false; discipleFusionUntil = 0;
+        discipleLoaded = false; discipleKind = -1; discipleFusionUntil = 0;
         CloseDiscipleDetail();
-        if (currentTabIndex == DiscipleTab) CloseInventoryBagDetail();
+        if (InventoryBagDetailOpen) CloseInventoryBagDetail();
     }
     internal void SetDiscipleAvailable(bool available)
     {
@@ -97,7 +99,7 @@ public partial class Panel
         }
         HudLayout.Invalidate();
     }
-    private void CloseDiscipleDetail() { discipleSkill = -1; HudLayout.Invalidate(); }
+    private void CloseDiscipleDetail() { discipleSkill = -1; discipleSkillScroll = 0; HudLayout.Invalidate(); }
     private void OpenDiscipleTab()
     {
         currentListLength = 0; cmy = cmtoY = cmyLim = 0; discipleFocus = 0;
@@ -105,15 +107,17 @@ public partial class Panel
     }
     private void RequestDiscipleInfo()
     {
+        if (!ReferenceEquals(discipleOwner, Char.myCharz())) { ClearDiscipleInfo(); discipleOwner = Char.myCharz(); }
+        discipleNextRequest = mSystem.currentTimeMillis() + 3000;
         if (!Char.myCharz().havePet) return;
-        Service.gI().petInfo(); discipleNextRequest = mSystem.currentTimeMillis() + 3000;
+        Service.gI().petInfo();
     }
     internal void ReceiveDiscipleInfo(Message message)
     {
-        discipleLoaded = true;
+        discipleOwner = Char.myCharz(); discipleLoaded = true;
         if (message.reader().available() >= 7 && message.reader().readUnsignedByte() == 0xD1) {
             Char.myPetz().cgender = message.reader().readByte();
-            message.reader().readByte(); // Pet kind is reserved for equipment eligibility.
+            discipleKind = message.reader().readByte();
             int remaining = message.reader().readInt();
             discipleFusionUntil = remaining > 0 ? mSystem.currentTimeMillis() + remaining * 1000L : remaining;
         }
@@ -129,12 +133,38 @@ public partial class Panel
                 }
             }
         }
+        if (InventoryBagDetailOpen && currentTabIndex == 1) {
+            int top = inventoryDetailTopScroll, bottom = inventoryDetailBottomScroll;
+            BuildInventoryDetail(); inventoryDetailTopScroll = top; inventoryDetailBottomScroll = bottom;
+        }
         HudLayout.Invalidate();
     }
     private void SyncDisciplePanel()
     {
         cmy = cmtoY = cmyLim = 0;
         if (mSystem.currentTimeMillis() >= discipleNextRequest) RequestDiscipleInfo();
+    }
+    private static int DiscipleSlot(Item item)
+    {
+        if (item?.template == null) return -1;
+        int type = item.template.type;
+        if (type >= 0 && type <= 5) return type;
+        return type == 32 ? 6 : type == DiscipleRuneType ? 7 : -1;
+    }
+    private bool CanEquipForDisciple(Item item)
+    {
+        return Char.myCharz().havePet && ReferenceEquals(discipleOwner, Char.myCharz()) && discipleLoaded
+            && discipleKind >= 0 && !DiscipleFused && DiscipleSlot(item) >= 0
+            && (discipleKind > 0 || item.template.gender >= 3 || item.template.gender == Char.myPetz().cgender);
+    }
+    private void EquipForDisciple(Item item)
+    {
+        int bagIndex = selected - (Char.myCharz().arrItemBody?.Length ?? 0);
+        Item[] bag = Char.myCharz().arrItemBag;
+        if (!CanEquipForDisciple(item) || bagIndex < 0 || bagIndex >= (bag?.Length ?? 0)
+            || !ReferenceEquals(item, bag[bagIndex])) return;
+        Service.gI().getItem(BAG_PET, (sbyte)bagIndex);
+        CloseInventoryBagDetail();
     }
     private Item DiscipleItem(int visual)
     {
@@ -251,17 +281,44 @@ public partial class Panel
         Rect r = HudLayout.GetRect(InventoryFrame.Detail);
         InventoryFrame.Clip(g, r); InventoryFrame.Rounded(g, r, InventoryFrame.EquipmentBackground);
         Skill skill = DiscipleSkill(discipleSkill);
-        int y = 30;
+        int maxScroll = Mathf.Max(0, discipleSkillLines * 12 + 36 - (int)r.height);
+        discipleSkillScroll = Mathf.Clamp(discipleSkillScroll, 0, maxScroll);
+        InventoryFrame.Clip(g, new Rect(r.x + 3, 27, Mathf.Max(0, r.width - 6), Mathf.Max(0, r.height - 30)));
+        int y = 30 - discipleSkillScroll;
         if (skill?.template != null) {
-            SmallImage.drawSmallImage(g, skill.template.iconId, (int)r.x + 17, 14, 0, 3);
             DrawDiscipleText(g, r, skill.template.name + " · Cấp " + skill.point, ref y);
             DrawDiscipleText(g, r, "KI: " + skill.manaUse + " · Hồi: " + skill.strTimeReplay() + "s", ref y);
             if (skill.template.description != null) foreach (string text in skill.template.description) DrawDiscipleText(g, r, text, ref y);
             DrawDiscipleText(g, r, skill.moreInfo, ref y);
         } else DrawDiscipleText(g, r, skill?.moreInfo ?? "Chưa học kỹ năng", ref y);
+        discipleSkillLines = (y - 30 + discipleSkillScroll) / 12;
+        InventoryFrame.Clip(g, new Rect(r.x, 0, r.width, 26));
+        if (skill?.template != null) SmallImage.drawSmallImage(g, skill.template.iconId, (int)r.x + 17, 14, 0, 3);
         Rect close = HudLayout.GetRect(DiscipleLayout.Close);
         InventoryFrame.Clip(g, close); InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
         g.drawImage(imgX, (int)close.center.x, (int)close.center.y, 3);
+        InventoryFrame.Clip(g, HudLayout.ScreenBounds);
+    }
+    private void UpdateDiscipleSkillDrag()
+    {
+        if (!DiscipleSkillOpen || inventoryPressed != "disciple.detail") return;
+        if (GameCanvas.isPointerJustDown) inventoryDetailDragScroll = discipleSkillScroll;
+        if (!(GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease)) return;
+        int delta = GameCanvas.py - inventoryDragY;
+        if (Math.Abs(delta) > 4) inventoryDragging = true;
+        if (inventoryDragging) discipleSkillScroll = Mathf.Clamp(inventoryDetailDragScroll - delta, 0,
+            Mathf.Max(0, discipleSkillLines * 12 + 36 - GameCanvas.h));
+    }
+    private void PaintDiscipleOverview(mGraphics g)
+    {
+        if (!discipleLoaded || !Char.myCharz().havePet) return;
+        Rect r = HudLayout.GetRect(InventoryFrame.Detail);
+        InventoryFrame.Clip(g, r); InventoryFrame.Rounded(g, r, InventoryFrame.EquipmentBackground);
+        int y = 8; Char pet = Char.myPetz();
+        DrawDiscipleText(g, r, pet.cName, ref y);
+        DrawDiscipleText(g, r, "Tiềm năng: " + NinjaUtil.getMoneys(pet.cTiemNang), ref y);
+        DrawDiscipleText(g, r, "Thể lực: " + pet.cStamina + "/" + pet.cMaxStamina, ref y);
+        DrawDiscipleText(g, r, "Chọn trang bị hoặc kỹ năng để xem chi tiết", ref y);
         InventoryFrame.Clip(g, HudLayout.ScreenBounds);
     }
     private static void DrawDiscipleText(mGraphics g, Rect r, string text, ref int y)

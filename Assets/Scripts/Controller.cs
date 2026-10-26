@@ -5438,6 +5438,7 @@ public class Controller : IMessageHandler
 				Teleport.vTeleport.removeAllElements();
 				GameScr.vCharInMap.removeAllElements();
                 Hud.SkillTabState.Reset();
+                GameCanvas.panel.ClearDiscipleInfo();
 				GameScr.vItemMap.removeAllElements();
 				Char.vItemTime.removeAllElements();
 				GameScr.loadImg();

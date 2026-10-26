@@ -37,7 +37,7 @@ namespace Hud
         {
             if (item?.template != null && (item.template.id == 933 || item.template.id == 934 || item.template.id == 1820))
                 return InventoryBagFilter.Material;
-            if (CanEquip(item)) return InventoryBagFilter.Equipment;
+            if (CanEquip(item) || item?.template?.type == 80) return InventoryBagFilter.Equipment;
             if (item?.template == null) return InventoryBagFilter.Material;
             switch (item.template.type) {
                 case 6: case 7: case 13: case 16: case 22: case 25:
