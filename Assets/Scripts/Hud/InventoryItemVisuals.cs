@@ -294,25 +294,42 @@ namespace Hud
             }
             return grey;
         }
-        // The popup button atlas has eight 10px slices. Stretch only its edges;
+        private static readonly Texture2D[] nativeTabSources = new Texture2D[2];
+        private static readonly Image[] nativeTabSkins = new Image[2];
+        private static Image NativeTabSkin(bool selected)
+        {
+            Image source = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp;
+            if (source?.texture == null) { PopUp.loadBg(); source = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp; }
+            if (source?.texture == null) return null;
+            int index = selected ? 1 : 0;
+            if (nativeTabSources[index] != source.texture || nativeTabSkins[index]?.texture == null) {
+                if (nativeTabSkins[index]?.texture != null) UnityEngine.Object.Destroy(nativeTabSkins[index].texture);
+                // The imported atlas has mipmaps. Thin edge slices otherwise sample adjacent
+                // atlas rows when reduced. CopyNative creates a Point texture without mipmaps.
+                nativeTabSkins[index] = HudButtonSkin.CopyNative(source, null, FilterMode.Point);
+                nativeTabSources[index] = source.texture;
+            }
+            return nativeTabSkins[index];
+        }
+        // The popup button atlas has eight 10-logical-pixel slices. Stretch only its edges;
         // tiling whole edge slices can overwrite the corners at narrow chip widths.
         internal static void PaintNativeTab(mGraphics g, Rect bounds, Rect viewport, bool selected)
         {
-            Image skin = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp;
-            if (skin?.texture == null) { PopUp.loadBg(); skin = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp; }
+            Image skin = NativeTabSkin(selected);
             Rect clip = InventoryFrame.Intersection(bounds, viewport);
             if (clip.width <= 0 || clip.height <= 0 || skin?.texture == null) return;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             float cap = Mathf.Min(10, Mathf.Min(bounds.width, bounds.height) / 2);
             InventoryFrame.Clip(g, clip);
-            g.setColor(selected ? 12052656 : 16770503);
-            g.fillRect((int)(bounds.x + cap), (int)(bounds.y + cap),
-                (int)(bounds.width - 2 * cap), (int)(bounds.height - 2 * cap));
             Color previous = GUI.color;
             try {
                 GUI.color = Color.white;
                 GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
                 try {
+                    int fill = selected ? 12052656 : 16770503;
+                    GUI.color = new Color((fill >> 16 & 255) / 255f, (fill >> 8 & 255) / 255f, (fill & 255) / 255f, 1);
+                    GUI.DrawTexture(Pixels(cap, cap, bounds.width - 2 * cap, bounds.height - 2 * cap), Texture2D.whiteTexture);
+                    GUI.color = Color.white;
                     Draw(0, 0, 0, cap, cap); Draw(10, cap, 0, bounds.width - 2 * cap, cap);
                     Draw(20, bounds.width - cap, 0, cap, cap);
                     Draw(30, 0, cap, cap, bounds.height - 2 * cap);
@@ -322,11 +339,16 @@ namespace Hud
                     Draw(70, bounds.width - cap, bounds.height - cap, cap, cap);
                 } finally { GUI.EndGroup(); }
             } finally { GUI.color = previous; }
+            Rect Pixels(float x, float y, float width, float height)
+            {
+                float left = Mathf.Round((bounds.x + x) * zoom), top = Mathf.Round((bounds.y + y) * zoom);
+                float right = Mathf.Round((bounds.x + x + width) * zoom), bottom = Mathf.Round((bounds.y + y + height) * zoom);
+                return new Rect(left - clip.x * zoom, top - clip.y * zoom, right - left, bottom - top);
+            }
             void Draw(int sourceY, float x, float y, float width, float height)
             {
                 if (width <= 0 || height <= 0) return;
-                GUI.DrawTextureWithTexCoords(new Rect((bounds.x - clip.x + x) * zoom,
-                    (bounds.y - clip.y + y) * zoom, width * zoom, height * zoom), skin.texture,
+                GUI.DrawTextureWithTexCoords(Pixels(x, y, width, height), skin.texture,
                     new Rect(0, 1f - (sourceY + 10f) * zoom / skin.texture.height,
                         10f * zoom / skin.texture.width, 10f * zoom / skin.texture.height));
             }
