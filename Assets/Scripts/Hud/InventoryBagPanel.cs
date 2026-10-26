@@ -150,9 +150,7 @@ public partial class Panel
         for (int i = 0; i < inventoryBagFilters.Length; i++) {
             Rect chip = InventoryFrame.FilterBounds(i);
             if (chip.yMax < filterViewport.y || chip.y > filterViewport.yMax) continue;
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(chip, filterViewport));
-            PopUp.paintPopUp(g, (int)chip.x, (int)chip.y, (int)chip.width, (int)chip.height,
-                i == (int)inventoryBagFilter ? 1 : 0, true);
+            InventoryItemVisuals.PaintNativeTab(g, chip, filterViewport, i == (int)inventoryBagFilter);
             mFont font = i == (int)inventoryBagFilter ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey;
             string label = inventoryBagFilters[i];
             if (font.getWidth(label) + 4 <= chip.width)
