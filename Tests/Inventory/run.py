@@ -101,7 +101,7 @@ partial class Panel {
     public bool isShow=true,InventoryFrameActive=true,InventoryBagDetailOpen;
     public int currentTabIndex=1,cmy,InventoryBagCellCount=30;
     public bool DisciplePanelActive=>InventoryFrameActive&&Char.myCharz().havePet&&currentTabIndex==7; public bool DiscipleSkillOpen;
-    private bool discipleLoaded; private long discipleFusionUntil; private int discipleSkill;
+    private bool discipleLoaded; private long discipleFusionUntil; private int discipleSkill,discipleSkillScroll,discipleKind;
     internal const int DiscipleTab=7; public int detailBuilds,toolRefreshes;
     private void CloseInventoryBagDetail(){InventoryBagDetailOpen=false;}
     private void SelectInventoryFrameTab(int id){currentTabIndex=id;CloseInventoryBagDetail();}

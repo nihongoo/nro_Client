@@ -6199,7 +6199,7 @@ public partial class Panel : IActionListener, IChatable
                     cmx = (cmtoX = 0);
                 }
             }
-            else if (type == 18 || type == 19 || type == 20 || type == 21)
+            else if (type == 18 || type == 19 || type == 20)
             {
                 setTypeMain();
                 cmx = (cmtoX = 0);
@@ -6792,7 +6792,7 @@ public partial class Panel : IActionListener, IChatable
                 else if (currItem.isTypeBody())
                 {
                     myVector.addElement(new Command(mResources.USE, this, 2000, currItem));
-                    if (Char.myCharz().havePet && position != 1)
+                    if (CanEquipForDisciple(currItem) && position != 1)
                     {
                         myVector.addElement(new Command(mResources.MOVEFORPET, this, 2005, currItem));
                     }
@@ -6851,7 +6851,7 @@ public partial class Panel : IActionListener, IChatable
                     }
 
                 }
-                if (GameCanvas.panel.type != 12 && GameCanvas.panel.type != 13 && GameCanvas.panel.type != 21)
+                if (GameCanvas.panel.type != 12 && GameCanvas.panel.type != 13)
                 {
                     if (position == 0)
                     {
@@ -7061,9 +7061,8 @@ public partial class Panel : IActionListener, IChatable
     private void doFirePet()
     {
         if (!Char.myCharz().havePet) return;
-        InfoDlg.showWait();
-        Service.gI().petInfo();
-        timeShow = 20;
+        setTypePetMain();
+        show();
     }
 
     private void searchClan()
@@ -8039,14 +8038,12 @@ public partial class Panel : IActionListener, IChatable
         }
         if (idAction == 2005)
         {
-            sbyte id3 = (sbyte)GetInventorySelect_bag(selected, newSelected, Char.myCharz().arrItemBody);
-            Service.gI().getItem(BAG_PET, id3);
+            EquipForDisciple(p as Item);
         }
         if (idAction == 2006)
         {
-            _ = Char.myPetz().arrItemBody;
-            sbyte id4 = (sbyte)selected;
-            Service.gI().getItem(PET_BAG, id4);
+            if (Char.myCharz().havePet && !DiscipleFused && selected >= 0
+                && selected < (Char.myPetz().arrItemBody?.Length ?? 0)) Service.gI().getItem(PET_BAG, (sbyte)selected);
         }
         if (idAction == 30001)
         {

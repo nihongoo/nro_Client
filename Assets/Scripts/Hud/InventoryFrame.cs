@@ -313,7 +313,7 @@ public partial class Panel
         selected = -1; cp = null; cmy = cmtoY = 0;
         switch (id) {
             case 0: setTabTask(); break;
-            case 1: setTabInventory(true); break;
+            case 1: setTabInventory(true); RequestDiscipleInfo(); break;
             case 2: setTabSkill(); break;
             case 3: setTabClans(); break;
             case 4: setTabMod(); break;
@@ -338,6 +338,7 @@ public partial class Panel
             inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
+        UpdateDiscipleSkillDrag();
         bool frameGesture = currentTabIndex == 1 || DisciplePanelActive || inventoryPressed == InventoryFrame.Close
             || inventoryPressed != null && inventoryPressed.StartsWith("inventory.tab.");
         // The legacy pointer stream keeps JustDown set until a handler consumes it.
@@ -495,6 +496,7 @@ public partial class Panel
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
 
         if (DisciplePanelActive && discipleSkill >= 0) PaintDiscipleSkillDetail(g);
+        else if (DisciplePanelActive && !InventoryBagDetailOpen) PaintDiscipleOverview(g);
         else if (currentTabIndex == 2) PaintSkillDetail(g);
         else {
                 if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
