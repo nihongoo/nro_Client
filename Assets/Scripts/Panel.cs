@@ -1290,6 +1290,7 @@ public partial class Panel : IActionListener, IChatable
 
     public void setTypePetMain()
     {
+        if (!Char.myCharz().havePet) return;
         setTypeMain();
         SelectInventoryFrameTab(DiscipleTab);
     }
@@ -7059,6 +7060,7 @@ public partial class Panel : IActionListener, IChatable
 
     private void doFirePet()
     {
+        if (!Char.myCharz().havePet) return;
         InfoDlg.showWait();
         Service.gI().petInfo();
         timeShow = 20;

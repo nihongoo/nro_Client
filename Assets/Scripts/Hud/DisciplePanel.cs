@@ -44,12 +44,12 @@ namespace Hud
             for (int i = 0; i < 5; i++) {
                 int slot = i;
                 HudLayout.Register("disciple.status." + i, () => Chip(slot), HudLayout.OverlayOrder + 12,
-                    () => Visible && Char.myCharz().havePet);
+                    () => Visible);
             }
             for (int i = 0; i < 12; i++) {
                 int slot = i;
                 HudLayout.Register("disciple.cell." + i, () => Cell(slot), HudLayout.OverlayOrder + 12,
-                    () => Visible && Char.myCharz().havePet);
+                    () => Visible);
             }
             HudLayout.Register("disciple.detail", () => HudLayout.GetRect(InventoryFrame.Detail), HudLayout.OverlayOrder + 14,
                 () => Visible && GameCanvas.panel.DiscipleSkillOpen);
@@ -74,7 +74,7 @@ public partial class Panel
     private int discipleSkill = -1, discipleFocus;
     private bool discipleLoaded;
     private long discipleNextRequest, discipleFusionUntil;
-    internal bool DisciplePanelActive => InventoryFrameActive && currentTabIndex == DiscipleTab;
+    internal bool DisciplePanelActive => InventoryFrameActive && Char.myCharz().havePet && currentTabIndex == DiscipleTab;
     internal bool DiscipleSkillOpen => DisciplePanelActive && discipleSkill >= 0;
     internal bool DiscipleFused => Char.myPetz().petStatus >= 4;
     private int InventoryToolIndex(int visual) => InventoryFrameActive && Char.myCharz().havePet && visual >= 3 ? visual + 1 : visual;
@@ -83,7 +83,19 @@ public partial class Panel
     {
         discipleLoaded = false; discipleFusionUntil = 0;
         CloseDiscipleDetail();
-        if (DisciplePanelActive) CloseInventoryBagDetail();
+        if (currentTabIndex == DiscipleTab) CloseInventoryBagDetail();
+    }
+    internal void SetDiscipleAvailable(bool available)
+    {
+        bool changed = Char.myCharz().havePet != available;
+        Char.myCharz().havePet = available;
+        if (!available) ClearDiscipleInfo();
+        if (InventoryFrameActive && changed) {
+            if (!available && currentTabIndex == DiscipleTab) SelectInventoryFrameTab(1);
+            else if (currentTabIndex == 6) setTabTool();
+            if (InventoryBagDetailOpen) BuildInventoryDetail();
+        }
+        HudLayout.Invalidate();
     }
     private void CloseDiscipleDetail() { discipleSkill = -1; HudLayout.Invalidate(); }
     private void OpenDiscipleTab()
@@ -178,7 +190,6 @@ public partial class Panel
     }
     private void PaintDiscipleHeader(mGraphics g)
     {
-        if (!Char.myCharz().havePet) { mFont.tahoma_7_yellow.drawString(g, "Chưa có đệ tử", 46, 12, 0); return; }
         Char pet = Char.myPetz();
         mFont.tahoma_7_yellow.drawString(g, "HP: " + pet.cHP + "/" + pet.cHPFull, 46, 1, 0);
         mFont.tahoma_7_yellow.drawString(g, "KI: " + pet.cMP + "/" + pet.cMPFull, 46, 12, 0);
@@ -189,9 +200,8 @@ public partial class Panel
     {
         Rect content = DiscipleLayout.Content;
         InventoryFrame.Clip(g, content);
-        if (!Char.myCharz().havePet || !discipleLoaded) {
-            string text = Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử";
-            mFont.tahoma_7_grey.drawString(g, text, W / 2, 90, mFont.CENTER); return;
+        if (!discipleLoaded) {
+            mFont.tahoma_7_grey.drawString(g, "Đang tải đệ tử...", W / 2, 90, mFont.CENTER); return;
         }
         int activeStatus = DiscipleFused ? 4 : Char.myPetz().petStatus;
         for (int i = 0; i < 5; i++) {

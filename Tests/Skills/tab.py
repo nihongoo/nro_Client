@@ -49,7 +49,7 @@ class Char {
  static Char current=new Char();public static Char myCharz()=>current;
  public NClass nClass=new NClass();public Skill[] learned=new Skill[8];public Item[] arrItemBag=new Item[80];
  public int cgender,cx,cy,cHP=100,statusMe,cHPGoc=50100,cMPGoc=30200,cDamGoc=5010,cDefGoc,cCriticalGoc,cNangdong;
- public long cTiemNang=9999999999;public bool meDead;
+ public long cTiemNang=9999999999;public bool meDead,havePet=true;
  public object mobFocus,charFocus,itemFocus,endMovePointCommand;public Npc npcFocus;public MovePoint currentMovePoint;
  public static bool isLoadingMap,ischangingMap;
  public Skill getSkill(SkillTemplate t){foreach(Skill s in learned)if(s?.template==t)return s;return null;}

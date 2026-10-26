@@ -1692,19 +1692,18 @@ public class Controller : IMessageHandler
 				sbyte b21 = msg.reader().readByte();
 				if (b21 == 0)
 				{
-					Char.myCharz().havePet = false;
-                    GameCanvas.panel.ClearDiscipleInfo();
+					GameCanvas.panel.SetDiscipleAvailable(false);
 				}
 				if (b21 == 1)
 				{
-					Char.myCharz().havePet = true;
+					GameCanvas.panel.SetDiscipleAvailable(true);
 				}
 				if (b21 != 2)
 				{
 					break;
 				}
 				InfoDlg.hide();
-                Char.myCharz().havePet = true;
+                GameCanvas.panel.SetDiscipleAvailable(true);
 				Char.myPetz().head = msg.reader().readShort();
 				Char.myPetz().setDefaultPart();
 				int num40 = msg.reader().readUnsignedByte();

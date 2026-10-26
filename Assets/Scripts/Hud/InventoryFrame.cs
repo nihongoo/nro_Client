@@ -234,8 +234,9 @@ public partial class Panel
 {
     internal bool InventoryFrameActive => type == 0 && Equals(GameCanvas.panel);
     internal int[] InventoryFrameTabIds => currentTabName == null ? Array.Empty<int>() : currentTabName.Length >= 7
-        ? inventoryMainTabs : currentTabName.Length == 4 ? inventoryFourTabs : inventoryFiveTabs;
+        ? (Char.myCharz().havePet ? inventoryMainTabs : inventoryMainTabsWithoutDisciple) : currentTabName.Length == 4 ? inventoryFourTabs : inventoryFiveTabs;
     private static readonly int[] inventoryMainTabs = new[] { 0, 1, 2, 3, 7, 6 };
+    private static readonly int[] inventoryMainTabsWithoutDisciple = new[] { 0, 1, 2, 3, 6 };
     private static readonly int[] inventoryFourTabs = new[] { 0, 1, 2, 3 };
     private static readonly int[] inventoryFiveTabs = new[] { 0, 1, 2, 3, 4 };
     private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 };
@@ -272,6 +273,7 @@ public partial class Panel
 
     private void SyncInventoryFrame()
     {
+        if (currentTabIndex == DiscipleTab && !Char.myCharz().havePet) { SelectInventoryFrameTab(1); return; }
         Rect panel = HudLayout.GetRect(InventoryFrame.Root);
         X = Y = 0; W = (int)panel.width; H = (int)panel.height;
         if (!isClose && cmtoX <= 0) cmx = 0;
@@ -303,6 +305,7 @@ public partial class Panel
 
     private void SelectInventoryFrameTab(int id)
     {
+        if (id == DiscipleTab && !Char.myCharz().havePet) return;
         if (id >= currentTabName.Length && id != DiscipleTab) return;
         ClosePotentialEditor();
         CloseInventoryBagDetail(); CloseDiscipleDetail();
@@ -450,7 +453,7 @@ public partial class Panel
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
 
-        if (!DisciplePanelActive || Char.myCharz().havePet) SmallImage.drawSmallImage(g, (DisciplePanelActive ? Char.myPetz() : Char.myCharz()).avatarz(), 23, 44, 0, 33);
+        SmallImage.drawSmallImage(g, (DisciplePanelActive ? Char.myPetz() : Char.myCharz()).avatarz(), 23, 44, 0, 33);
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
         PaintInventoryHeader(g);
         Rect close = HudLayout.GetRect(InventoryFrame.Close);
@@ -466,7 +469,7 @@ public partial class Panel
             PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width, (int)tab.height,
                 activeTab == ids[i] ? 1 : 0, true);
             inventoryTabTextBounds[i] = tab;
-            inventoryTabTextLabels[i] = ids.Length == 6 ? inventoryMainTabLabels[i] : string.Join("\n", currentTabName[ids[i]]);
+            inventoryTabTextLabels[i] = currentTabName.Length >= 7 ? inventoryMainTabLabels[Array.IndexOf(inventoryMainTabs, ids[i])] : string.Join("\n", currentTabName[ids[i]]);
         }
         inventoryTabText.Paint(mFont.tahoma_7_grey, inventoryTabTextLabels, inventoryTabTextBounds,
             ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);

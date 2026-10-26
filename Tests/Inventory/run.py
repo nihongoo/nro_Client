@@ -7,6 +7,7 @@ real assembly references so fixtures are not a substitute for a compile check.
 """
 from pathlib import Path
 import subprocess
+import re
 import tempfile
 from PIL import Image
 
@@ -99,7 +100,12 @@ class mGraphics {
 partial class Panel {
     public bool isShow=true,InventoryFrameActive=true,InventoryBagDetailOpen;
     public int currentTabIndex=1,cmy,InventoryBagCellCount=30;
-    public bool DisciplePanelActive=>currentTabIndex==7; public bool DiscipleSkillOpen;
+    public bool DisciplePanelActive=>InventoryFrameActive&&Char.myCharz().havePet&&currentTabIndex==7; public bool DiscipleSkillOpen;
+    private bool discipleLoaded; private long discipleFusionUntil; private int discipleSkill;
+    internal const int DiscipleTab=7; public int detailBuilds,toolRefreshes;
+    private void CloseInventoryBagDetail(){InventoryBagDetailOpen=false;}
+    private void SelectInventoryFrameTab(int id){currentTabIndex=id;CloseInventoryBagDetail();}
+    private void setTabTool(){toolRefreshes++;} private void BuildInventoryDetail(){detailBuilds++;}
     public Rect InventoryDetailUpperBounds=>new Rect(); public Rect InventoryDetailLowerBounds=>new Rect();
     public int InventoryDetailButtonCount=>0; public Rect InventoryDetailButtonBounds(int i)=>new Rect();
     public int InventoryFrameScroll=>currentTabIndex==1?cmy:0;
@@ -121,6 +127,8 @@ class InventoryTests {
     static void Check(bool ok,string message){checks++;if(!ok)throw new Exception(message);}
     static void Near(float a,float b,string s)=>Check(Math.Abs(a-b)<.1,s);
     static void Main(){
+        Check(!Char.myCharz().havePet&&GameCanvas.panel.InventoryFrameTabIds.Length==5,"startup exposes disciple before server confirmation");
+        Char.myCharz().havePet=true;
         Panel savedPanel=GameCanvas.panel;
         mFont savedFont=mFont.tahoma_7_yellow;
         GameCanvas.currentScreen=null; GameCanvas.panel=null; mFont.tahoma_7_yellow=null;
@@ -182,6 +190,13 @@ class InventoryTests {
                     Near(DiscipleLayout.Chip(d).height,DiscipleLayout.Chip(0).height,"status heights differ");
                     Check(HudLayout.HitTest(DiscipleLayout.Chip(d).center)=="disciple.status."+d,"status chip not clickable");
                 }
+                Char.myCharz().havePet=false;HudLayout.Invalidate();
+                Check(string.Join(",",GameCanvas.panel.InventoryFrameTabIds)=="0,1,2,3,6","no-pet account exposes disciple tab or loses functions tab");
+                Check(object.ReferenceEquals(GameCanvas.panel.InventoryFrameTabIds,GameCanvas.panel.InventoryFrameTabIds),"no-pet tab reads allocate");
+                Check(HudLayout.HitTest(DiscipleLayout.Cell(0).center)!="disciple.cell.0","hidden disciple equipment captures clicks");
+                Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Tab(4)).center)==InventoryFrame.Tab(4),"five-tab last button is inaccessible");
+                Check(HudLayout.HitTest(HudLayout.GetRect(InventoryFrame.Tab(5)).center)!=InventoryFrame.Tab(5),"removed tab still captures clicks");
+                Char.myCharz().havePet=true;HudLayout.Invalidate();
                 GameCanvas.panel.currentTabIndex=1; HudLayout.Invalidate();
                 // Fixed maximum resource fields and their icons must not overlap.
                 Check(root.width>=mFont.tahoma_7_yellow.getWidth("99.999.999.999")+mFont.tahoma_7_yellow.getWidth("1.000.000")+42,"resource fields collide");
@@ -312,6 +327,17 @@ class InventoryTests {
         mFont.tahoma_7_grey.drawn.Clear();
         Panel.PaintClosedForTest(lockedGraphics,new Rect(0,0,12,12));
         Check(mFont.tahoma_7_grey.drawn.Count==0&&lockedGraphics.lockOutlines==1,"small closed slot lacks lock icon");
+        GameCanvas.panel.currentTabIndex=7;GameCanvas.panel.InventoryBagDetailOpen=true;
+        GameCanvas.panel.SetDiscipleAvailable(false);
+        Check(!Char.myCharz().havePet&&GameCanvas.panel.currentTabIndex==1&&!GameCanvas.panel.InventoryBagDetailOpen,"losing disciple retains pet panel/detail");
+        GameCanvas.panel.InventoryBagDetailOpen=true;
+        GameCanvas.panel.SetDiscipleAvailable(true);
+        Check(Char.myCharz().havePet&&GameCanvas.panel.detailBuilds==1,"gaining disciple does not refresh open item actions");
+        GameCanvas.panel.SetDiscipleAvailable(true);
+        Check(GameCanvas.panel.detailBuilds==1,"unchanged availability rebuilds actions");
+        GameCanvas.panel.currentTabIndex=6;GameCanvas.panel.InventoryBagDetailOpen=false;
+        GameCanvas.panel.SetDiscipleAvailable(false);GameCanvas.panel.SetDiscipleAvailable(true);
+        Check(GameCanvas.panel.toolRefreshes==2,"availability leaves stale functions menu");
         Check(InventoryFrame.StarSlots(null)==0&&InventoryFrame.FilledStars(null)==0,"empty equipment has phantom sockets");
         for(int slots=0;slots<=9;slots++)for(int filled=0;filled<=slots;filled++){
             var starItem=new Item{itemOption=new[]{
@@ -331,6 +357,9 @@ class InventoryTests {
     }
 }
 '''
+char_source = (ROOT / "Assets/Scripts/Char.cs").read_text(encoding="utf-8-sig")
+pet_default = re.search(r"public bool havePet[^;]*;", char_source).group(0)
+fixture = fixture.replace("public bool meDead,havePet=true;", "public bool meDead; " + pet_default)
 fixture = fixture.replace("CURRENCY_ASSETS", ",".join("new int[]{" + ",".join(map(str, asset)) + "}" for asset in currency_assets))
 output = (ROOT / "Build/inventory-tests").resolve()
 assert output.is_relative_to(ROOT.resolve())
@@ -344,13 +373,15 @@ with tempfile.TemporaryDirectory(prefix="inventory-", dir=output) as folder:
         + "\npublic static void PaintClosedForTest(mGraphics g,Rect cell){PaintClosedBagSlot(g,cell);}\n}", encoding="utf-8")
     disciple = (ROOT / "Assets/Scripts/Hud/DisciplePanel.cs").read_text(encoding="utf-8-sig")
     (path / "DiscipleLayout.cs").write_text(disciple[:disciple.index("public partial class Panel")], encoding="utf-8")
+    availability = disciple[disciple.index("    internal void ClearDiscipleInfo()"):disciple.index("    private void OpenDiscipleTab()")]
+    (path / "PetAvailability.cs").write_text("using Hud; partial class Panel {\n" + availability + "\n}", encoding="utf-8")
     (path / "InventoryTests.cs").write_text(fixture, encoding="utf-8")
     item_source = (ROOT / "Assets/Scripts/Item.cs").read_text(encoding="utf-8-sig")
     item_body = item_source[item_source.index("    public bool isTypeBody()"):item_source.index("    public string getLockstring()")]
     (path / "ItemBody.cs").write_text("partial class Item {\n" + item_body + "\n}", encoding="utf-8")
     exe = path / "InventoryTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
-                    str(path / "InventoryRegistry.cs"), str(path / "DiscipleLayout.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"), str(path / "PanelLocked.cs"),
+                    str(path / "InventoryRegistry.cs"), str(path / "DiscipleLayout.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"), str(path / "PanelLocked.cs"), str(path / "PetAvailability.cs"),
                     str(path / "ItemBody.cs"), str(ROOT / "Assets/Scripts/Hud/InventoryBag.cs"),
                     str(ROOT / "Assets/Scripts/Hud/HudLayout.cs")], check=True)
     subprocess.run([str(exe)], check=True)
