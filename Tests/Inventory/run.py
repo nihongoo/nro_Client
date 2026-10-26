@@ -70,6 +70,7 @@ namespace UnityEngine {
         public static Rect MinMaxRect(float l,float t,float r,float b)=>new Rect(l,t,r-l,b-t);
     }
     public static class Mathf {
+        public static float Floor(float a)=>(float)Math.Floor(a);
         public static float Max(float a,float b)=>Math.Max(a,b); public static int Max(int a,int b)=>Math.Max(a,b);
         public static float Min(float a,float b)=>Math.Min(a,b); public static int Min(int a,int b)=>Math.Min(a,b);
     }
@@ -170,6 +171,10 @@ class InventoryTests {
                 Check(DiscipleLayout.Cell(8).y>=DiscipleLayout.SkillTitle.yMax+DiscipleLayout.GroupGap,"skill icon overlaps title");
                 Check(DiscipleLayout.Cell(11).yMax+DiscipleLayout.BadgeOverflow<=money.y-DiscipleLayout.GroupGap+.01f,"skill badge outside content");
                 Near(DiscipleLayout.Chip(0).x,DiscipleLayout.Content.x,"status row left edge");
+                Near(DiscipleLayout.Cell(0).x,DiscipleLayout.Content.x,"grid left edge");
+                Near(DiscipleLayout.Cell(3).xMax+DiscipleLayout.BadgeOverflow,DiscipleLayout.Content.xMax,"grid badge right edge");
+                Near(DiscipleLayout.Content.x,HudLayout.GetRect(InventoryFrame.Tab(0)).x,"tabs/grid left edge");
+                Near(DiscipleLayout.Content.xMax,HudLayout.GetRect(InventoryFrame.Tab(5)).xMax,"tabs/grid right edge");
                 Near(DiscipleLayout.Chip(4).xMax,DiscipleLayout.Content.xMax,"status row right edge");
                 for(int d=0;d<5;d++){
                     Near(DiscipleLayout.Chip(d).width,DiscipleLayout.Chip(0).width,"status widths differ");

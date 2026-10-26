@@ -150,7 +150,7 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
     }
-        // One fitted size for the whole row, with the native game font and explicit line breaks.
+        // Fit native bitmap glyphs; tab rows share a size, status chips fit independently.
         internal sealed class FittedTextRow
         {
             private GUIStyle style;
@@ -158,21 +158,22 @@ namespace Hud
             private readonly Vector2[] sizes = new Vector2[6];
             private Font font;
             private int zoom, baseSize, count;
-            private float textScale = 1;
+            private readonly float[] textScales = new float[6];
+            private bool sharedScale;
             internal const float Padding = 4;
 
             internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
-                Rect viewport, int selected, int normalColor, int selectedColor)
+                Rect viewport, int selected, int normalColor, int selectedColor, bool uniform = true)
             {
                 if (style == null) style = new GUIStyle(GUI.skin.label) {
                     alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
                 int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, nativeFont.myFont.fontSize);
-                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length;
+                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length || sharedScale != uniform;
                 for (int i = 0; i < length; i++) {
-                    Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width - 2 * Padding) * scale,
-                        Mathf.Max(0, bounds[i].height - 4) * scale);
+                    Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width * scale - 2 * Padding),
+                        Mathf.Max(0, bounds[i].height * scale - 4));
                     if (content[i] == null || content[i].text != labels[i] || sizes[i] != available) dirty = true;
                     if (content[i] == null) content[i] = new GUIContent(labels[i]); else content[i].text = labels[i];
                     sizes[i] = available;
@@ -181,22 +182,27 @@ namespace Hud
                 if (dirty) {
                     style.fontSize = size;
                     // Bitmap fonts (notably x4) ignore GUIStyle.fontSize. Scale their native
-                    // glyphs uniformly, using one common fit for every label in this row.
-                    textScale = 1;
+                    // glyphs rather than changing fontSize; tabs share the smallest fit.
+                    float textScale = 1;
                     for (int i = 0; i < length; i++) {
                         Vector2 measured = style.CalcSize(content[i]);
-                        if (measured.x > 0) textScale = Mathf.Min(textScale, Mathf.Max(0, sizes[i].x - 1) / measured.x);
-                        if (measured.y > 0) textScale = Mathf.Min(textScale, Mathf.Max(0, sizes[i].y - 1) / measured.y);
+                        float fit = 1;
+                        if (measured.x > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].x - 1) / measured.x);
+                        if (measured.y > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].y - 1) / measured.y);
+                        textScales[i] = Mathf.Max(.01f, fit);
+                        textScale = Mathf.Min(textScale, textScales[i]);
                     }
-                    textScale = Mathf.Max(.01f, textScale);
+                    if (uniform) for (int i = 0; i < length; i++) textScales[i] = textScale;
+                    sharedScale = uniform;
                     font = nativeFont.myFont; zoom = scale; baseSize = size; count = length;
                 }
                 Color previous = GUI.color;
                 try {
                     GUI.color = Color.white;
                     for (int i = 0; i < length; i++) {
-                        Rect inset = new Rect(bounds[i].x + Padding, bounds[i].y + 2,
-                            Mathf.Max(0, bounds[i].width - 2 * Padding), Mathf.Max(0, bounds[i].height - 4));
+                        float textScale = textScales[i];
+                        Rect inset = new Rect(bounds[i].x + Padding / scale, bounds[i].y + 2f / scale,
+                            sizes[i].x / scale, sizes[i].y / scale);
                         Rect clip = InventoryFrame.Intersection(inset, viewport);
                         if (clip.width <= 0 || clip.height <= 0) continue;
                         int color = i == selected ? selectedColor : normalColor;

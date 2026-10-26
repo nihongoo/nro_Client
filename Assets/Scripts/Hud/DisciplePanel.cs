@@ -11,28 +11,29 @@ namespace Hud
         internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, ChipHeight = 24, BadgeOverflow = 3;
         internal static Rect Content {
             get {
-                Rect root = HudLayout.GetRect(InventoryFrame.Root), tabs = HudLayout.GetRect(InventoryFrame.Tabs);
+                Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
                 float top = tabs.yMax + GroupGap;
-                return new Rect(InventoryFrame.Padding, top, Mathf.Max(0, root.width - 2 * InventoryFrame.Padding),
+                return new Rect(tabs.x, top, Mathf.Max(0, tabs.width - 1),
                     Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - GroupGap - top));
             }
         }
         internal static Rect Chip(int i) {
-            float width = (Content.width - 4 * GroupGap) / 5;
-            return new Rect(Content.x + i * (width + GroupGap), Content.y, width, ChipHeight);
+            float width = Mathf.Floor((Content.width - 8f / Mathf.Max(1, mGraphics.zoomLevel)) / 5);
+            float gap = (Content.width - 5 * width) / 4;
+            return new Rect(Content.x + Mathf.Floor(i * (width + gap)), Content.y, width, ChipHeight);
         }
         internal static Rect EquipmentTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
-        internal static float Size => Mathf.Max(1, Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
-            Mathf.Min((Content.width - 5 * GroupGap) / 4,
-                (Content.height - ChipHeight - 2 * TitleHeight - 5 * GroupGap - 3 * BadgeOverflow) / 3)));
+        internal static float Size => Mathf.Max(1, Mathf.Floor(Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
+            Mathf.Min((Content.width - 3 * GroupGap - BadgeOverflow) / 4,
+                (Content.height - ChipHeight - 2 * TitleHeight - 5 * GroupGap - 3 * BadgeOverflow) / 3))));
         internal static Rect SkillTitle => new Rect(Content.x, Cell(4).yMax + BadgeOverflow + GroupGap, Content.width, TitleHeight);
         internal static Rect Cell(int i)
         {
-            float gap = (Content.width - 4 * Size) / 5;
+            float gap = (Content.width - BadgeOverflow - 4 * Size) / 3;
             float equipmentTop = EquipmentTitle.yMax + GroupGap;
             float top = i < 8 ? equipmentTop + i / 4 * (Size + BadgeOverflow + GroupGap)
                 : SkillTitle.yMax + GroupGap;
-            return new Rect(Content.x + gap + i % 4 * (Size + gap), top, Size, Size);
+            return new Rect(Content.x + Mathf.Floor(i % 4 * (Size + gap)), top, Size, Size);
         }
         internal static void Register()
         {
@@ -198,7 +199,7 @@ public partial class Panel
             discipleStatusLabels[i] = label;
         }
         discipleStatusText.Paint(mFont.tahoma_7b_dark, discipleStatusLabels, discipleStatusBounds,
-            5, content, activeStatus, InventoryFrame.Border, InventoryFrame.Border);
+            5, content, activeStatus, InventoryFrame.Border, InventoryFrame.Border, false);
         InventoryFrame.Clip(g, content);
         mFont.tahoma_7b_dark.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, 0);
         mFont.tahoma_7b_dark.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, 0);

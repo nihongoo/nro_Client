@@ -55,7 +55,7 @@ namespace Hud
                     next.Font.getWidth("99.999.999.999")+next.Font.getWidth("1.000.000")+42);
                 next.Root=HudLayout.Anchor(HorizontalAnchor.Left,VerticalAnchor.Top,new Vector2(width,GameCanvas.h),Vector2.zero);
                 next.Close=new Rect(next.Root.xMax-21,3,18,18);
-                next.Tabs=new Rect(2,48,next.Root.width-4,24);
+                next.Tabs=new Rect(2,48,Mathf.Floor(next.Root.width)-4,24);
                 next.Money=new Rect(1,next.Root.yMax-20,next.Root.width-2,19);
                 next.Bag=new Rect(3,73,next.Root.width-6,Mathf.Max(0,next.Money.y-75));
                 next.Detail=HudLayout.Anchor(HorizontalAnchor.Right,VerticalAnchor.Top,
@@ -91,7 +91,9 @@ namespace Hud
                     int count = GameCanvas.panel?.InventoryFrameTabIds.Length ?? 0;
                     if (count == 0) return new Rect();
                     Rect tabs = HudLayout.GetRect(Tabs);
-                    return new Rect(tabs.x + slot * tabs.width / count, tabs.y, tabs.width / count, tabs.height);
+                    float left = Mathf.Floor(tabs.x + slot * tabs.width / count);
+                    float right = Mathf.Floor(tabs.x + (slot + 1) * tabs.width / count);
+                    return new Rect(left, tabs.y, right - left - 1, tabs.height);
                 }, HudLayout.OverlayOrder + 12,
                     () => Visible && slot < GameCanvas.panel.InventoryFrameTabIds.Length);
             }
@@ -452,13 +454,13 @@ public partial class Panel
         for (int i = 0; i < ids.Length; i++) {
             Rect tab = HudLayout.GetRect(InventoryFrame.Tab(i));
             InventoryFrame.Clip(g, tab);
-            PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width - 1, (int)tab.height,
+            PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width, (int)tab.height,
                 activeTab == ids[i] ? 1 : 0, true);
-            inventoryTabTextBounds[i] = new Rect(tab.x, tab.y, tab.width - 1, tab.height);
+            inventoryTabTextBounds[i] = tab;
             inventoryTabTextLabels[i] = ids.Length == 6 ? inventoryMainTabLabels[i] : string.Join("\n", currentTabName[ids[i]]);
         }
-        inventoryTabText.Paint(mFont.tahoma_7_grey, inventoryTabTextLabels, inventoryTabTextBounds,
-            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), 0x626262, 0x00552D);
+        inventoryTabText.Paint(mFont.tahoma_7b_dark, inventoryTabTextLabels, inventoryTabTextBounds,
+            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), InventoryFrame.Border, 0x00552D);
 
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
