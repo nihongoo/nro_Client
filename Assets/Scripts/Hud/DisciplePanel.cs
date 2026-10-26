@@ -305,7 +305,7 @@ public partial class Panel
         if (GameCanvas.isPointerJustDown) inventoryDetailDragScroll = discipleSkillScroll;
         if (!(GameCanvas.isPointerDown || GameCanvas.isPointerJustRelease)) return;
         int delta = GameCanvas.py - inventoryDragY;
-        if (Math.Abs(delta) > 4) inventoryDragging = true;
+        if (System.Math.Abs(delta) > 4) inventoryDragging = true;
         if (inventoryDragging) discipleSkillScroll = Mathf.Clamp(inventoryDetailDragScroll - delta, 0,
             Mathf.Max(0, discipleSkillLines * 12 + 36 - GameCanvas.h));
     }

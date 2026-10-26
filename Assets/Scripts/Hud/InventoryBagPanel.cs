@@ -134,7 +134,7 @@ public partial class Panel
         if (InventoryBagDetailOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point))
             ScrollInventoryDetail(point, -amount * 24);
         else if (DiscipleSkillOpen && HudLayout.GetRect(InventoryFrame.Detail).Contains(point)) {
-            discipleSkillScroll = Math.Max(0, discipleSkillScroll - amount * 24);
+            discipleSkillScroll = System.Math.Max(0, discipleSkillScroll - amount * 24);
         }
         else if (currentTabIndex == 1 && HudLayout.GetRect(InventoryFrame.Bag).Contains(point)) {
             inventoryBagDoubleTap.Reset();
