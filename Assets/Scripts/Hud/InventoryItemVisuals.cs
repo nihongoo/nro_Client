@@ -150,7 +150,7 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
     }
-        // Fit native bitmap glyphs; tab rows share a size, status chips fit independently.
+        // Fit native bitmap glyphs at one common size for every label in the row.
         internal sealed class FittedTextRow
         {
             private GUIStyle style;
@@ -158,19 +158,18 @@ namespace Hud
             private readonly Vector2[] sizes = new Vector2[6];
             private Font font;
             private int zoom, baseSize, count;
-            private readonly float[] textScales = new float[6];
-            private bool sharedScale;
+            private float textScale = 1;
             internal const float Padding = 4;
 
             internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
-                Rect viewport, int selected, Color normalColor, Color selectedColor, bool uniform = true)
+                Rect viewport, int selected, Color normalColor, Color selectedColor)
             {
                 if (style == null) style = new GUIStyle(GUI.skin.label) {
                     alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
                 int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, nativeFont.myFont.fontSize);
-                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length || sharedScale != uniform;
+                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length;
                 for (int i = 0; i < length; i++) {
                     Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width * scale - 2 * Padding),
                         Mathf.Max(0, bounds[i].height * scale - 4));
@@ -183,24 +182,20 @@ namespace Hud
                     style.fontSize = size;
                     // Bitmap fonts (notably x4) ignore GUIStyle.fontSize. Scale their native
                     // glyphs rather than changing fontSize; tabs share the smallest fit.
-                    float textScale = 1;
+                    textScale = 1;
                     for (int i = 0; i < length; i++) {
                         Vector2 measured = style.CalcSize(content[i]);
                         float fit = 1;
                         if (measured.x > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].x - 1) / measured.x);
                         if (measured.y > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].y - 1) / measured.y);
-                        textScales[i] = Mathf.Max(.01f, fit);
-                        textScale = Mathf.Min(textScale, textScales[i]);
+                        textScale = Mathf.Min(textScale, Mathf.Max(.01f, fit));
                     }
-                    if (uniform) for (int i = 0; i < length; i++) textScales[i] = textScale;
-                    sharedScale = uniform;
                     font = nativeFont.myFont; zoom = scale; baseSize = size; count = length;
                 }
                 Color previous = GUI.color;
                 try {
                     GUI.color = Color.white;
                     for (int i = 0; i < length; i++) {
-                        float textScale = textScales[i];
                         Rect inset = new Rect(bounds[i].x + Padding / scale, bounds[i].y + 2f / scale,
                             sizes[i].x / scale, sizes[i].y / scale);
                         Rect clip = InventoryFrame.Intersection(inset, viewport);

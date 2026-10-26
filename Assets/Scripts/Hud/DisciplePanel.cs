@@ -8,7 +8,9 @@ namespace Hud
     {
         internal const string Close = "disciple.detail.close";
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
-        internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, ChipHeight = 24, BadgeOverflow = 3;
+        internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, BadgeOverflow = 3;
+        internal static float ChipHeight => Mathf.Min(24, Mathf.Max(16,
+            Content.height - 3 * TitleHeight - 6 * GroupGap - 3 * BadgeOverflow - 3));
         internal static Rect Content {
             get {
                 Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
@@ -21,12 +23,13 @@ namespace Hud
             float width = Mathf.Floor((Content.width - 8f / Mathf.Max(1, mGraphics.zoomLevel)) / 5);
             float gap = (Content.width - 5 * width) / 4;
             return new Rect(Content.x + Mathf.Floor(i * (width + gap)),
-                Cell(4).yMax + BadgeOverflow + GroupGap, width, ChipHeight);
+                StatusTitle.yMax + GroupGap, width, ChipHeight);
         }
+        internal static Rect StatusTitle => new Rect(Content.x, Cell(4).yMax + BadgeOverflow + GroupGap, Content.width, TitleHeight);
         internal static Rect EquipmentTitle => new Rect(Content.x, Content.y, Content.width, TitleHeight);
         internal static float Size => Mathf.Max(1, Mathf.Floor(Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
             Mathf.Min((Content.width - 3 * GroupGap - BadgeOverflow) / 4,
-                (Content.height - ChipHeight - 2 * TitleHeight - 5 * GroupGap - 3 * BadgeOverflow) / 3))));
+                (Content.height - ChipHeight - 3 * TitleHeight - 6 * GroupGap - 3 * BadgeOverflow) / 3))));
         internal static Rect SkillTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
         internal static Rect Cell(int i)
         {
@@ -68,7 +71,6 @@ public partial class Panel
     private readonly Rect[] discipleRuneBounds = new Rect[1];
     private static readonly string[] discipleRuneLabel = { "NGỌC" };
     private readonly Rect[] discipleStatusBounds = new Rect[5];
-    private readonly string[] discipleStatusLabels = new string[5];
     private int discipleSkill = -1, discipleFocus;
     private bool discipleLoaded;
     private long discipleNextRequest, discipleFusionUntil;
@@ -196,16 +198,16 @@ public partial class Panel
             Rect chip = DiscipleLayout.Chip(i);
             discipleStatusBounds[i] = chip;
             InventoryItemVisuals.PaintNativeTab(g, chip, content, i == activeStatus);
-            string label = discipleStatuses[i];
-            if (i == 4 && DiscipleFused && discipleFusionUntil > 0) {
-                int seconds = (int)System.Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
-                label += " " + seconds / 60 + ":" + (seconds % 60).ToString("00");
-            }
-            discipleStatusLabels[i] = label;
         }
-        discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatusLabels, discipleStatusBounds,
-            5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1, false);
+        discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatuses, discipleStatusBounds,
+            5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);
+        string statusTitle = "Trạng thái";
+        if (DiscipleFused && discipleFusionUntil > 0) {
+            int seconds = (int)System.Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
+            statusTitle += " · Hợp thể " + seconds / 60 + ":" + (seconds % 60).ToString("00");
+        }
         InventoryFrame.Clip(g, content);
+        mFont.tahoma_7_grey.drawString(g, statusTitle, (int)DiscipleLayout.StatusTitle.x, (int)DiscipleLayout.StatusTitle.y, mFont.LEFT);
         mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
         mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
         for (int i = 0; i < 12; i++) {

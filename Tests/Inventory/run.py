@@ -166,7 +166,8 @@ class InventoryTests {
                     Near(cell.y,DiscipleLayout.Cell(d/4*4).y,"disciple grid must have four columns");
                 }
                 Near(DiscipleLayout.EquipmentTitle.y-HudLayout.GetRect(InventoryFrame.Tabs).yMax,DiscipleLayout.GroupGap,"tab/equipment spacing");
-                Near(DiscipleLayout.Chip(0).y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/status spacing");
+                Near(DiscipleLayout.StatusTitle.y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/status title spacing");
+                Near(DiscipleLayout.Chip(0).y-DiscipleLayout.StatusTitle.yMax,DiscipleLayout.GroupGap,"status title/chip spacing");
                 Near(DiscipleLayout.SkillTitle.y-DiscipleLayout.Chip(0).yMax,DiscipleLayout.GroupGap,"status/skill spacing");
                 Check(DiscipleLayout.Cell(8).y>=DiscipleLayout.SkillTitle.yMax+DiscipleLayout.GroupGap,"skill icon overlaps title");
                 Check(DiscipleLayout.Cell(11).yMax+DiscipleLayout.BadgeOverflow<=money.y-DiscipleLayout.GroupGap+.01f,"skill badge outside content");
