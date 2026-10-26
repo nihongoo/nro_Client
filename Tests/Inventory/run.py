@@ -164,7 +164,18 @@ class InventoryTests {
                     Check(HudLayout.HitTest(cell.center)=="disciple.cell."+d,"disciple cell not clickable");
                     Near(cell.y,DiscipleLayout.Cell(d/4*4).y,"disciple grid must have four columns");
                 }
-                for(int d=0;d<5;d++)Check(HudLayout.HitTest(DiscipleLayout.Chip(d).center)=="disciple.status."+d,"status chip not clickable");
+                Near(DiscipleLayout.Chip(0).y-HudLayout.GetRect(InventoryFrame.Tabs).yMax,DiscipleLayout.GroupGap,"tab/status spacing");
+                Near(DiscipleLayout.EquipmentTitle.y-DiscipleLayout.Chip(0).yMax,DiscipleLayout.GroupGap,"status/equipment spacing");
+                Near(DiscipleLayout.SkillTitle.y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/skill spacing");
+                Check(DiscipleLayout.Cell(8).y>=DiscipleLayout.SkillTitle.yMax+DiscipleLayout.GroupGap,"skill icon overlaps title");
+                Check(DiscipleLayout.Cell(11).yMax+DiscipleLayout.BadgeOverflow<=money.y-DiscipleLayout.GroupGap+.01f,"skill badge outside content");
+                Near(DiscipleLayout.Chip(0).x,DiscipleLayout.Content.x,"status row left edge");
+                Near(DiscipleLayout.Chip(4).xMax,DiscipleLayout.Content.xMax,"status row right edge");
+                for(int d=0;d<5;d++){
+                    Near(DiscipleLayout.Chip(d).width,DiscipleLayout.Chip(0).width,"status widths differ");
+                    Near(DiscipleLayout.Chip(d).height,DiscipleLayout.Chip(0).height,"status heights differ");
+                    Check(HudLayout.HitTest(DiscipleLayout.Chip(d).center)=="disciple.status."+d,"status chip not clickable");
+                }
                 GameCanvas.panel.currentTabIndex=1; HudLayout.Invalidate();
                 // Fixed maximum resource fields and their icons must not overlap.
                 Check(root.width>=mFont.tahoma_7_yellow.getWidth("99.999.999.999")+mFont.tahoma_7_yellow.getWidth("1.000.000")+42,"resource fields collide");

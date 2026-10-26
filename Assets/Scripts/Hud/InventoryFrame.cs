@@ -229,6 +229,10 @@ public partial class Panel
     private static readonly int[] inventoryFiveTabs = new[] { 0, 1, 2, 3, 4 };
     private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 };
     private static readonly string[] inventorySlotLabels = { "Áo", "Quần", "Găng", "Giày", "Rada", "GLT", "Skin", "Tai", "Pet" };
+    private readonly InventoryItemVisuals.FittedTextRow inventoryTabText = new InventoryItemVisuals.FittedTextRow();
+    private readonly Rect[] inventoryTabTextBounds = new Rect[6];
+    private readonly string[] inventoryTabTextLabels = new string[6];
+    private static readonly string[] inventoryMainTabLabels = { "Nhiệm\nVụ", "Hành\nTrang", "Kỹ\nNăng", "Bang\nHội", "Đệ\nTử", "Chức\nNăng" };
     private string inventoryPressed;
     private int inventoryDragY, inventoryDragScroll;
     private bool inventoryDragging;
@@ -450,11 +454,11 @@ public partial class Panel
             InventoryFrame.Clip(g, tab);
             PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width - 1, (int)tab.height,
                 activeTab == ids[i] ? 1 : 0, true);
-            string[] words = ids[i] == DiscipleTab ? new[] { "Đệ", "Tử" } : currentTabName[ids[i]];
-            for (int line = 0; line < words.Length; line++)
-                (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
-                    words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
+            inventoryTabTextBounds[i] = new Rect(tab.x, tab.y, tab.width - 1, tab.height);
+            inventoryTabTextLabels[i] = ids.Length == 6 ? inventoryMainTabLabels[i] : string.Join("\n", currentTabName[ids[i]]);
         }
+        inventoryTabText.Paint(mFont.tahoma_7_grey, inventoryTabTextLabels, inventoryTabTextBounds,
+            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), 0x626262, 0x00552D);
 
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {

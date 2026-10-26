@@ -8,16 +8,31 @@ namespace Hud
     {
         internal const string Close = "disciple.detail.close";
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
-        internal static Rect Content => new Rect(4, 73, HudLayout.GetRect(InventoryFrame.Root).width - 8,
-            Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - 76));
-        internal static Rect Chip(int i) => new Rect(Content.x + i * Content.width / 5, Content.y, Content.width / 5 - 2, 27);
-        internal static float Size => Mathf.Max(8, Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
-            Mathf.Min((Content.width - 25) / 4, (Content.height - 77) / 3)));
+        internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, ChipHeight = 24, BadgeOverflow = 3;
+        internal static Rect Content {
+            get {
+                Rect root = HudLayout.GetRect(InventoryFrame.Root), tabs = HudLayout.GetRect(InventoryFrame.Tabs);
+                float top = tabs.yMax + GroupGap;
+                return new Rect(InventoryFrame.Padding, top, Mathf.Max(0, root.width - 2 * InventoryFrame.Padding),
+                    Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - GroupGap - top));
+            }
+        }
+        internal static Rect Chip(int i) {
+            float width = (Content.width - 4 * GroupGap) / 5;
+            return new Rect(Content.x + i * (width + GroupGap), Content.y, width, ChipHeight);
+        }
+        internal static Rect EquipmentTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
+        internal static float Size => Mathf.Max(1, Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
+            Mathf.Min((Content.width - 5 * GroupGap) / 4,
+                (Content.height - ChipHeight - 2 * TitleHeight - 5 * GroupGap - 3 * BadgeOverflow) / 3)));
+        internal static Rect SkillTitle => new Rect(Content.x, Cell(4).yMax + BadgeOverflow + GroupGap, Content.width, TitleHeight);
         internal static Rect Cell(int i)
         {
             float gap = (Content.width - 4 * Size) / 5;
-            return new Rect(Content.x + gap + i % 4 * (Size + gap),
-                Content.y + 43 + i / 4 * (Size + 7) + (i >= 8 ? 17 : 0), Size, Size);
+            float equipmentTop = EquipmentTitle.yMax + GroupGap;
+            float top = i < 8 ? equipmentTop + i / 4 * (Size + BadgeOverflow + GroupGap)
+                : SkillTitle.yMax + GroupGap;
+            return new Rect(Content.x + gap + i % 4 * (Size + gap), top, Size, Size);
         }
         internal static void Register()
         {
@@ -46,6 +61,9 @@ public partial class Panel
     internal const int DiscipleRuneType = 80;
     private static readonly int[] discipleBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7 };
     private static readonly string[] discipleStatuses = { "Đi theo", "Bảo vệ", "Tấn công", "Về nhà", "Hợp thể" };
+    private readonly InventoryItemVisuals.FittedTextRow discipleStatusText = new InventoryItemVisuals.FittedTextRow();
+    private readonly Rect[] discipleStatusBounds = new Rect[5];
+    private readonly string[] discipleStatusLabels = new string[5];
     private int discipleSkill = -1, discipleFocus;
     private bool discipleLoaded;
     private long discipleNextRequest, discipleFusionUntil;
@@ -167,26 +185,29 @@ public partial class Panel
         if (!Char.myCharz().havePet || !discipleLoaded) {
             mFont.tahoma_7b_dark.drawString(g, Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử", W / 2, 90, mFont.CENTER); return;
         }
+        int activeStatus = DiscipleFused ? 4 : Char.myPetz().petStatus;
         for (int i = 0; i < 5; i++) {
             Rect chip = DiscipleLayout.Chip(i);
-            bool active = i == (DiscipleFused ? 4 : Char.myPetz().petStatus);
-            InventoryFrame.Rounded(g, chip, active ? 0x4DBA70 : InventoryFrame.EquipmentBackground);
+            discipleStatusBounds[i] = chip;
+            InventoryFrame.Rounded(g, chip, i == activeStatus ? 0x4DBA70 : InventoryFrame.EquipmentBackground);
             string label = discipleStatuses[i];
             if (i == 4 && DiscipleFused && discipleFusionUntil > 0) {
-                int seconds = (int)Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
+                int seconds = (int)System.Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
                 label += " " + seconds / 60 + ":" + (seconds % 60).ToString("00");
             }
-            string[] lines = mFont.tahoma_7b_dark.splitFontArray(label, Math.Max(10, (int)chip.width - 2));
-            for (int n = 0; n < Math.Min(2, lines.Length); n++) mFont.tahoma_7b_dark.drawString(g, lines[n], (int)chip.center.x, (int)chip.y + 3 + n * 11, mFont.CENTER);
+            discipleStatusLabels[i] = label;
         }
-        mFont.tahoma_7b_dark.drawString(g, "Trang bị", 8, (int)content.y + 30, 0);
-        mFont.tahoma_7b_dark.drawString(g, "Kỹ năng", 8, (int)DiscipleLayout.Cell(8).y - 14, 0);
+        discipleStatusText.Paint(mFont.tahoma_7b_dark, discipleStatusLabels, discipleStatusBounds,
+            5, content, activeStatus, InventoryFrame.Border, InventoryFrame.Border);
+        InventoryFrame.Clip(g, content);
+        mFont.tahoma_7b_dark.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, 0);
+        mFont.tahoma_7b_dark.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, 0);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
-            InventoryFrame.Rounded(g, cell, InventoryFrame.SlotBackground, 255, chosen ? InventoryFrame.Accent : 0);
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, content));
             if (i < 8) {
+                InventoryFrame.Rounded(g, cell, InventoryFrame.SlotBackground, 255, chosen ? InventoryFrame.Accent : 0);
+                InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, content));
                 Item item = DiscipleItem(i);
                 if (item?.template != null) {
                     SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0, 3);
@@ -194,8 +215,8 @@ public partial class Panel
                 } else if (i == 7) mFont.tahoma_7_grey.drawString(g, "NGỌC", (int)cell.center.x, (int)cell.center.y - 5, mFont.CENTER);
             } else {
                 Skill skill = DiscipleSkill(i - 8);
+                InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen);
                 if (skill?.template != null) {
-                    SmallImage.drawSmallImage(g, skill.template.iconId, (int)cell.center.x, (int)cell.center.y, 0, 3);
                     InventoryItemVisuals.PaintLevel(g, cell, content, skill.point, false);
                 }
             }

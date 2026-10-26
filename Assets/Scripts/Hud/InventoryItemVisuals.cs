@@ -150,6 +150,73 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
     }
+        // One fitted size for the whole row, with the native game font and explicit line breaks.
+        internal sealed class FittedTextRow
+        {
+            private GUIStyle style;
+            private readonly GUIContent[] content = new GUIContent[6];
+            private readonly Vector2[] sizes = new Vector2[6];
+            private Font font;
+            private int zoom, baseSize, count;
+            private float textScale = 1;
+            internal const float Padding = 4;
+
+            internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
+                Rect viewport, int selected, int normalColor, int selectedColor)
+            {
+                if (style == null) style = new GUIStyle(GUI.skin.label) {
+                    alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
+                    wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
+                };
+                int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, nativeFont.myFont.fontSize);
+                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length;
+                for (int i = 0; i < length; i++) {
+                    Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width - 2 * Padding) * scale,
+                        Mathf.Max(0, bounds[i].height - 4) * scale);
+                    if (content[i] == null || content[i].text != labels[i] || sizes[i] != available) dirty = true;
+                    if (content[i] == null) content[i] = new GUIContent(labels[i]); else content[i].text = labels[i];
+                    sizes[i] = available;
+                }
+                style.font = nativeFont.myFont;
+                if (dirty) {
+                    style.fontSize = size;
+                    // Bitmap fonts (notably x4) ignore GUIStyle.fontSize. Scale their native
+                    // glyphs uniformly, using one common fit for every label in this row.
+                    textScale = 1;
+                    for (int i = 0; i < length; i++) {
+                        Vector2 measured = style.CalcSize(content[i]);
+                        if (measured.x > 0) textScale = Mathf.Min(textScale, Mathf.Max(0, sizes[i].x - 1) / measured.x);
+                        if (measured.y > 0) textScale = Mathf.Min(textScale, Mathf.Max(0, sizes[i].y - 1) / measured.y);
+                    }
+                    textScale = Mathf.Max(.01f, textScale);
+                    font = nativeFont.myFont; zoom = scale; baseSize = size; count = length;
+                }
+                Color previous = GUI.color;
+                try {
+                    GUI.color = Color.white;
+                    for (int i = 0; i < length; i++) {
+                        Rect inset = new Rect(bounds[i].x + Padding, bounds[i].y + 2,
+                            Mathf.Max(0, bounds[i].width - 2 * Padding), Mathf.Max(0, bounds[i].height - 4));
+                        Rect clip = InventoryFrame.Intersection(inset, viewport);
+                        if (clip.width <= 0 || clip.height <= 0) continue;
+                        int color = i == selected ? selectedColor : normalColor;
+                        Color ink = new Color((color >> 16 & 255) / 255f, (color >> 8 & 255) / 255f, (color & 255) / 255f, 1);
+                        style.normal.textColor = style.hover.textColor = style.active.textColor = style.focused.textColor = ink;
+                        style.onNormal.textColor = style.onHover.textColor = style.onActive.textColor = style.onFocused.textColor = ink;
+                        Matrix4x4 matrix = GUI.matrix;
+                        Vector2 center = inset.center * scale;
+                        try {
+                            // These fixed rows are fully inside their viewport. Fit the label
+                            // itself, avoiding nested GUI clips that also scale bitmap glyphs.
+                            GUIUtility.ScaleAroundPivot(new Vector2(textScale, textScale), center);
+                            float width = inset.width * scale / textScale, height = inset.height * scale / textScale;
+                            GUI.Label(new Rect(center.x - width / 2, center.y - height / 2, width, height), content[i], style);
+                        }
+                        finally { GUI.matrix = matrix; }
+                    }
+                } finally { GUI.color = previous; }
+            }
+        }
         // Match SmallImage.drawSmallImage: entries outside the 256 atlas are separate images.
         internal static bool TryAtlasIcon(int id,out Image image,out Rect uv)
         {
