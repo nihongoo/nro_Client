@@ -163,7 +163,7 @@ namespace Hud
             internal const float Padding = 4;
 
             internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
-                Rect viewport, int selected, int normalColor, int selectedColor, bool uniform = true)
+                Rect viewport, int selected, Color normalColor, Color selectedColor, bool uniform = true)
             {
                 if (style == null) style = new GUIStyle(GUI.skin.label) {
                     alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
@@ -205,8 +205,7 @@ namespace Hud
                             sizes[i].x / scale, sizes[i].y / scale);
                         Rect clip = InventoryFrame.Intersection(inset, viewport);
                         if (clip.width <= 0 || clip.height <= 0) continue;
-                        int color = i == selected ? selectedColor : normalColor;
-                        Color ink = new Color((color >> 16 & 255) / 255f, (color >> 8 & 255) / 255f, (color & 255) / 255f, 1);
+                        Color ink = i == selected ? selectedColor : normalColor;
                         style.normal.textColor = style.hover.textColor = style.active.textColor = style.focused.textColor = ink;
                         style.onNormal.textColor = style.onHover.textColor = style.onActive.textColor = style.onFocused.textColor = ink;
                         Matrix4x4 matrix = GUI.matrix;

@@ -185,7 +185,7 @@ public partial class Panel
         InventoryFrame.Clip(g, content);
         if (!Char.myCharz().havePet || !discipleLoaded) {
             string text = Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử";
-            mFont.tahoma_7b_dark.drawTintedString(g, text, W / 2 - mFont.tahoma_7b_dark.getWidth(text) / 2, 90, InventoryFrame.LabelTint); return;
+            mFont.tahoma_7_grey.drawString(g, text, W / 2, 90, mFont.CENTER); return;
         }
         int activeStatus = DiscipleFused ? 4 : Char.myPetz().petStatus;
         for (int i = 0; i < 5; i++) {
@@ -199,11 +199,11 @@ public partial class Panel
             }
             discipleStatusLabels[i] = label;
         }
-        discipleStatusText.Paint(mFont.tahoma_7b_dark, discipleStatusLabels, discipleStatusBounds,
-            5, content, activeStatus, InventoryFrame.LabelColor, InventoryFrame.LabelColor, false);
+        discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatusLabels, discipleStatusBounds,
+            5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_grey.color1, false);
         InventoryFrame.Clip(g, content);
-        mFont.tahoma_7b_dark.drawTintedString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, InventoryFrame.LabelTint);
-        mFont.tahoma_7b_dark.drawTintedString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, InventoryFrame.LabelTint);
+        mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
+        mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
@@ -246,8 +246,8 @@ public partial class Panel
     private static void DrawDiscipleText(mGraphics g, Rect r, string text, ref int y)
     {
         if (string.IsNullOrEmpty(text)) return;
-        foreach (string line in mFont.tahoma_7b_dark.splitFontArray(text, Mathf.Max(10, (int)r.width - 12))) {
-            mFont.tahoma_7b_dark.drawTintedString(g, line, (int)r.x + 6, y, InventoryFrame.LabelTint); y += 12;
+        foreach (string line in mFont.tahoma_7_grey.splitFontArray(text, Mathf.Max(10, (int)r.width - 12))) {
+            mFont.tahoma_7_grey.drawString(g, line, (int)r.x + 6, y, mFont.LEFT); y += 12;
         }
     }
 }

@@ -15,8 +15,6 @@ namespace Hud
         // Original Panel.paintInventory / paintBottomMoneyInfo colors.
         internal const int Border = 6702080, Accent = 16383818,
             EquipmentBackground = 15196114, SlotBackground = 9993045, MoneyBackground = 11837316, PanelBackground = 14338484;
-        internal const int LabelColor = 0x626262;
-        internal static readonly Color LabelTint = new Color32(0x62, 0x62, 0x62, 0xFF);
         internal const int Padding=6, Gap=4, FrameInset=3, FrameBorder=0xC78A36;
         internal const float MoneyIconHeight = 10, MoneyGap = 3;
         internal static Rect Inset(Rect rect,float padding=Padding) => new Rect(rect.x+padding,rect.y+padding,Mathf.Max(0,rect.width-2*padding),Mathf.Max(0,rect.height-2*padding));
@@ -461,8 +459,8 @@ public partial class Panel
             inventoryTabTextBounds[i] = tab;
             inventoryTabTextLabels[i] = ids.Length == 6 ? inventoryMainTabLabels[i] : string.Join("\n", currentTabName[ids[i]]);
         }
-        inventoryTabText.Paint(mFont.tahoma_7b_dark, inventoryTabTextLabels, inventoryTabTextBounds,
-            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), InventoryFrame.LabelColor, 0x00552D);
+        inventoryTabText.Paint(mFont.tahoma_7_grey, inventoryTabTextLabels, inventoryTabTextBounds,
+            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);
 
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
