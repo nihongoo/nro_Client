@@ -20,13 +20,14 @@ namespace Hud
         internal static Rect Chip(int i) {
             float width = Mathf.Floor((Content.width - 8f / Mathf.Max(1, mGraphics.zoomLevel)) / 5);
             float gap = (Content.width - 5 * width) / 4;
-            return new Rect(Content.x + Mathf.Floor(i * (width + gap)), Content.y, width, ChipHeight);
+            return new Rect(Content.x + Mathf.Floor(i * (width + gap)),
+                Cell(4).yMax + BadgeOverflow + GroupGap, width, ChipHeight);
         }
-        internal static Rect EquipmentTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
+        internal static Rect EquipmentTitle => new Rect(Content.x, Content.y, Content.width, TitleHeight);
         internal static float Size => Mathf.Max(1, Mathf.Floor(Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
             Mathf.Min((Content.width - 3 * GroupGap - BadgeOverflow) / 4,
                 (Content.height - ChipHeight - 2 * TitleHeight - 5 * GroupGap - 3 * BadgeOverflow) / 3))));
-        internal static Rect SkillTitle => new Rect(Content.x, Cell(4).yMax + BadgeOverflow + GroupGap, Content.width, TitleHeight);
+        internal static Rect SkillTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
         internal static Rect Cell(int i)
         {
             float gap = (Content.width - BadgeOverflow - 4 * Size) / 3;

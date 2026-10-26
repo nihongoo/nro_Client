@@ -165,9 +165,9 @@ class InventoryTests {
                     Check(HudLayout.HitTest(cell.center)=="disciple.cell."+d,"disciple cell not clickable");
                     Near(cell.y,DiscipleLayout.Cell(d/4*4).y,"disciple grid must have four columns");
                 }
-                Near(DiscipleLayout.Chip(0).y-HudLayout.GetRect(InventoryFrame.Tabs).yMax,DiscipleLayout.GroupGap,"tab/status spacing");
-                Near(DiscipleLayout.EquipmentTitle.y-DiscipleLayout.Chip(0).yMax,DiscipleLayout.GroupGap,"status/equipment spacing");
-                Near(DiscipleLayout.SkillTitle.y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/skill spacing");
+                Near(DiscipleLayout.EquipmentTitle.y-HudLayout.GetRect(InventoryFrame.Tabs).yMax,DiscipleLayout.GroupGap,"tab/equipment spacing");
+                Near(DiscipleLayout.Chip(0).y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/status spacing");
+                Near(DiscipleLayout.SkillTitle.y-DiscipleLayout.Chip(0).yMax,DiscipleLayout.GroupGap,"status/skill spacing");
                 Check(DiscipleLayout.Cell(8).y>=DiscipleLayout.SkillTitle.yMax+DiscipleLayout.GroupGap,"skill icon overlaps title");
                 Check(DiscipleLayout.Cell(11).yMax+DiscipleLayout.BadgeOverflow<=money.y-DiscipleLayout.GroupGap+.01f,"skill badge outside content");
                 Near(DiscipleLayout.Chip(0).x,DiscipleLayout.Content.x,"status row left edge");
