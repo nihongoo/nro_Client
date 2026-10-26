@@ -81,15 +81,19 @@ class Panel {
    Char.pet.petStatus=status;p.BuildInventoryDetail();
    Check(p.Has("Mặc cho đệ tử")== (status<4),"hide fused pet button");
    Check(p.Has("Mặc"),"master wear must remain available while fused");
+   var wear=p.inventoryDetailButtons.Find(b=>b.Text=="Mặc");
+   var discard=p.inventoryDetailButtons.Find(b=>b.Text=="Bỏ ra");
+   Check(wear.Group==0&&wear.Position==0&&discard.Group==0&&discard.Position==1,"fusion moves player wear/discard row");
+   if(status<4)Check(p.inventoryDetailButtons.Find(b=>b.Text=="Mặc cho đệ tử").Group==3,"pet wear must use independent full-width row");
   }
   for(int type=0;type<=5;type++){
    Char.pet.petStatus=0;p.inventoryBagDetailItem=Item(type);p.BuildInventoryDetail();
    var master=p.inventoryDetailButtons.Find(b=>b.Text=="Mặc");
    var pet=p.inventoryDetailButtons.Find(b=>b.Text=="Mặc cho đệ tử");
-   Check(master!=null&&pet!=null&&master.Group==0&&pet.Group==0&&pet.Position==master.Position+1,"wear buttons must share adjacent row positions");
+   Check(master!=null&&pet!=null&&master.Group==0&&master.Position==0&&pet.Group==3&&pet.Position==0,"pet wear must not displace player wear");
   }
   Char.pet.petStatus=0;p.inventoryBagDetailItem=Item(32);p.BuildInventoryDetail();
-  Check(p.inventoryDetailButtons.Find(b=>b.Text=="Mặc cho đệ tử").Position==1,"training armor pet wear placement");
+  Check(p.inventoryDetailButtons.Find(b=>b.Text=="Mặc cho đệ tử").Group==3,"training armor pet wear placement");
   Char.pet.petStatus=0;p.inventoryBagDetailItem=Item(80);p.BuildInventoryDetail();
   Check(p.inventoryDetailButtons.Count==2&&p.Has("Mặc cho đệ tử")&&p.Has("Bỏ"),"rune exposes extra actions");
   Char.pet.petStatus=4;p.BuildInventoryDetail();Check(p.inventoryDetailButtons.Count==1&&p.Has("Bỏ"),"fused rune actions");

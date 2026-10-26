@@ -95,10 +95,8 @@ public partial class Panel
         int bottom = 0;
         if (!rune && !worn && equipment) AddInventoryDetailButton("Mặc", new Command("Mặc", this, 2000, item), 0, bottom++);
         if (!worn && CanEquipForDisciple(item)) {
-            if (rune) {
-                inventoryDetailPet = true;
-                AddInventoryDetailButton("Mặc cho đệ tử", new Command("Mặc cho đệ tử", this, 2105, item), 3, 0);
-            } else AddInventoryDetailButton("Mặc cho đệ tử", new Command("Mặc cho đệ tử", this, 2105, item), 0, bottom++);
+            inventoryDetailPet = true;
+            AddInventoryDetailButton("Mặc cho đệ tử", new Command("Mặc cho đệ tử", this, 2105, item), 3, 0);
         }
         if (rune && !worn) AddInventoryDetailButton("Bỏ", new Command("Bỏ", this, 2003, item), 0, bottom++);
         if (inventoryDetailCommands != null) for (int i = 0; i < inventoryDetailCommands.size(); i++) {
