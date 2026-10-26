@@ -93,12 +93,12 @@ public partial class Panel
         bool equipment = InventoryBag.CanEquip(item);
         bool consumable = !rune && !worn && !equipment && InventoryBag.Category(item) == InventoryBagFilter.Consumable;
         int bottom = 0;
+        if (!rune && !worn && equipment) AddInventoryDetailButton("Mặc", new Command("Mặc", this, 2000, item), 0, bottom++);
         if (!worn && CanEquipForDisciple(item)) {
             inventoryDetailPet = true;
             AddInventoryDetailButton("Mặc cho đệ tử", new Command("Mặc cho đệ tử", this, 2105, item), 3, 0);
         }
         if (rune && !worn) AddInventoryDetailButton("Bỏ", new Command("Bỏ", this, 2003, item), 0, bottom++);
-        if (!rune && !worn && equipment) AddInventoryDetailButton("Mặc", new Command("Mặc", this, 2000, item), 0, bottom++);
         if (inventoryDetailCommands != null) for (int i = 0; i < inventoryDetailCommands.size(); i++) {
             Command command = inventoryDetailCommands.elementAt(i) as Command;
             if (command == null) continue;
