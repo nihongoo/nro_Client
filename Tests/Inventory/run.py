@@ -22,8 +22,8 @@ while depth:
     depth += (bag_panel[locked_end] == "{") - (bag_panel[locked_end] == "}")
     locked_end += 1
 locked_painter = bag_panel[locked_start:locked_end]
-assert "InventoryFrame.Option(item, Item.OPT_STARSLOT)" in source
-assert "InventoryFrame.Option(item, Item.OPT_MAXSTARSLOT)" not in source
+assert "Option(item, Item.OPT_STARSLOT)" in source
+assert "Option(item, Item.OPT_MAXSTARSLOT)" in source
 assert "inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 }" in source
 assert "if (slot < 5 && item != null)" in source and "if (slot < 6)" in source
 assert "luongKhoa" not in source and "imgLuongKhoa" not in source
@@ -76,7 +76,7 @@ namespace UnityEngine {
     }
 }
 namespace UnityEngine.Device { public static class Application { public static RuntimePlatform platform; } }
-partial class Item { public ItemOption[] itemOption; public ItemTemplate template; public int quantity; public string info,content; }
+partial class Item { public const int OPT_STARSLOT=102,OPT_MAXSTARSLOT=107; public ItemOption[] itemOption; public ItemTemplate template; public int quantity; public string info,content; }
 class ItemTemplate { public short id; public sbyte type; }
 class ItemOption { public ItemOptionTemplate optionTemplate; public int param; }
 class ItemOptionTemplate { public int id; }
@@ -166,7 +166,7 @@ class InventoryTests {
                     Near(cell.y,DiscipleLayout.Cell(d/4*4).y,"disciple grid must have four columns");
                 }
                 Near(DiscipleLayout.EquipmentTitle.y-HudLayout.GetRect(InventoryFrame.Tabs).yMax,DiscipleLayout.GroupGap,"tab/equipment spacing");
-                Near(DiscipleLayout.StatusTitle.y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.BadgeOverflow,DiscipleLayout.GroupGap,"equipment/status title spacing");
+                Near(DiscipleLayout.StatusTitle.y-DiscipleLayout.Cell(4).yMax-DiscipleLayout.EquipmentOverflow,DiscipleLayout.GroupGap,"equipment/status title spacing");
                 Near(DiscipleLayout.Chip(0).y-DiscipleLayout.StatusTitle.yMax,DiscipleLayout.GroupGap,"status title/chip spacing");
                 Near(DiscipleLayout.SkillTitle.y-DiscipleLayout.Chip(0).yMax,DiscipleLayout.GroupGap,"status/skill spacing");
                 Check(DiscipleLayout.Cell(8).y>=DiscipleLayout.SkillTitle.yMax+DiscipleLayout.GroupGap,"skill icon overlaps title");
@@ -312,6 +312,21 @@ class InventoryTests {
         mFont.tahoma_7_grey.drawn.Clear();
         Panel.PaintClosedForTest(lockedGraphics,new Rect(0,0,12,12));
         Check(mFont.tahoma_7_grey.drawn.Count==0&&lockedGraphics.lockOutlines==1,"small closed slot lacks lock icon");
+        Check(InventoryFrame.StarSlots(null)==0&&InventoryFrame.FilledStars(null)==0,"empty equipment has phantom sockets");
+        for(int slots=0;slots<=9;slots++)for(int filled=0;filled<=slots;filled++){
+            var starItem=new Item{itemOption=new[]{
+                new ItemOption{optionTemplate=new ItemOptionTemplate{id=107},param=slots},
+                new ItemOption{optionTemplate=new ItemOptionTemplate{id=102},param=filled},
+                new ItemOption{optionTemplate=new ItemOptionTemplate{id=228},param=9}}};
+            Check(InventoryFrame.StarSlots(starItem)==slots,"wrong socket count");
+            Check(InventoryFrame.FilledStars(starItem)==filled,"wrong filled count");
+            Check(InventoryFrame.StarKind(starItem,-1)==-1&&InventoryFrame.StarKind(starItem,slots)==-1,"star outside actual sockets");
+            for(int i=0;i<slots;i++)Check(InventoryFrame.StarKind(starItem,i)==(i<filled?(i<7?1:2):(i>=7?3:0)),"wrong native star asset kind");
+            starItem.itemOption[1].param=slots+2;
+            Check(InventoryFrame.FilledStars(starItem)==slots,"invalid fill exceeds sockets");
+            starItem.itemOption[0].param=-1;starItem.itemOption[1].param=-1;
+            Check(InventoryFrame.StarSlots(starItem)==0&&InventoryFrame.FilledStars(starItem)==0,"negative socket metadata");
+        }
         Console.WriteLine("PASS: "+checks+" inventory registry/metadata checks; no Unity build");
     }
 }

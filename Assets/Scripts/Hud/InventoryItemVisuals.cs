@@ -15,10 +15,11 @@ namespace Hud
         private static int levelZoom;
         private static float levelWidth;
 
-        internal static Rect StarBounds(Rect cell, int index)
+        internal static Rect StarBounds(Rect cell, int index, int count)
         {
-            float size = System.Math.Min(5, (cell.width - 2) / 6);
-            return new Rect(cell.center.x - 3 * size + index * size, cell.yMax + 3.5f, size, size);
+            if (count <= 0) return new Rect();
+            float size = System.Math.Min(5, (cell.width - 2) / count);
+            return new Rect(cell.center.x - count * size / 2 + index * size, cell.yMax + 3.5f, size, size);
         }
         internal static Rect LevelBounds(Rect cell, float width, bool bag)
         {
@@ -85,18 +86,22 @@ namespace Hud
                 finally { GUI.EndGroup(); }
             } finally { GUI.color = previous; }
         }
-        internal static void PaintStars(Rect cell, Rect viewport, int filled)
+        internal static void PaintStars(Rect cell, Rect viewport, Item item)
         {
+            int count = InventoryFrame.StarSlots(item);
+            if (count == 0) return;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             Color previous = GUI.color;
             try {
                 GUI.color = Color.white;
                 GUI.BeginGroup(new Rect(viewport.x * zoom, viewport.y * zoom, viewport.width * zoom, viewport.height * zoom));
                 try {
-                    for (int i = 0; i < 6; i++) {
-                        Image image = i < filled ? Panel.imgStar : Panel.imgMaxStar;
+                    for (int i = 0; i < count; i++) {
+                        int kind = InventoryFrame.StarKind(item, i);
+                        Image image = kind == 1 ? Panel.imgStar : kind == 2 ? (Panel.imgStar8 ?? Panel.imgStar)
+                            : kind == 3 ? (Panel.imgStarCuongHoa ?? Panel.imgMaxStar) : Panel.imgMaxStar;
                         if (image == null) continue;
-                        Rect star = StarBounds(cell, i);
+                        Rect star = StarBounds(cell, i, count);
                         GUI.DrawTexture(new Rect((star.x - viewport.x) * zoom, (star.y - viewport.y) * zoom,
                             star.width * zoom, star.height * zoom), image.texture);
                     }

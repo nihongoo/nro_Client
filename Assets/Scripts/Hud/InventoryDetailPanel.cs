@@ -11,6 +11,7 @@ public partial class Panel
         internal string Text;
         internal mFont Font;
         internal int Meter, Value;
+        internal Item StarItem;
     }
     private sealed class InventoryDetailButton
     {
@@ -157,14 +158,14 @@ public partial class Panel
         inventoryDetailWidth = r.width; inventoryDetailHeight = r.height; inventoryDetailBody = DisciplePanelActive ? Char.myPetz().arrItemBody : Char.myCharz().arrItemBody;
         inventoryDetailInfo.Clear(); inventoryDetailDescription.Clear();
         int level = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7);
-        int stars = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_STARSLOT), 0, 6);
+        int slots = InventoryFrame.StarSlots(item), stars = InventoryFrame.FilledStars(item);
         bool worn = DisciplePanelActive || selected >= 0 && selected < (inventoryDetailBody?.Length ?? 0);
         AddInventoryDetailText(inventoryDetailInfo, item.template.name + (InventoryBag.HasLevel(item) ? " [+" + level + "]" : ""), mFont.tahoma_7b_dark);
         AddInventoryDetailText(inventoryDetailInfo, worn ? "Đang mặc" : "Chưa mặc", mFont.tahoma_7_grey);
         if (InventoryBag.HasLevel(item)) {
             inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Cấp " + level + "/7", Font = mFont.tahoma_7b_dark, Meter = 7, Value = level });
-            inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/6", Font = mFont.tahoma_7b_dark, Meter = 6, Value = stars });
         }
+        if (slots > 0) inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/" + slots, Font = mFont.tahoma_7b_dark, StarItem = item });
         if (item.itemOption != null) foreach (ItemOption option in item.itemOption) {
             if (option?.optionTemplate == null) continue;
             int id = option.optionTemplate.id;
@@ -256,7 +257,7 @@ public partial class Panel
             if (y + 12 < bounds.y || y > bounds.yMax) continue;
             // Native setTypePaint shifts text left; keep glyphs inside the clip on both sides.
             var line = lines[i]; line.Font.drawString(g, line.Text, (int)bounds.x + 4, y, mFont.LEFT);
-            if (line.Meter == 6) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.Value);
+            if (line.StarItem != null) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.StarItem);
             else if (line.Meter == 7) for (int n = 0; n < 7; n++) {
                 int x = (int)(bounds.xMax - 45 + n * 6);
                 g.setColor(n < line.Value ? InventoryFrame.Accent : InventoryFrame.SlotBackground); g.fillRect(x, y + 4, 5, 4);

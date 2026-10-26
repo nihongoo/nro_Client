@@ -8,9 +8,9 @@ namespace Hud
     {
         internal const string Close = "disciple.detail.close";
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
-        internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, BadgeOverflow = 3;
-        internal static float ChipHeight => Mathf.Min(24, Mathf.Max(16,
-            Content.height - 3 * TitleHeight - 6 * GroupGap - 3 * BadgeOverflow - 3));
+        internal const float GroupGap = InventoryFrame.Gap, TitleHeight = 12, BadgeOverflow = 3, EquipmentOverflow = 9;
+        internal static float ChipHeight => Mathf.Min(24, Mathf.Max(10,
+            Content.height - 3 * TitleHeight - 6 * GroupGap - 2 * EquipmentOverflow - BadgeOverflow - 3));
         internal static Rect Content {
             get {
                 Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
@@ -25,17 +25,17 @@ namespace Hud
             return new Rect(Content.x + Mathf.Floor(i * (width + gap)),
                 StatusTitle.yMax + GroupGap, width, ChipHeight);
         }
-        internal static Rect StatusTitle => new Rect(Content.x, Cell(4).yMax + BadgeOverflow + GroupGap, Content.width, TitleHeight);
+        internal static Rect StatusTitle => new Rect(Content.x, Cell(4).yMax + EquipmentOverflow + GroupGap, Content.width, TitleHeight);
         internal static Rect EquipmentTitle => new Rect(Content.x, Content.y, Content.width, TitleHeight);
         internal static float Size => Mathf.Max(1, Mathf.Floor(Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
             Mathf.Min((Content.width - 3 * GroupGap - BadgeOverflow) / 4,
-                (Content.height - ChipHeight - 3 * TitleHeight - 6 * GroupGap - 3 * BadgeOverflow) / 3))));
+                (Content.height - ChipHeight - 3 * TitleHeight - 6 * GroupGap - 2 * EquipmentOverflow - BadgeOverflow) / 3))));
         internal static Rect SkillTitle => new Rect(Content.x, Chip(0).yMax + GroupGap, Content.width, TitleHeight);
         internal static Rect Cell(int i)
         {
             float gap = (Content.width - BadgeOverflow - 4 * Size) / 3;
             float equipmentTop = EquipmentTitle.yMax + GroupGap;
-            float top = i < 8 ? equipmentTop + i / 4 * (Size + BadgeOverflow + GroupGap)
+            float top = i < 8 ? equipmentTop + i / 4 * (Size + EquipmentOverflow + GroupGap)
                 : SkillTitle.yMax + GroupGap;
             return new Rect(Content.x + Mathf.Floor(i % 4 * (Size + gap)), top, Size, Size);
         }
@@ -220,6 +220,7 @@ public partial class Panel
                 if (item?.template != null) {
                     SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0, 3);
                     if (i < 6) InventoryItemVisuals.PaintLevel(g, cell, content, Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7), false);
+                    InventoryItemVisuals.PaintStars(cell, content, item);
                 } else if (i == 7) {
                     discipleRuneBounds[0] = cell;
                     discipleRuneText.Paint(mFont.tahoma_7_grey, discipleRuneLabel, discipleRuneBounds,

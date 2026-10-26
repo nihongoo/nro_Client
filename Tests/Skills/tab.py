@@ -11,7 +11,7 @@ base = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.As
 fixture = base[:base.index("partial class Item")]
 fixture = fixture.replace("public static float Max(float a,float b)", "public static int Clamp(int n,int lo,int hi)=>Math.Max(lo,Math.Min(n,hi)); public static float Max(float a,float b)")
 fixture += r'''
-class Item { public const int OPT_LVITEM=72,OPT_STARSLOT=107;public ItemTemplate template;public int quantity;public ItemOption[] itemOption; }
+class Item { public const int OPT_LVITEM=72,OPT_STARSLOT=102,OPT_MAXSTARSLOT=107;public ItemTemplate template;public int quantity;public ItemOption[] itemOption; }
 class ItemTemplate {public short id;}
 class ItemOption {public ItemOptionTemplate optionTemplate;public int param;}
 class ItemOptionTemplate {public int id;}

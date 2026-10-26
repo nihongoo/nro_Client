@@ -165,6 +165,15 @@ namespace Hud
                 if (option?.optionTemplate != null && option.optionTemplate.id == id) return option.param;
             return 0;
         }
+        internal static int StarSlots(Item item) => Mathf.Max(0, Option(item, Item.OPT_MAXSTARSLOT));
+        internal static int FilledStars(Item item) => Mathf.Min(StarSlots(item), Mathf.Max(0, Option(item, Item.OPT_STARSLOT)));
+        // Match the legacy item popup: ordinary, special filled, and reinforced empty slots.
+        internal static int StarKind(Item item, int index)
+        {
+            if (index < 0 || index >= StarSlots(item)) return -1;
+            if (index < FilledStars(item)) return index < 7 ? 1 : 2;
+            return index >= 7 && index < Option(item, 228) ? 3 : 0;
+        }
         // Set identities are item-option IDs from nro1.sql, independent of rarity 34/35/36.
         internal static int SetColor(Item item)
         {
@@ -518,10 +527,9 @@ public partial class Panel
         InventoryFrame.Clip(g, viewport);
         if (slot < 6) {
             int level = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7);
-            int stars = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_STARSLOT), 0, 6);
             if (item != null) InventoryItemVisuals.PaintLevel(g, rect, viewport, level, false);
-            InventoryItemVisuals.PaintStars(rect, viewport, stars);
         }
+        InventoryItemVisuals.PaintStars(rect, viewport, item);
     }
 
     private void PaintInventoryMoney(mGraphics g)
