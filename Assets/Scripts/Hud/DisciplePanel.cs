@@ -63,6 +63,9 @@ public partial class Panel
     private static readonly int[] discipleBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7 };
     private static readonly string[] discipleStatuses = { "Đi theo", "Bảo vệ", "Tấn công", "Về nhà", "Hợp thể" };
     private readonly InventoryItemVisuals.FittedTextRow discipleStatusText = new InventoryItemVisuals.FittedTextRow();
+    private readonly InventoryItemVisuals.FittedTextRow discipleRuneText = new InventoryItemVisuals.FittedTextRow();
+    private readonly Rect[] discipleRuneBounds = new Rect[1];
+    private static readonly string[] discipleRuneLabel = { "NGỌC" };
     private readonly Rect[] discipleStatusBounds = new Rect[5];
     private readonly string[] discipleStatusLabels = new string[5];
     private int discipleSkill = -1, discipleFocus;
@@ -191,7 +194,7 @@ public partial class Panel
         for (int i = 0; i < 5; i++) {
             Rect chip = DiscipleLayout.Chip(i);
             discipleStatusBounds[i] = chip;
-            InventoryFrame.Rounded(g, chip, i == activeStatus ? 0x4DBA70 : InventoryFrame.EquipmentBackground);
+            InventoryItemVisuals.PaintNativeTab(g, chip, content, i == activeStatus);
             string label = discipleStatuses[i];
             if (i == 4 && DiscipleFused && discipleFusionUntil > 0) {
                 int seconds = (int)System.Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
@@ -200,7 +203,7 @@ public partial class Panel
             discipleStatusLabels[i] = label;
         }
         discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatusLabels, discipleStatusBounds,
-            5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_grey.color1, false);
+            5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1, false);
         InventoryFrame.Clip(g, content);
         mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
         mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
@@ -214,7 +217,11 @@ public partial class Panel
                 if (item?.template != null) {
                     SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0, 3);
                     if (i < 6) InventoryItemVisuals.PaintLevel(g, cell, content, Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7), false);
-                } else if (i == 7) mFont.tahoma_7_grey.drawString(g, "NGỌC", (int)cell.center.x, (int)cell.center.y - 5, mFont.CENTER);
+                } else if (i == 7) {
+                    discipleRuneBounds[0] = cell;
+                    discipleRuneText.Paint(mFont.tahoma_7_grey, discipleRuneLabel, discipleRuneBounds,
+                        1, content, -1, mFont.tahoma_7_grey.color1, mFont.tahoma_7_grey.color1);
+                }
             } else {
                 Skill skill = DiscipleSkill(i - 8);
                 InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen);

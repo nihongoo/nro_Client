@@ -294,6 +294,43 @@ namespace Hud
             }
             return grey;
         }
+        // The popup button atlas has eight 10px slices. Stretch only its edges;
+        // tiling whole edge slices can overwrite the corners at narrow chip widths.
+        internal static void PaintNativeTab(mGraphics g, Rect bounds, Rect viewport, bool selected)
+        {
+            Image skin = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp;
+            if (skin?.texture == null) { PopUp.loadBg(); skin = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp; }
+            Rect clip = InventoryFrame.Intersection(bounds, viewport);
+            if (clip.width <= 0 || clip.height <= 0 || skin?.texture == null) return;
+            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            float cap = Mathf.Min(10, Mathf.Min(bounds.width, bounds.height) / 2);
+            InventoryFrame.Clip(g, clip);
+            g.setColor(selected ? 12052656 : 16770503);
+            g.fillRect((int)(bounds.x + cap), (int)(bounds.y + cap),
+                (int)(bounds.width - 2 * cap), (int)(bounds.height - 2 * cap));
+            Color previous = GUI.color;
+            try {
+                GUI.color = Color.white;
+                GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+                try {
+                    Draw(0, 0, 0, cap, cap); Draw(10, cap, 0, bounds.width - 2 * cap, cap);
+                    Draw(20, bounds.width - cap, 0, cap, cap);
+                    Draw(30, 0, cap, cap, bounds.height - 2 * cap);
+                    Draw(40, bounds.width - cap, cap, cap, bounds.height - 2 * cap);
+                    Draw(50, 0, bounds.height - cap, cap, cap);
+                    Draw(60, cap, bounds.height - cap, bounds.width - 2 * cap, cap);
+                    Draw(70, bounds.width - cap, bounds.height - cap, cap, cap);
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.color = previous; }
+            void Draw(int sourceY, float x, float y, float width, float height)
+            {
+                if (width <= 0 || height <= 0) return;
+                GUI.DrawTextureWithTexCoords(new Rect((bounds.x - clip.x + x) * zoom,
+                    (bounds.y - clip.y + y) * zoom, width * zoom, height * zoom), skin.texture,
+                    new Rect(0, 1f - (sourceY + 10f) * zoom / skin.texture.height,
+                        10f * zoom / skin.texture.width, 10f * zoom / skin.texture.height));
+            }
+        }
         internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected,Rect viewport)
         {
             Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
