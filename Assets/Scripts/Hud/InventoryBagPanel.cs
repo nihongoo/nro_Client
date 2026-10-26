@@ -16,7 +16,7 @@ public partial class Panel
     private int inventoryBagDetailQuantity;
     private static readonly string[] inventoryBagFilters = { "Tất cả", "Trang bị", "Tiêu hao", "Nguyên liệu" };
     internal int InventoryBagCellCount => inventoryBagMap.Count;
-    internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && currentTabIndex == 1 && inventoryBagDetailItem?.template != null;
+    internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && (currentTabIndex == 1 || DisciplePanelActive) && inventoryBagDetailItem?.template != null;
 
     private void SyncInventoryBag()
     {

@@ -183,7 +183,6 @@ public partial class Panel : IActionListener, IChatable
 
     private static string[][] boxGD;
 
-    private static string[][] boxPet;
 
     public string[][][] tabName = new string[27][][]
     {
@@ -208,7 +207,7 @@ public partial class Panel : IActionListener, IChatable
         new string[1][] { new string[1] { string.Empty } },
         new string[1][] { new string[1] { string.Empty } },
         new string[1][] { new string[1] { string.Empty } },
-        boxPet,
+        Array.Empty<string[]>(),
         new string[1][] { new string[1] { string.Empty } },
         new string[1][] { new string[1] { string.Empty } },
         new string[1][] { new string[1] { string.Empty } },
@@ -453,15 +452,6 @@ public partial class Panel : IActionListener, IChatable
 
     private bool isSelectPlayerMenu;
 
-    private string[] strStatus = new string[6]
-    {
-        mResources.follow,
-        mResources.defend,
-        mResources.attack,
-        mResources.gohome,
-        mResources.fusion,
-        mResources.fusionForever
-    };
 
     private static string log;
 
@@ -818,8 +808,8 @@ public partial class Panel : IActionListener, IChatable
             TAB_W += 5;
         }
         startTabPos = xScroll + wScroll / 2 - currentTabName.Length * TAB_W / 2;
-        lastSelect = new int[currentTabName.Length];
-        cmyLast = new int[currentTabName.Length];
+        lastSelect = new int[currentTabName.Length + (type == 0 ? 1 : 0)];
+        cmyLast = new int[currentTabName.Length + (type == 0 ? 1 : 0)];
         for (int i = 0; i < currentTabName.Length; i++)
         {
             lastSelect[i] = (GameCanvas.isTouch ? (-1) : 0);
@@ -832,7 +822,7 @@ public partial class Panel : IActionListener, IChatable
         {
             currentTabIndex = 0;
         }
-        if (currentTabIndex > currentTabName.Length - 1)
+        if (currentTabIndex > currentTabName.Length - 1 && !(type == 0 && currentTabIndex == DiscipleTab))
         {
             currentTabIndex = currentTabName.Length - 1;
         }
@@ -1300,52 +1290,8 @@ public partial class Panel : IActionListener, IChatable
 
     public void setTypePetMain()
     {
-        type = 21;
-        if (GameCanvas.panel2 != null)
-        {
-            boxPet = mResources.petMainTab2;
-        }
-        else
-        {
-            boxPet = mResources.petMainTab;
-        }
-        tabName[21] = boxPet;
-        if (Char.myCharz().cgender == 1)
-        {
-            strStatus = new string[6]
-            {
-                mResources.follow,
-                mResources.defend,
-                mResources.attack,
-                mResources.gohome,
-                mResources.fusion,
-                mResources.fusionForever
-            };
-        }
-        else
-        {
-            strStatus = new string[5]
-            {
-                mResources.follow,
-                mResources.defend,
-                mResources.attack,
-                mResources.gohome,
-                mResources.fusion
-            };
-        }
-        setType(2);
-        if (currentTabIndex == 0)
-        {
-            setTabPetInventory();
-        }
-        if (currentTabIndex == 1)
-        {
-            setTabPetStatus();
-        }
-        if (currentTabIndex == 2)
-        {
-            setTabInventory(resetSelect: true);
-        }
+        setTypeMain();
+        SelectInventoryFrameTab(DiscipleTab);
     }
 
     public void setTypeMain()
@@ -1932,20 +1878,6 @@ public partial class Panel : IActionListener, IChatable
                 case 20:
                     updateKeyOption();
                     break;
-                case 21:
-                    if (currentTabIndex == 0)
-                    {
-                        updateKeyScrollView();
-                    }
-                    if (currentTabIndex == 1)
-                    {
-                        updateKeyPetStatus();
-                    }
-                    if (currentTabIndex == 2)
-                    {
-                        updateKeyScrollView();
-                    }
-                    break;
                 case 22:
                     updateKeyAuto();
                     break;
@@ -1964,11 +1896,6 @@ public partial class Panel : IActionListener, IChatable
 
     private void updateKeyAuto()
     {
-    }
-
-    private void updateKeyPetStatus()
-    {
-        updateKeyScrollView();
     }
 
     private void keyGiaodich()
@@ -2991,20 +2918,6 @@ public partial class Panel : IActionListener, IChatable
             case 25:
                 setTabSpeacialSkill();
                 break;
-            case 21:
-                if (currentTabIndex == 0)
-                {
-                    setTabPetInventory();
-                }
-                if (currentTabIndex == 1)
-                {
-                    setTabPetStatus();
-                }
-                if (currentTabIndex == 2)
-                {
-                    setTabInventory(resetSelect: true);
-                }
-                break;
             case 13:
                 if (currentTabIndex == 0)
                 {
@@ -3030,31 +2943,10 @@ public partial class Panel : IActionListener, IChatable
         selected = lastSelect[currentTabIndex];
     }
 
-    private void setTabPetStatus()
-    {
-        currentListLength = strStatus.Length;
-        ITEM_HEIGHT = 24;
-        selected = (GameCanvas.isTouch ? (-1) : 0);
-        cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
-        if (cmyLim < 0)
-        {
-            cmyLim = 0;
-        }
-        cmy = (cmtoY = cmyLast[currentTabIndex]);
-        if (cmy < 0)
-        {
-            cmy = (cmtoY = 0);
-        }
-        if (cmy > cmyLim)
-        {
-            cmy = (cmtoY = cmyLim);
-        }
-    }
-
     private void setTabTool()
     {
         SoundMn.gI().getSoundOption();
-        currentListLength = strTool.Length + (InventoryFrameActive ? 2 : 0);
+        currentListLength = strTool.Length + (InventoryFrameActive ? 2 - (Char.myCharz().havePet ? 1 : 0) : 0);
         ITEM_HEIGHT = 24;
         selected = (GameCanvas.isTouch ? (-1) : 0);
         cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
@@ -3317,29 +3209,6 @@ public partial class Panel : IActionListener, IChatable
         if (cmy > cmyLim)
         {
             cmy = (cmtoY = cmyLim);
-        }
-        selected = (GameCanvas.isTouch ? (-1) : 0);
-    }
-
-    private void setTabPetInventory()
-    {
-        ITEM_HEIGHT = 30;
-        Item[] arrItemBody = Char.myPetz().arrItemBody;
-        Skill[] arrPetSkill = Char.myPetz().arrPetSkill;
-        currentListLength = arrItemBody.Length + arrPetSkill.Length;
-        cmyLim = currentListLength * ITEM_HEIGHT - hScroll;
-        cmy = (cmtoY = cmyLast[currentTabIndex]);
-        if (cmyLim < 0)
-        {
-            cmyLim = 0;
-        }
-        if (cmy < 0)
-        {
-            cmy = (cmtoY = 0);
-        }
-        if (cmy > cmyLim)
-        {
-            cmy = (cmtoY = 0);
         }
         selected = (GameCanvas.isTouch ? (-1) : 0);
     }
@@ -3813,20 +3682,6 @@ public partial class Panel : IActionListener, IChatable
             case 20:
                 paintAccount(g);
                 break;
-            case 21:
-                if (currentTabIndex == 0)
-                {
-                    paintPetInventory(g);
-                }
-                if (currentTabIndex == 1)
-                {
-                    paintPetStatus(g);
-                }
-                if (currentTabIndex == 2)
-                {
-                    paintInventory(g);
-                }
-                break;
             case 22:
                 paintAuto(g);
                 break;
@@ -4122,180 +3977,6 @@ public partial class Panel : IActionListener, IChatable
     {
     }
 
-    private void paintPetStatus(mGraphics g)
-    {
-        g.setClip(xScroll, yScroll, wScroll, hScroll);
-        g.translate(0, -cmy);
-        for (int i = 0; i < strStatus.Length; i++)
-        {
-            int x = xScroll;
-            int num = yScroll + i * ITEM_HEIGHT;
-            int num2 = wScroll - 1;
-            int h = ITEM_HEIGHT - 1;
-            if (num - cmy <= yScroll + hScroll && num - cmy >= yScroll - ITEM_HEIGHT)
-            {
-                g.setColor((i != selected) ? 15196114 : 16383818);
-                g.fillRect(x, num, num2, h);
-                mFont.tahoma_7b_dark.drawString(g, strStatus[i], xScroll + wScroll / 2, num + 6, mFont.CENTER);
-            }
-        }
-        paintScrollArrow(g);
-    }
-
-    private void paintPetSkill()
-    {
-    }
-
-    private void paintPetInventory(mGraphics g)
-    {
-        g.setColor(16711680);
-        g.setClip(xScroll, yScroll, wScroll, hScroll);
-        g.translate(0, -cmy);
-        Item[] arrItemBody = Char.myPetz().arrItemBody;
-        Skill[] arrPetSkill = Char.myPetz().arrPetSkill;
-        for (int i = 0; i < arrItemBody.Length + arrPetSkill.Length; i++)
-        {
-            bool flag = i < arrItemBody.Length;
-            int num = i;
-            int num2 = i - arrItemBody.Length;
-            int num3 = xScroll + 36;
-            int num4 = yScroll + i * ITEM_HEIGHT;
-            int num5 = wScroll - 36;
-            int h = ITEM_HEIGHT - 1;
-            int num6 = xScroll;
-            int num7 = yScroll + i * ITEM_HEIGHT;
-            int num8 = 34;
-            int num9 = ITEM_HEIGHT - 1;
-            if (num4 - cmy > yScroll + hScroll || num4 - cmy < yScroll - ITEM_HEIGHT)
-            {
-                continue;
-            }
-            Item item = ((!flag) ? null : arrItemBody[num]);
-            g.setColor((i == selected) ? 16383818 : ((!flag) ? 15723751 : 15196114));
-            g.fillRect(num3, num4, num5, h);
-            g.setColor((i == selected) ? 9541120 : ((!flag) ? 11837316 : 9993045));
-            if (item != null)
-            {
-                for (int j = 0; j < item.itemOption.Length; j++)
-                {
-                    if (item.itemOption[j].optionTemplate.id == 72 && item.itemOption[j].param > 0)
-                    {
-                        sbyte color_Item_Upgrade = GetColor_Item_Upgrade(item.itemOption[j].param);
-                        if (GetColor_ItemBg(color_Item_Upgrade) != -1)
-                        {
-                            g.setColor((i != selected) ? GetColor_ItemBg(color_Item_Upgrade) : GetColor_ItemBg(color_Item_Upgrade));
-                        }
-                    }
-                }
-            }
-            g.fillRect(num6, num7, num8, num9);
-            if (item != null && item.isSelect && GameCanvas.panel.type == 12)
-            {
-                g.setColor((i != selected) ? 6047789 : 7040779);
-                g.fillRect(num6, num7, num8, num9);
-            }
-            if (item != null)
-            {
-                string text = string.Empty;
-                mFont mFont2 = mFont.tahoma_7_green2;
-                if (item.itemOption != null)
-                {
-                    for (int k = 0; k < item.itemOption.Length; k++)
-                    {
-                        if (item.itemOption[k].optionTemplate.id == 72)
-                        {
-                            text = " [+" + item.itemOption[k].param + "]";
-                        }
-                        if (item.itemOption[k].optionTemplate.id == 107)
-                        {
-                            mFont mFont3 = ((!GameCanvas.lowGraphic) ? mFont.tahoma_7b_dark : mFont.tahoma_7);
-                            mFont3.drawString(g, item.itemOption[k].param.ToString(), num3 + 159, num4 + 2, 0);
-                            g.drawImage(imgStar, mFont3.getWidth("") + num3 + 164, num4 + 2);
-                            DoHoa.getInstance().paintInfoOption(g, item, num3 + 176, num4 + 11);
-                        }
-                        if (item.itemOption[k].optionTemplate.id == 41)
-                        {
-                            if (item.itemOption[k].param == 1)
-                            {
-                                mFont2 = GetFont(0);
-                            }
-                            else if (item.itemOption[k].param == 2)
-                            {
-                                mFont2 = GetFont(2);
-                            }
-                            else if (item.itemOption[k].param == 3)
-                            {
-                                mFont2 = GetFont(8);
-                            }
-                            else if (item.itemOption[k].param == 4)
-                            {
-                                mFont2 = GetFont(7);
-                            }
-                        }
-                    }
-                }
-                mFont2.drawString(g, item.template.name + text, num3 + 5, num4 + 1, 0);
-                string text2 = string.Empty;
-                if (item.itemOption != null)
-                {
-                    if (item.itemOption.Length != 0 && item.itemOption[0] != null && item.itemOption[0].optionTemplate.id != 102 && item.itemOption[0].optionTemplate.id != 107)
-                    {
-                        text2 += item.itemOption[0].getOptionString();
-                    }
-                    mFont mFont4 = mFont.tahoma_7_blue;
-                    if (item.compare < 0 && item.template.type != 5)
-                    {
-                        mFont4 = mFont.tahoma_7_red;
-                    }
-                    if (item.itemOption.Length > 1)
-                    {
-                        for (int l = 1; l < 2; l++)
-                        {
-                            if (item.itemOption[l] != null && item.itemOption[l].optionTemplate.id != 102 && item.itemOption[l].optionTemplate.id != 107 && item.itemOption[l].optionTemplate.id != 21)
-                            {
-                                text2 = text2 + "," + item.itemOption[l].getOptionString();
-                            }
-                        }
-                    }
-                    mFont4.drawString(g, text2, num3 + 5, num4 + 11, mFont.LEFT);
-                }
-                SmallImage.drawSmallImage(g, item.template.iconID, num6 + num8 / 2, num7 + num9 / 2, 0, 3);
-                if (item.itemOption != null)
-                {
-                    for (int m = 0; m < item.itemOption.Length; m++)
-                    {
-                        paintOptItem(g, item.itemOption[m].optionTemplate.id, item.itemOption[m].param, num6, num7, num8, num9);
-                    }
-                    for (int n = 0; n < item.itemOption.Length; n++)
-                    {
-                        paintOptSlotItem(g, item.itemOption[n].optionTemplate.id, item.itemOption[n].param, num6, num7, num8, num9);
-                    }
-                }
-                if (item.quantity > 1)
-                {
-                    mFont.tahoma_7_yellow.drawString(g, string.Empty + item.quantity, num6 + num8, num7 + num9 - mFont.tahoma_7_yellow.getHeight(), 1);
-                }
-            }
-            else if (!flag)
-            {
-                Skill skill = arrPetSkill[num2];
-                g.drawImage(GameScr.imgSkill, num6 + num8 / 2, num7 + num9 / 2, 3);
-                if (skill.template != null)
-                {
-                    mFont.tahoma_7_blue.drawString(g, skill.template.name, num3 + 5, num4 + 1, 0);
-                    mFont.tahoma_7_green2.drawString(g, mResources.level + ": " + skill.point + string.Empty, num3 + 5, num4 + 11, 0);
-                    SmallImage.drawSmallImage(g, skill.template.iconId, num6 + num8 / 2, num7 + num9 / 2, 0, 3);
-                }
-                else
-                {
-                    mFont.tahoma_7_green2.drawString(g, skill.moreInfo, num3 + 5, num4 + 5, 0);
-                    SmallImage.drawSmallImage(g, GameScr.efs[98].arrEfInfo[0].idImg, num6 + num8 / 2, num7 + num9 / 2, 0, 3);
-                }
-            }
-        }
-        paintScrollArrow(g);
-    }
-
     private void paintScrollArrow(mGraphics g)
     {
         g.translate(-g.getTranslateX(), -g.getTranslateY());
@@ -4346,7 +4027,8 @@ public partial class Panel : IActionListener, IChatable
             }
             g.setColor((i != selected) ? 15196114 : 16383818);
             g.fillRect(num, num2, num3, h);
-            string label = i < strTool.Length ? strTool[i] : i == strTool.Length ? "Giao diện" : "Rương đồ";
+            int tool = InventoryToolIndex(i);
+            string label = tool < strTool.Length ? strTool[tool] : tool == strTool.Length ? "Giao diện" : "Rương đồ";
             if (label == mResources.change_account) label = GuestCredentials.AccountMenuLabel;
             mFont.tahoma_7b_dark.drawString(g, label, xScroll + wScroll / 2, num2 + 6, mFont.CENTER);
             if (!label.Equals(mResources.gameInfo))
@@ -5603,28 +5285,6 @@ public partial class Panel : IActionListener, IChatable
         paintCharInfo(g, Char.myCharz());
     }
 
-    private void paintPetInfo(mGraphics g)
-    {
-        mFont.tahoma_7_yellow.drawString(g, mResources.power + ": " + NinjaUtil.getMoneys(Char.myPetz().cPower), X + 60, 4, mFont.LEFT, mFont.tahoma_7_grey);
-        if (Char.myPetz().cPower > 0)
-        {
-            mFont.tahoma_7_yellow.drawString(g, (!Char.myPetz().me) ? Char.myPetz().currStrLevel : Char.myPetz().getStrLevel(), X + 60, 16, mFont.LEFT, mFont.tahoma_7_grey);
-        }
-        if (Char.myPetz().cDamFull > 0)
-        {
-            mFont.tahoma_7_yellow.drawString(g, mResources.hit_point + " :" + Char.myPetz().cDamFull, X + 60, 27, mFont.LEFT, mFont.tahoma_7_grey);
-        }
-        if (Char.myPetz().cMaxStamina > 0)
-        {
-            mFont.tahoma_7_yellow.drawString(g, mResources.vitality, X + 60, 38, mFont.LEFT, mFont.tahoma_7_grey);
-            g.drawImage(GameScr.imgMPLost, X + 100, 41, 0);
-            int num = Char.myPetz().cStamina * mGraphics.getImageWidth(GameScr.imgMP) / Char.myPetz().cMaxStamina;
-            g.setClip(100, X + 41, num, 20);
-            g.drawImage(GameScr.imgMP, X + 100, 41, 0);
-        }
-        g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
-    }
-
     private void paintCharInfo(mGraphics g, Char c)
     {
         mFont.tahoma_7b_white.drawString(g, ((GameScr.isNewMember == 1) ? "       " : string.Empty) + c.cName, X + 60, 4, mFont.LEFT, mFont.tahoma_7b_dark);
@@ -6005,23 +5665,6 @@ public partial class Panel : IActionListener, IChatable
                 SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), X + 25, 50, 0, 33);
                 paintToolInfo(g);
                 break;
-            case 21:
-                if (currentTabIndex == 0)
-                {
-                    SmallImage.drawSmallImage(g, Char.myPetz().avatarz(), X + 25, 50, 0, 33);
-                    paintPetInfo(g);
-                }
-                if (currentTabIndex == 1)
-                {
-                    SmallImage.drawSmallImage(g, Char.myPetz().avatarz(), X + 25, 50, 0, 33);
-                    paintPetStatusInfo(g);
-                }
-                if (currentTabIndex == 2)
-                {
-                    SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), X + 25, 50, 0, 33);
-                    paintItemBodyBagInfo(g);
-                }
-                break;
             case 22:
                 SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), X + 25, 50, 0, 33);
                 paintToolInfo(g);
@@ -6057,14 +5700,6 @@ public partial class Panel : IActionListener, IChatable
         string text2 = text;
         string result = text2;
         return result;
-    }
-
-    private void paintPetStatusInfo(mGraphics g)
-    {
-        mFont.tahoma_7b_white.drawString(g, "HP: " + Char.myPetz().cHP + "/" + Char.myPetz().cHPFull, X + 60, 4, mFont.LEFT, mFont.tahoma_7b_dark);
-        mFont.tahoma_7b_white.drawString(g, "MP: " + Char.myPetz().cMP + "/" + Char.myPetz().cMPFull, X + 60, 16, mFont.LEFT, mFont.tahoma_7b_dark);
-        mFont.tahoma_7_yellow.drawString(g, mResources.critical + ": " + Char.myPetz().cCriticalFull + "   " + mResources.armor + ": " + Char.myPetz().cDefull, X + 60, 27, mFont.LEFT, mFont.tahoma_7_grey);
-        mFont.tahoma_7_yellow.drawString(g, mResources.status + ": " + strStatus[Char.myPetz().petStatus], X + 60, 38, mFont.LEFT, mFont.tahoma_7_grey);
     }
 
     private void paintCombineInfo(mGraphics g)
@@ -6742,9 +6377,6 @@ public partial class Panel : IActionListener, IChatable
                     case 20:
                         doFireAccount();
                         break;
-                    case 21:
-                        doFirePetMain();
-                        break;
                     case 22:
                         doFireAuto();
                         break;
@@ -6781,56 +6413,6 @@ public partial class Panel : IActionListener, IChatable
 
     private void doFireAuto()
     {
-    }
-
-    private void doFirePetMain()
-    {
-        if (currentTabIndex == 0)
-        {
-            if (selected == -1 || selected > Char.myPetz().arrItemBody.Length - 1)
-            {
-                return;
-            }
-            MyVector myVector = new MyVector(string.Empty);
-            Item item = Char.myPetz().arrItemBody[selected];
-            currItem = item;
-            if (currItem != null)
-            {
-                myVector.addElement(new Command(mResources.MOVEOUT, this, 2006, currItem));
-                GameCanvas.menu.startAt(myVector, X, (selected + 1) * ITEM_HEIGHT - cmy + yScroll);
-                addItemDetail(currItem);
-            }
-            else
-            {
-                cp = null;
-            }
-        }
-        if (currentTabIndex == 1)
-        {
-            doFirePetStatus();
-        }
-        if (currentTabIndex == 2)
-        {
-            doFireInventory();
-        }
-    }
-
-    private void doFirePetStatus()
-    {
-        if (selected == -1)
-        {
-            return;
-        }
-        if (selected == 5)
-        {
-            GameCanvas.startYesNoDlg(mResources.sure_fusion, new Command(mResources.YES, 888351), new Command(mResources.NO, 2001));
-            return;
-        }
-        Service.gI().petStatus((sbyte)selected);
-        if (selected < 4)
-        {
-            Char.myPetz().petStatus = (sbyte)selected;
-        }
     }
 
     private void doFireTop()
@@ -7206,10 +6788,6 @@ public partial class Panel : IActionListener, IChatable
                         myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
                     }
                 }
-                else if (GameCanvas.panel.type == 21)
-                {
-                    myVector.addElement(new Command(mResources.MOVEFORPET, this, 2005, currItem));
-                }
                 else if (currItem.isTypeBody())
                 {
                     myVector.addElement(new Command(mResources.USE, this, 2000, currItem));
@@ -7310,6 +6888,13 @@ public partial class Panel : IActionListener, IChatable
     }
 
     private void doFireTool()
+    {
+        int visualSelection = selected;
+        selected = InventoryToolIndex(selected);
+        try { DoFireToolCommand(); } finally { if (InventoryFrameActive && currentTabIndex == 6) selected = visualSelection; }
+    }
+
+    private void DoFireToolCommand()
     {
         if (selected < 0)
         {
@@ -10189,7 +9774,6 @@ public partial class Panel : IActionListener, IChatable
             mResources.item_give,
             mResources.item_receive
         };
-        boxPet = mResources.petMainTab;
         BOX_BAG = 0;
         BAG_BOX = 1;
         BOX_BODY = 2;

@@ -1,0 +1,230 @@
+using System;
+using Hud;
+using UnityEngine;
+
+namespace Hud
+{
+    internal static class DiscipleLayout
+    {
+        internal const string Close = "disciple.detail.close";
+        internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
+        internal static Rect Content => new Rect(4, 73, HudLayout.GetRect(InventoryFrame.Root).width - 8,
+            Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - 76));
+        internal static Rect Chip(int i) => new Rect(Content.x + i * Content.width / 5, Content.y, Content.width / 5 - 2, 27);
+        internal static float Size => Mathf.Max(8, Mathf.Min(InventoryFrame.Unit(HudLayout.IsMobileLayout ? 44 : 64),
+            Mathf.Min((Content.width - 25) / 4, (Content.height - 77) / 3)));
+        internal static Rect Cell(int i)
+        {
+            float gap = (Content.width - 4 * Size) / 5;
+            return new Rect(Content.x + gap + i % 4 * (Size + gap),
+                Content.y + 43 + i / 4 * (Size + 7) + (i >= 8 ? 17 : 0), Size, Size);
+        }
+        internal static void Register()
+        {
+            for (int i = 0; i < 5; i++) {
+                int slot = i;
+                HudLayout.Register("disciple.status." + i, () => Chip(slot), HudLayout.OverlayOrder + 12,
+                    () => Visible && Char.myCharz().havePet);
+            }
+            for (int i = 0; i < 12; i++) {
+                int slot = i;
+                HudLayout.Register("disciple.cell." + i, () => Cell(slot), HudLayout.OverlayOrder + 12,
+                    () => Visible && Char.myCharz().havePet);
+            }
+            HudLayout.Register("disciple.detail", () => HudLayout.GetRect(InventoryFrame.Detail), HudLayout.OverlayOrder + 14,
+                () => Visible && GameCanvas.panel.DiscipleSkillOpen);
+            HudLayout.Register(Close, () => new Rect(HudLayout.GetRect(InventoryFrame.Detail).xMax - 21, 3, 18, 18),
+                HudLayout.OverlayOrder + 16, () => Visible && GameCanvas.panel.DiscipleSkillOpen);
+        }
+    }
+}
+
+public partial class Panel
+{
+    internal const int DiscipleTab = 7;
+    // New rune item contract. Slot 7 is separate from legacy pet accessories at slot 8.
+    internal const int DiscipleRuneType = 80;
+    private static readonly int[] discipleBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7 };
+    private static readonly string[] discipleStatuses = { "Đi theo", "Bảo vệ", "Tấn công", "Về nhà", "Hợp thể" };
+    private int discipleSkill = -1, discipleFocus;
+    private bool discipleLoaded;
+    private long discipleNextRequest, discipleFusionUntil;
+    internal bool DisciplePanelActive => InventoryFrameActive && currentTabIndex == DiscipleTab;
+    internal bool DiscipleSkillOpen => DisciplePanelActive && discipleSkill >= 0;
+    internal bool DiscipleFused => Char.myPetz().petStatus >= 4;
+    private int InventoryToolIndex(int visual) => InventoryFrameActive && Char.myCharz().havePet && visual >= 3 ? visual + 1 : visual;
+
+    internal void ClearDiscipleInfo()
+    {
+        discipleLoaded = false; discipleFusionUntil = 0;
+        CloseDiscipleDetail();
+        if (DisciplePanelActive) CloseInventoryBagDetail();
+    }
+    private void CloseDiscipleDetail() { discipleSkill = -1; HudLayout.Invalidate(); }
+    private void OpenDiscipleTab()
+    {
+        currentListLength = 0; cmy = cmtoY = cmyLim = 0; discipleFocus = 0;
+        RequestDiscipleInfo();
+    }
+    private void RequestDiscipleInfo()
+    {
+        if (!Char.myCharz().havePet) return;
+        Service.gI().petInfo(); discipleNextRequest = mSystem.currentTimeMillis() + 3000;
+    }
+    internal void ReceiveDiscipleInfo(Message message)
+    {
+        discipleLoaded = true;
+        if (message.reader().available() >= 7 && message.reader().readUnsignedByte() == 0xD1) {
+            Char.myPetz().cgender = message.reader().readByte();
+            message.reader().readByte(); // Pet kind is reserved for equipment eligibility.
+            int remaining = message.reader().readInt();
+            discipleFusionUntil = remaining > 0 ? mSystem.currentTimeMillis() + remaining * 1000L : remaining;
+        }
+        if (DisciplePanelActive) {
+            if (InventoryBagDetailOpen) {
+                int slot = selected;
+                Item[] body = Char.myPetz().arrItemBody;
+                if (slot < 0 || slot >= (body?.Length ?? 0) || body[slot]?.template == null) CloseInventoryBagDetail();
+                else {
+                    int top = inventoryDetailTopScroll, bottom = inventoryDetailBottomScroll;
+                    inventoryBagDetailItem = currItem = body[slot]; BuildInventoryDetail();
+                    inventoryDetailTopScroll = top; inventoryDetailBottomScroll = bottom;
+                }
+            }
+        }
+        HudLayout.Invalidate();
+    }
+    private void SyncDisciplePanel()
+    {
+        cmy = cmtoY = cmyLim = 0;
+        if (mSystem.currentTimeMillis() >= discipleNextRequest) RequestDiscipleInfo();
+    }
+    private Item DiscipleItem(int visual)
+    {
+        Item[] body = Char.myPetz().arrItemBody;
+        int slot = discipleBodySlots[visual];
+        return body != null && slot < body.Length ? body[slot] : null;
+    }
+    private Skill DiscipleSkill(int visual)
+    {
+        Skill[] skills = Char.myPetz().arrPetSkill;
+        return skills != null && visual < skills.Length ? skills[visual] : null;
+    }
+    private bool HandleDiscipleClick(string hit)
+    {
+        if (!DisciplePanelActive || hit == null) return false;
+        if (hit == DiscipleLayout.Close || hit == InventoryFrame.DetailClose) {
+            CloseDiscipleDetail(); CloseInventoryBagDetail(); return true;
+        }
+        if (hit.StartsWith("inventory.detail.button.")) return HandleInventoryDetailButton(hit);
+        if (hit.StartsWith("disciple.status.")) {
+            int status = int.Parse(hit.Substring("disciple.status.".Length));
+            if (Char.myCharz().statusMe == 14) GameCanvas.startOKDlg(mResources.can_not_do_when_die);
+            else { Service.gI().petStatus((sbyte)status); RequestDiscipleInfo(); }
+            return true;
+        }
+        if (!hit.StartsWith("disciple.cell.")) return false;
+        discipleFocus = int.Parse(hit.Substring("disciple.cell.".Length));
+        OpenDiscipleCell(discipleFocus); return true;
+    }
+    private void OpenDiscipleCell(int visual)
+    {
+        CloseInventoryBagDetail(); CloseDiscipleDetail();
+        if (!discipleLoaded || !Char.myCharz().havePet) return;
+        if (visual < 8) {
+            selected = discipleBodySlots[visual];
+            Item item = DiscipleItem(visual);
+            if (item?.template != null) OpenInventoryItemDetail(item);
+        } else { discipleSkill = visual - 8; selected = -1; }
+        HudLayout.Invalidate();
+    }
+    private bool UpdateDiscipleKeyboard()
+    {
+        int up = Main.isPC ? 21 : 2, down = Main.isPC ? 22 : 8, fire = Main.isPC ? 25 : 5;
+        if (GameCanvas.keyPressed[up] || GameCanvas.keyPressed[down]) {
+            discipleFocus = (discipleFocus + (GameCanvas.keyPressed[down] ? 1 : 11)) % 12;
+            GameCanvas.keyPressed[up] = GameCanvas.keyPressed[down] = false;
+            OpenDiscipleCell(discipleFocus);
+        }
+        if (GameCanvas.keyPressed[12] || GameCanvas.keyPressed[fire]) {
+            GameCanvas.keyPressed[12] = GameCanvas.keyPressed[fire] = false; OpenDiscipleCell(discipleFocus);
+        }
+        return true;
+    }
+    private void PaintDiscipleHeader(mGraphics g)
+    {
+        if (!Char.myCharz().havePet) { mFont.tahoma_7_yellow.drawString(g, "Chưa có đệ tử", 46, 12, 0); return; }
+        Char pet = Char.myPetz();
+        mFont.tahoma_7_yellow.drawString(g, "HP: " + pet.cHP + "/" + pet.cHPFull, 46, 1, 0);
+        mFont.tahoma_7_yellow.drawString(g, "KI: " + pet.cMP + "/" + pet.cMPFull, 46, 12, 0);
+        mFont.tahoma_7_yellow.drawString(g, "Sức đánh: " + pet.cDamFull + " · Chí mạng: " + pet.cCriticalFull, 46, 23, 0);
+        mFont.tahoma_7_yellow.drawString(g, "Giáp: " + pet.cDefull + " · SM: " + NinjaUtil.getMoneys(pet.cPower), 46, 34, 0);
+    }
+    private void PaintDisciplePanel(mGraphics g)
+    {
+        Rect content = DiscipleLayout.Content;
+        InventoryFrame.Clip(g, content);
+        if (!Char.myCharz().havePet || !discipleLoaded) {
+            mFont.tahoma_7b_dark.drawString(g, Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử", W / 2, 90, mFont.CENTER); return;
+        }
+        for (int i = 0; i < 5; i++) {
+            Rect chip = DiscipleLayout.Chip(i);
+            bool active = i == (DiscipleFused ? 4 : Char.myPetz().petStatus);
+            InventoryFrame.Rounded(g, chip, active ? 0x4DBA70 : InventoryFrame.EquipmentBackground);
+            string label = discipleStatuses[i];
+            if (i == 4 && DiscipleFused && discipleFusionUntil > 0) {
+                int seconds = (int)Math.Max(0, (discipleFusionUntil - mSystem.currentTimeMillis() + 999) / 1000);
+                label += " " + seconds / 60 + ":" + (seconds % 60).ToString("00");
+            }
+            string[] lines = mFont.tahoma_7b_dark.splitFontArray(label, Math.Max(10, (int)chip.width - 2));
+            for (int n = 0; n < Math.Min(2, lines.Length); n++) mFont.tahoma_7b_dark.drawString(g, lines[n], (int)chip.center.x, (int)chip.y + 3 + n * 11, mFont.CENTER);
+        }
+        mFont.tahoma_7b_dark.drawString(g, "Trang bị", 8, (int)content.y + 30, 0);
+        mFont.tahoma_7b_dark.drawString(g, "Kỹ năng", 8, (int)DiscipleLayout.Cell(8).y - 14, 0);
+        for (int i = 0; i < 12; i++) {
+            Rect cell = DiscipleLayout.Cell(i);
+            bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
+            InventoryFrame.Rounded(g, cell, InventoryFrame.SlotBackground, 255, chosen ? InventoryFrame.Accent : 0);
+            InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, content));
+            if (i < 8) {
+                Item item = DiscipleItem(i);
+                if (item?.template != null) {
+                    SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0, 3);
+                    if (i < 6) InventoryItemVisuals.PaintLevel(g, cell, content, Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7), false);
+                } else if (i == 7) mFont.tahoma_7_grey.drawString(g, "NGỌC", (int)cell.center.x, (int)cell.center.y - 5, mFont.CENTER);
+            } else {
+                Skill skill = DiscipleSkill(i - 8);
+                if (skill?.template != null) {
+                    SmallImage.drawSmallImage(g, skill.template.iconId, (int)cell.center.x, (int)cell.center.y, 0, 3);
+                    InventoryItemVisuals.PaintLevel(g, cell, content, skill.point, false);
+                }
+            }
+            InventoryFrame.Clip(g, content);
+        }
+    }
+    private void PaintDiscipleSkillDetail(mGraphics g)
+    {
+        Rect r = HudLayout.GetRect(InventoryFrame.Detail);
+        InventoryFrame.Clip(g, r); InventoryFrame.Rounded(g, r, InventoryFrame.EquipmentBackground);
+        Skill skill = DiscipleSkill(discipleSkill);
+        int y = 30;
+        if (skill?.template != null) {
+            SmallImage.drawSmallImage(g, skill.template.iconId, (int)r.x + 17, 14, 0, 3);
+            DrawDiscipleText(g, r, skill.template.name + " · Cấp " + skill.point, ref y);
+            DrawDiscipleText(g, r, "KI: " + skill.manaUse + " · Hồi: " + skill.strTimeReplay() + "s", ref y);
+            if (skill.template.description != null) foreach (string text in skill.template.description) DrawDiscipleText(g, r, text, ref y);
+            DrawDiscipleText(g, r, skill.moreInfo, ref y);
+        } else DrawDiscipleText(g, r, skill?.moreInfo ?? "Chưa học kỹ năng", ref y);
+        Rect close = HudLayout.GetRect(DiscipleLayout.Close);
+        InventoryFrame.Clip(g, close); InventoryFrame.Rounded(g, close, InventoryFrame.EquipmentBackground);
+        g.drawImage(imgX, (int)close.center.x, (int)close.center.y, 3);
+        InventoryFrame.Clip(g, HudLayout.ScreenBounds);
+    }
+    private static void DrawDiscipleText(mGraphics g, Rect r, string text, ref int y)
+    {
+        if (string.IsNullOrEmpty(text)) return;
+        foreach (string line in mFont.tahoma_7b_dark.splitFontArray(text, Mathf.Max(10, (int)r.width - 12))) {
+            mFont.tahoma_7b_dark.drawString(g, line, (int)r.x + 6, y, 0); y += 12;
+        }
+    }
+}

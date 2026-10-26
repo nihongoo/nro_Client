@@ -29,7 +29,7 @@ assert "if (slot < 5 && item != null)" in source and "if (slot < 6)" in source
 assert "luongKhoa" not in source and "imgLuongKhoa" not in source
 assert "Service.gI()" not in source  # Existing Panel handlers remain responsible for packets.
 assert "X = Y = cmx = cmtoX = 0" not in source  # Do not defeat hide animation.
-assert "new[] { 0, 1, 2, 3, 6 }" in source
+assert "new[] { 0, 1, 2, 3, 7, 6 }" in source
 assert "color = InventoryFrame.SetColor(item)" in source
 assert "0x3b2515" not in source and "0x27170c" not in source
 assert "g.fillRoundRect(" not in source
@@ -98,6 +98,7 @@ class mGraphics {
 partial class Panel {
     public bool isShow=true,InventoryFrameActive=true,InventoryBagDetailOpen;
     public int currentTabIndex=1,cmy,InventoryBagCellCount=30;
+    public bool DisciplePanelActive=>currentTabIndex==7; public bool DiscipleSkillOpen;
     public Rect InventoryDetailUpperBounds=>new Rect(); public Rect InventoryDetailLowerBounds=>new Rect();
     public int InventoryDetailButtonCount=>0; public Rect InventoryDetailButtonBounds(int i)=>new Rect();
     public int InventoryFrameScroll=>currentTabIndex==1?cmy:0;
@@ -107,12 +108,12 @@ class Menu { public bool showMenu; }
 static class GameCanvas { public static int w=640,h=360; public static bool modal; public static object currentDialog,currentScreen=GameScr.instance; public static Menu menu=new Menu(); public static Panel panel=new Panel(); }
 namespace Notifications { public static class NotificationCenter { public static bool IsOpen; } }
 class GamePad { public Rect HudVisualBounds=>new Rect(); }
-class Char { static Char p=new Char(); public static Char myCharz()=>p; public int statusMe; public bool meDead; public int cHP=1; }
+class Char { static Char p=new Char(); public static Char myCharz()=>p; public int statusMe; public bool meDead,havePet=true; public int cHP=1; }
 static class CombatMobileHud { public const string JoystickTouch="stick"; }
 static class CombatPcHud { public static bool Visible=>false; }
 class GameScr {
     public static GameScr instance=new GameScr(); public static int isAnalog; public static GamePad gamePad;
-    public static void RegisterHudRects(){InventoryFrame.Register();HudLayout.Register("test.modal",()=>HudLayout.ScreenBounds,300,()=>GameCanvas.modal);}
+    public static void RegisterHudRects(){InventoryFrame.Register();DiscipleLayout.Register();HudLayout.Register("test.modal",()=>HudLayout.ScreenBounds,300,()=>GameCanvas.modal);}
 }
 class InventoryTests {
     static int checks;
@@ -155,6 +156,16 @@ class InventoryTests {
                 Rect root=HudLayout.GetRect(InventoryFrame.Root),money=HudLayout.GetRect(InventoryFrame.Money);
                 Near(root.x,0,"left panel not flush left");Near(root.y,0,"panel not flush top");Near(root.height,GameCanvas.h,"panel not full height");
                 Check(root.width<GameCanvas.w,"character view fully covered");
+                Check(GameCanvas.panel.InventoryFrameTabIds.Length==6,"main menu must contain six tabs");
+                GameCanvas.panel.currentTabIndex=7; HudLayout.Invalidate();
+                for(int d=0;d<12;d++){
+                    Rect cell=DiscipleLayout.Cell(d);
+                    Check(cell.x>=root.x&&cell.xMax<=root.xMax&&cell.yMax<=money.y,"disciple grid outside frame");
+                    Check(HudLayout.HitTest(cell.center)=="disciple.cell."+d,"disciple cell not clickable");
+                    Near(cell.y,DiscipleLayout.Cell(d/4*4).y,"disciple grid must have four columns");
+                }
+                for(int d=0;d<5;d++)Check(HudLayout.HitTest(DiscipleLayout.Chip(d).center)=="disciple.status."+d,"status chip not clickable");
+                GameCanvas.panel.currentTabIndex=1; HudLayout.Invalidate();
                 // Fixed maximum resource fields and their icons must not overlap.
                 Check(root.width>=mFont.tahoma_7_yellow.getWidth("99.999.999.999")+mFont.tahoma_7_yellow.getWidth("1.000.000")+42,"resource fields collide");
                 int[] goldAsset=Array.Find(assets,a=>a[0]==1&&a[1]==zoom),gemAsset=Array.Find(assets,a=>a[0]==0&&a[1]==zoom);
@@ -299,13 +310,15 @@ with tempfile.TemporaryDirectory(prefix="inventory-", dir=output) as folder:
     (path / "PanelTabs.cs").write_text("using System; partial class Panel {\n" + tab_members + "\n}", encoding="utf-8")
     (path / "PanelLocked.cs").write_text("using UnityEngine; using Hud; partial class Panel {\n" + locked_painter
         + "\npublic static void PaintClosedForTest(mGraphics g,Rect cell){PaintClosedBagSlot(g,cell);}\n}", encoding="utf-8")
+    disciple = (ROOT / "Assets/Scripts/Hud/DisciplePanel.cs").read_text(encoding="utf-8-sig")
+    (path / "DiscipleLayout.cs").write_text(disciple[:disciple.index("public partial class Panel")], encoding="utf-8")
     (path / "InventoryTests.cs").write_text(fixture, encoding="utf-8")
     item_source = (ROOT / "Assets/Scripts/Item.cs").read_text(encoding="utf-8-sig")
     item_body = item_source[item_source.index("    public bool isTypeBody()"):item_source.index("    public string getLockstring()")]
     (path / "ItemBody.cs").write_text("partial class Item {\n" + item_body + "\n}", encoding="utf-8")
     exe = path / "InventoryTests.exe"
     subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe", "/nologo", "/target:exe", f"/out:{exe}",
-                    str(path / "InventoryRegistry.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"), str(path / "PanelLocked.cs"),
+                    str(path / "InventoryRegistry.cs"), str(path / "DiscipleLayout.cs"), str(path / "InventoryTests.cs"), str(path / "PanelTabs.cs"), str(path / "PanelLocked.cs"),
                     str(path / "ItemBody.cs"), str(ROOT / "Assets/Scripts/Hud/InventoryBag.cs"),
                     str(ROOT / "Assets/Scripts/Hud/HudLayout.cs")], check=True)
     subprocess.run([str(exe)], check=True)

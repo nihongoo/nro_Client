@@ -671,6 +671,7 @@ public class GameScr : mScreen, IChatable
         Hud.CombatPcHud.Register();
         Hud.DeadStateHud.Register();
         Hud.InventoryFrame.Register();
+        Hud.DiscipleLayout.Register();
         Hud.SkillPanelLayout.Register();
         // Preserve existing modal capture, including clicks outside the visible dialog/panel.
         Hud.HudLayout.Register("legacy.overlay", () => Hud.HudLayout.ScreenBounds, Hud.HudLayout.OverlayOrder,
