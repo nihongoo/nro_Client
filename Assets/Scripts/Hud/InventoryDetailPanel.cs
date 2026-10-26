@@ -11,6 +11,7 @@ public partial class Panel
         internal string Text;
         internal mFont Font;
         internal int Meter, Value;
+        internal Item StarItem;
     }
     private sealed class InventoryDetailButton
     {
@@ -78,6 +79,11 @@ public partial class Panel
     {
         inventoryDetailButtons.Clear(); inventoryDetailQuick = inventoryDetailDiscard = false;
         inventoryDetailCommands = null;
+        if (DisciplePanelActive) {
+            if (!DiscipleFused) AddInventoryDetailButton("Tháo", new Command("Tháo", this, 2106, inventoryBagDetailItem), 0, 0);
+            inventoryDetailTopScroll = inventoryDetailBottomScroll = 0;
+            PrepareInventoryBagDetail(); HudLayout.Invalidate(); return;
+        }
         doFireInventory(true); // Build exactly the old commands, without opening its menu.
         Item item = inventoryBagDetailItem;
         if (item?.template == null) return;
@@ -132,7 +138,7 @@ public partial class Panel
     {
         if (!InventoryBagDetailOpen) return;
         Rect r = HudLayout.GetRect(InventoryFrame.Detail);
-        if (inventoryDetailWidth != r.width || inventoryDetailHeight != r.height || !ReferenceEquals(inventoryDetailBody, Char.myCharz().arrItemBody)) PrepareInventoryBagDetail();
+        if (inventoryDetailWidth != r.width || inventoryDetailHeight != r.height || !ReferenceEquals(inventoryDetailBody, DisciplePanelActive ? Char.myPetz().arrItemBody : Char.myCharz().arrItemBody)) PrepareInventoryBagDetail();
     }
     private void AddInventoryDetailText(List<InventoryDetailLine> lines, string text, mFont font)
     {
@@ -149,17 +155,17 @@ public partial class Panel
         Item item = inventoryBagDetailItem;
         if (item?.template == null) return;
         Rect r = HudLayout.GetRect(InventoryFrame.Detail);
-        inventoryDetailWidth = r.width; inventoryDetailHeight = r.height; inventoryDetailBody = Char.myCharz().arrItemBody;
+        inventoryDetailWidth = r.width; inventoryDetailHeight = r.height; inventoryDetailBody = DisciplePanelActive ? Char.myPetz().arrItemBody : Char.myCharz().arrItemBody;
         inventoryDetailInfo.Clear(); inventoryDetailDescription.Clear();
         int level = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7);
-        int stars = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_STARSLOT), 0, 6);
-        bool worn = selected < (inventoryDetailBody?.Length ?? 0);
+        int slots = InventoryFrame.StarSlots(item), stars = InventoryFrame.FilledStars(item);
+        bool worn = DisciplePanelActive || selected >= 0 && selected < (inventoryDetailBody?.Length ?? 0);
         AddInventoryDetailText(inventoryDetailInfo, item.template.name + (InventoryBag.HasLevel(item) ? " [+" + level + "]" : ""), mFont.tahoma_7b_dark);
         AddInventoryDetailText(inventoryDetailInfo, worn ? "Đang mặc" : "Chưa mặc", mFont.tahoma_7_grey);
         if (InventoryBag.HasLevel(item)) {
             inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Cấp " + level + "/7", Font = mFont.tahoma_7b_dark, Meter = 7, Value = level });
-            inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/6", Font = mFont.tahoma_7b_dark, Meter = 6, Value = stars });
         }
+        if (slots > 0) inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/" + slots, Font = mFont.tahoma_7b_dark, StarItem = item });
         if (item.itemOption != null) foreach (ItemOption option in item.itemOption) {
             if (option?.optionTemplate == null) continue;
             int id = option.optionTemplate.id;
@@ -178,7 +184,7 @@ public partial class Panel
         AddInventoryDetailText(inventoryDetailInfo, "Số lượng: " + item.quantity, mFont.tahoma_7b_dark);
         if (item.template.strRequire > 1) AddInventoryDetailText(inventoryDetailInfo, mResources.pow_request + ": " + item.template.strRequire,
             Char.myCharz().cPower < item.template.strRequire ? mFont.tahoma_7_red : mFont.tahoma_7_grey);
-        if (worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
+        if (!DisciplePanelActive && worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
         AddInventoryDetailText(inventoryDetailDescription, item.template.description, mFont.tahoma_7b_dark);
         if (!string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
         if (inventoryDetailDescription.Count == 0) AddInventoryDetailText(inventoryDetailDescription, "Không có mô tả", mFont.tahoma_7_grey);
@@ -214,10 +220,14 @@ public partial class Panel
     {
         const string prefix = "inventory.detail.button.";
         if (hit == null || !hit.StartsWith(prefix)) return false;
-        SyncInventoryBag();
+        if (!DisciplePanelActive) SyncInventoryBag();
         if (!InventoryBagDetailOpen || !int.TryParse(hit.Substring(prefix.Length), out int index) || index < 0 || index >= inventoryDetailButtons.Count) return true;
         if (Char.myCharz().statusMe == 14) { GameCanvas.startOKDlg(mResources.can_not_do_when_die); return true; }
         Command action = inventoryDetailButtons[index].Action;
+        if (action?.idAction == 2106) {
+            if (!DiscipleFused && Char.myCharz().havePet) Service.gI().getItem(PET_BAG, (sbyte)selected);
+            CloseInventoryBagDetail(); return true;
+        }
         if (action != null) { action.performAction(); if (InventoryBagDetailOpen) BuildInventoryDetail(); }
         return true;
     }
@@ -247,7 +257,7 @@ public partial class Panel
             if (y + 12 < bounds.y || y > bounds.yMax) continue;
             // Native setTypePaint shifts text left; keep glyphs inside the clip on both sides.
             var line = lines[i]; line.Font.drawString(g, line.Text, (int)bounds.x + 4, y, mFont.LEFT);
-            if (line.Meter == 6) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.Value);
+            if (line.StarItem != null) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.StarItem);
             else if (line.Meter == 7) for (int n = 0; n < 7; n++) {
                 int x = (int)(bounds.xMax - 45 + n * 6);
                 g.setColor(n < line.Value ? InventoryFrame.Accent : InventoryFrame.SlotBackground); g.fillRect(x, y + 4, 5, 4);

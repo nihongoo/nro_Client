@@ -11,7 +11,7 @@ base = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.As
 fixture = base[:base.index("partial class Item")]
 fixture = fixture.replace("public static float Max(float a,float b)", "public static int Clamp(int n,int lo,int hi)=>Math.Max(lo,Math.Min(n,hi)); public static float Max(float a,float b)")
 fixture += r'''
-class Item { public const int OPT_LVITEM=72,OPT_STARSLOT=107;public ItemTemplate template;public int quantity;public ItemOption[] itemOption; }
+class Item { public const int OPT_LVITEM=72,OPT_STARSLOT=102,OPT_MAXSTARSLOT=107;public ItemTemplate template;public int quantity;public ItemOption[] itemOption; }
 class ItemTemplate {public short id;}
 class ItemOption {public ItemOptionTemplate optionTemplate;public int param;}
 class ItemOptionTemplate {public int id;}
@@ -49,7 +49,7 @@ class Char {
  static Char current=new Char();public static Char myCharz()=>current;
  public NClass nClass=new NClass();public Skill[] learned=new Skill[8];public Item[] arrItemBag=new Item[80];
  public int cgender,cx,cy,cHP=100,statusMe,cHPGoc=50100,cMPGoc=30200,cDamGoc=5010,cDefGoc,cCriticalGoc,cNangdong;
- public long cTiemNang=9999999999;public bool meDead;
+ public long cTiemNang=9999999999;public bool meDead,havePet=true;
  public object mobFocus,charFocus,itemFocus,endMovePointCommand;public Npc npcFocus;public MovePoint currentMovePoint;
  public static bool isLoadingMap,ischangingMap;
  public Skill getSkill(SkillTemplate t){foreach(Skill s in learned)if(s?.template==t)return s;return null;}

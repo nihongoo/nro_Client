@@ -531,7 +531,7 @@ public class Char : IMapObject
 
     public const int C_TRAIDAT_0 = 0;
 
-    public bool havePet = true;
+    public bool havePet;
 
     public MovePoint currentMovePoint;
 

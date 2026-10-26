@@ -55,7 +55,7 @@ namespace Hud
                     next.Font.getWidth("99.999.999.999")+next.Font.getWidth("1.000.000")+42);
                 next.Root=HudLayout.Anchor(HorizontalAnchor.Left,VerticalAnchor.Top,new Vector2(width,GameCanvas.h),Vector2.zero);
                 next.Close=new Rect(next.Root.xMax-21,3,18,18);
-                next.Tabs=new Rect(2,48,next.Root.width-4,24);
+                next.Tabs=new Rect(2,48,Mathf.Floor(next.Root.width)-4,24);
                 next.Money=new Rect(1,next.Root.yMax-20,next.Root.width-2,19);
                 next.Bag=new Rect(3,73,next.Root.width-6,Mathf.Max(0,next.Money.y-75));
                 next.Detail=HudLayout.Anchor(HorizontalAnchor.Right,VerticalAnchor.Top,
@@ -85,13 +85,15 @@ namespace Hud
             HudLayout.Register(Close,()=>CloseBounds,HudLayout.OverlayOrder+12,()=>Visible,cacheVersion:()=>MetricsVersion);
             HudLayout.Register(Tabs,()=>TabsBounds,HudLayout.OverlayOrder+11,()=>false,false,()=>MetricsVersion);
             // Keep old internal tab IDs: the remapping never changes gameplay handlers.
-            for (int i = 0; i < 5; i++) {
+            for (int i = 0; i < 6; i++) {
                 int slot = i;
                 HudLayout.Register(Tab(i), () => {
                     int count = GameCanvas.panel?.InventoryFrameTabIds.Length ?? 0;
                     if (count == 0) return new Rect();
                     Rect tabs = HudLayout.GetRect(Tabs);
-                    return new Rect(tabs.x + slot * tabs.width / count, tabs.y, tabs.width / count, tabs.height);
+                    float left = Mathf.Floor(tabs.x + slot * tabs.width / count);
+                    float right = Mathf.Floor(tabs.x + (slot + 1) * tabs.width / count);
+                    return new Rect(left, tabs.y, right - left - 1, tabs.height);
                 }, HudLayout.OverlayOrder + 12,
                     () => Visible && slot < GameCanvas.panel.InventoryFrameTabIds.Length);
             }
@@ -163,6 +165,15 @@ namespace Hud
                 if (option?.optionTemplate != null && option.optionTemplate.id == id) return option.param;
             return 0;
         }
+        internal static int StarSlots(Item item) => Mathf.Max(0, Option(item, Item.OPT_MAXSTARSLOT));
+        internal static int FilledStars(Item item) => Mathf.Min(StarSlots(item), Mathf.Max(0, Option(item, Item.OPT_STARSLOT)));
+        // Match the legacy item popup: ordinary, special filled, and reinforced empty slots.
+        internal static int StarKind(Item item, int index)
+        {
+            if (index < 0 || index >= StarSlots(item)) return -1;
+            if (index < FilledStars(item)) return index < 7 ? 1 : 2;
+            return index >= 7 && index < Option(item, 228) ? 3 : 0;
+        }
         // Set identities are item-option IDs from nro1.sql, independent of rarity 34/35/36.
         internal static int SetColor(Item item)
         {
@@ -223,12 +234,17 @@ public partial class Panel
 {
     internal bool InventoryFrameActive => type == 0 && Equals(GameCanvas.panel);
     internal int[] InventoryFrameTabIds => currentTabName == null ? Array.Empty<int>() : currentTabName.Length >= 7
-        ? inventoryMainTabs : currentTabName.Length == 4 ? inventoryFourTabs : inventoryFiveTabs;
-    private static readonly int[] inventoryMainTabs = new[] { 0, 1, 2, 3, 6 };
+        ? (Char.myCharz().havePet ? inventoryMainTabs : inventoryMainTabsWithoutDisciple) : currentTabName.Length == 4 ? inventoryFourTabs : inventoryFiveTabs;
+    private static readonly int[] inventoryMainTabs = new[] { 0, 1, 2, 3, 7, 6 };
+    private static readonly int[] inventoryMainTabsWithoutDisciple = new[] { 0, 1, 2, 3, 6 };
     private static readonly int[] inventoryFourTabs = new[] { 0, 1, 2, 3 };
     private static readonly int[] inventoryFiveTabs = new[] { 0, 1, 2, 3, 4 };
     private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 };
     private static readonly string[] inventorySlotLabels = { "Áo", "Quần", "Găng", "Giày", "Rada", "GLT", "Skin", "Tai", "Pet" };
+    private readonly InventoryItemVisuals.FittedTextRow inventoryTabText = new InventoryItemVisuals.FittedTextRow();
+    private readonly Rect[] inventoryTabTextBounds = new Rect[6];
+    private readonly string[] inventoryTabTextLabels = new string[6];
+    private static readonly string[] inventoryMainTabLabels = { "Nhiệm\nVụ", "Hành\nTrang", "Kỹ\nNăng", "Bang\nHội", "Đệ\nTử", "Chức\nNăng" };
     private string inventoryPressed;
     private int inventoryDragY, inventoryDragScroll;
     private bool inventoryDragging;
@@ -257,6 +273,7 @@ public partial class Panel
 
     private void SyncInventoryFrame()
     {
+        if (currentTabIndex == DiscipleTab && !Char.myCharz().havePet) { SelectInventoryFrameTab(1); return; }
         Rect panel = HudLayout.GetRect(InventoryFrame.Root);
         X = Y = 0; W = (int)panel.width; H = (int)panel.height;
         if (!isClose && cmtoX <= 0) cmx = 0;
@@ -276,6 +293,8 @@ public partial class Panel
             int previousScroll = cmy;
             cmy = Mathf.Clamp(cmy, 0, cmyLim); cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
             if (cmy != previousScroll) HudLayout.Invalidate();
+        } else if (DisciplePanelActive) {
+            SyncDisciplePanel();
         } else if (currentTabIndex == 2) {
             SyncSkillPanel();
         } else if (currentTabIndex == 4 || currentTabIndex == 5 || currentTabIndex == 6) {
@@ -286,9 +305,10 @@ public partial class Panel
 
     private void SelectInventoryFrameTab(int id)
     {
-        if (id >= currentTabName.Length) return;
+        if (id == DiscipleTab && !Char.myCharz().havePet) return;
+        if (id >= currentTabName.Length && id != DiscipleTab) return;
         ClosePotentialEditor();
-        CloseInventoryBagDetail();
+        CloseInventoryBagDetail(); CloseDiscipleDetail();
         currentTabIndex = id; lastTabIndex[type] = id;
         selected = -1; cp = null; cmy = cmtoY = 0;
         switch (id) {
@@ -298,6 +318,7 @@ public partial class Panel
             case 3: setTabClans(); break;
             case 4: setTabMod(); break;
             case 6: setTabTool(); break;
+            case DiscipleTab: OpenDiscipleTab(); break;
         }
         HudLayout.Invalidate(); SyncInventoryFrame();
     }
@@ -317,7 +338,7 @@ public partial class Panel
             inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
-        bool frameGesture = currentTabIndex == 1 || inventoryPressed == InventoryFrame.Close
+        bool frameGesture = currentTabIndex == 1 || DisciplePanelActive || inventoryPressed == InventoryFrame.Close
             || inventoryPressed != null && inventoryPressed.StartsWith("inventory.tab.");
         // The legacy pointer stream keeps JustDown set until a handler consumes it.
         // Capture the origin once, including when panel.updateKey runs twice per tick.
@@ -336,6 +357,7 @@ public partial class Panel
         if (GameCanvas.isPointerJustRelease) {
             bool click = GameCanvas.isPointerClick && !inventoryDragging && hit == inventoryPressed;
             inventoryPressed = null;
+            if (click && HandleDiscipleClick(hit)) { GameCanvas.clearAllPointerEvent(); return true; }
             if (click && HandleInventoryBagClick(hit)) { GameCanvas.clearAllPointerEvent(); return true; }
             if (click && hit == InventoryFrame.Close) { CloseInventoryFrame(); GameCanvas.clearAllPointerEvent(); return true; }
             if (click && hit != null && hit.StartsWith("inventory.tab.")) {
@@ -361,9 +383,11 @@ public partial class Panel
         }
         if (GameCanvas.keyPressed[13]) {
             GameCanvas.keyPressed[13] = false;
-            if (InventoryBagDetailOpen) CloseInventoryBagDetail(); else CloseInventoryFrame();
+            if (DisciplePanelActive && discipleSkill >= 0) CloseDiscipleDetail();
+            else if (InventoryBagDetailOpen) CloseInventoryBagDetail(); else CloseInventoryFrame();
             return true;
         }
+        if (DisciplePanelActive) return UpdateDiscipleKeyboard();
         if (currentTabIndex != 1) return false;
         int up = Main.isPC ? 21 : 2, down = Main.isPC ? 22 : 8, fire = Main.isPC ? 25 : 5;
         if (GameCanvas.keyPressed[up] || GameCanvas.keyPressed[down]) {
@@ -394,12 +418,14 @@ public partial class Panel
     // Header ownership follows the active tab; body rendering never paints over it.
     private void PaintInventoryHeader(mGraphics g)
     {
-        Char character = Char.myCharz();
+        Char character = DisciplePanelActive ? Char.myPetz() : Char.myCharz();
         if (currentTabIndex == 0) {
             mFont.tahoma_7b_white.drawString(g, character.cName, 46, 1, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.vitality + ": " + character.cStamina + "/" + character.cMaxStamina, 46, 12, 0);
             mFont.tahoma_7_yellow.drawString(g, character.me ? character.getStrLevel() : character.currStrLevel, 46, 23, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.power + ": " + NinjaUtil.getMoneys(character.cPower), 46, 34, 0);
+        } else if (DisciplePanelActive) {
+            PaintDiscipleHeader(g);
         } else if (currentTabIndex == 1 || currentTabIndex == 2) {
             mFont.tahoma_7_yellow.drawString(g, mResources.HP + ": " + character.cHP + "/" + character.cHPFull, 46, 1, 0);
             mFont.tahoma_7_yellow.drawString(g, mResources.KI + ": " + character.cMP + "/" + character.cMPFull, 46, 12, 0);
@@ -427,7 +453,7 @@ public partial class Panel
         g.setColor(InventoryFrame.SlotBackground); g.fillRect(1, 1, W - 2, 46);
         InventoryFrame.Clip(g, new Rect(2, 1, W - 4, 46));
 
-        SmallImage.drawSmallImage(g, Char.myCharz().avatarz(), 23, 44, 0, 33);
+        SmallImage.drawSmallImage(g, (DisciplePanelActive ? Char.myPetz() : Char.myCharz()).avatarz(), 23, 44, 0, 33);
         InventoryFrame.Clip(g, new Rect(46, 1, W - 49, 46));
         PaintInventoryHeader(g);
         Rect close = HudLayout.GetRect(InventoryFrame.Close);
@@ -440,13 +466,13 @@ public partial class Panel
         for (int i = 0; i < ids.Length; i++) {
             Rect tab = HudLayout.GetRect(InventoryFrame.Tab(i));
             InventoryFrame.Clip(g, tab);
-            PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width - 1, (int)tab.height,
+            PopUp.paintPopUp(g, (int)tab.x, (int)tab.y, (int)tab.width, (int)tab.height,
                 activeTab == ids[i] ? 1 : 0, true);
-            string[] words = currentTabName[ids[i]];
-            for (int line = 0; line < words.Length; line++)
-                (activeTab == ids[i] ? mFont.tahoma_7_green2 : mFont.tahoma_7_grey).drawString(g,
-                    words[line], (int)tab.center.x, (int)tab.y + 1 + line * 11, mFont.CENTER);
+            inventoryTabTextBounds[i] = tab;
+            inventoryTabTextLabels[i] = currentTabName.Length >= 7 ? inventoryMainTabLabels[Array.IndexOf(inventoryMainTabs, ids[i])] : string.Join("\n", currentTabName[ids[i]]);
         }
+        inventoryTabText.Paint(mFont.tahoma_7_grey, inventoryTabTextLabels, inventoryTabTextBounds,
+            ids.Length, HudLayout.GetRect(InventoryFrame.Tabs), Array.IndexOf(ids, activeTab), mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);
 
         GameScr.resetTranslate(g); InventoryFrame.Clip(g, new Rect(1, 73, W - 2, H - 94));
         switch (currentTabIndex) {
@@ -464,10 +490,12 @@ public partial class Panel
             case 4: paintModTabs(g); break;
             case 5: paintBox(g); break;
             case 6: paintTools(g); break;
+            case DiscipleTab: PaintDisciplePanel(g); break;
         }
         GameScr.resetTranslate(g); PaintInventoryMoney(g);
 
-        if (currentTabIndex == 2) PaintSkillDetail(g);
+        if (DisciplePanelActive && discipleSkill >= 0) PaintDiscipleSkillDetail(g);
+        else if (currentTabIndex == 2) PaintSkillDetail(g);
         else {
                 if (InventoryBagDetailOpen) PaintInventoryBagDetail(g); else paintDetail(g);
         }
@@ -502,10 +530,9 @@ public partial class Panel
         InventoryFrame.Clip(g, viewport);
         if (slot < 6) {
             int level = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_LVITEM), 0, 7);
-            int stars = Mathf.Clamp(InventoryFrame.Option(item, Item.OPT_STARSLOT), 0, 6);
             if (item != null) InventoryItemVisuals.PaintLevel(g, rect, viewport, level, false);
-            InventoryItemVisuals.PaintStars(rect, viewport, stars);
         }
+        InventoryItemVisuals.PaintStars(rect, viewport, item);
     }
 
     private void PaintInventoryMoney(mGraphics g)

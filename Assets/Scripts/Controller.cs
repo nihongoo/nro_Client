@@ -1692,17 +1692,18 @@ public class Controller : IMessageHandler
 				sbyte b21 = msg.reader().readByte();
 				if (b21 == 0)
 				{
-					Char.myCharz().havePet = false;
+					GameCanvas.panel.SetDiscipleAvailable(false);
 				}
 				if (b21 == 1)
 				{
-					Char.myCharz().havePet = true;
+					GameCanvas.panel.SetDiscipleAvailable(true);
 				}
 				if (b21 != 2)
 				{
 					break;
 				}
 				InfoDlg.hide();
+                GameCanvas.panel.SetDiscipleAvailable(true);
 				Char.myPetz().head = msg.reader().readShort();
 				Char.myPetz().setDefaultPart();
 				int num40 = msg.reader().readUnsignedByte();
@@ -1763,11 +1764,6 @@ public class Controller : IMessageHandler
 				Char.myPetz().cMaxStamina = msg.reader().readShort();
 				Char.myPetz().cCriticalFull = msg.reader().readByte();
 				Char.myPetz().cDefull = msg.reader().readShort();
-				//if (!MenuFunctions.isShowPanelPet)
-				//{
-    //                break;
-    //            }
-				//MenuFunctions.isShowPanelPet = false;
                 Char.myPetz().arrPetSkill = new Skill[msg.reader().readByte()];
 				Res.outz("SKILLENT = " + Char.myPetz().arrPetSkill);
 				for (int num47 = 0; num47 < Char.myPetz().arrPetSkill.Length; num47++)
@@ -1782,23 +1778,12 @@ public class Controller : IMessageHandler
 					Char.myPetz().arrPetSkill[num47].template = null;
 					Char.myPetz().arrPetSkill[num47].moreInfo = msg.reader().readUTF();
 				}
-				Char.myPetz().cGiamST = msg.reader().readByte();
-				Char.myPetz().cCritDameFull = msg.reader().readShort();
-				if (GameCanvas.w > 2 * Panel.WIDTH_PANEL)
-				{
-					GameCanvas.panel2 = new Panel();
-					GameCanvas.panel2.tabName[7] = new string[1][] { new string[1] { string.Empty } };
-					GameCanvas.panel2.setTypeBodyOnly();
-					GameCanvas.panel2.show();
-					GameCanvas.panel.setTypePetMain();
-					GameCanvas.panel.show();
-				}
-				else
-				{
-					GameCanvas.panel.tabName[21] = mResources.petMainTab;
-					GameCanvas.panel.setTypePetMain();
-					GameCanvas.panel.show();
-				}
+                // Optional trailer keeps older servers readable; updates never navigate tabs.
+                if (msg.reader().available() >= 3) {
+                    Char.myPetz().cGiamST = msg.reader().readByte();
+                    Char.myPetz().cCritDameFull = msg.reader().readShort();
+                }
+                GameCanvas.panel.ReceiveDiscipleInfo(msg);
 				break;
 			}
 			case -37:

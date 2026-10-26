@@ -15,10 +15,11 @@ namespace Hud
         private static int levelZoom;
         private static float levelWidth;
 
-        internal static Rect StarBounds(Rect cell, int index)
+        internal static Rect StarBounds(Rect cell, int index, int count)
         {
-            float size = System.Math.Min(5, (cell.width - 2) / 6);
-            return new Rect(cell.center.x - 3 * size + index * size, cell.yMax + 3.5f, size, size);
+            if (count <= 0) return new Rect();
+            float size = System.Math.Min(5, (cell.width - 2) / count);
+            return new Rect(cell.center.x - count * size / 2 + index * size, cell.yMax + 3.5f, size, size);
         }
         internal static Rect LevelBounds(Rect cell, float width, bool bag)
         {
@@ -85,18 +86,22 @@ namespace Hud
                 finally { GUI.EndGroup(); }
             } finally { GUI.color = previous; }
         }
-        internal static void PaintStars(Rect cell, Rect viewport, int filled)
+        internal static void PaintStars(Rect cell, Rect viewport, Item item)
         {
+            int count = InventoryFrame.StarSlots(item);
+            if (count == 0) return;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             Color previous = GUI.color;
             try {
                 GUI.color = Color.white;
                 GUI.BeginGroup(new Rect(viewport.x * zoom, viewport.y * zoom, viewport.width * zoom, viewport.height * zoom));
                 try {
-                    for (int i = 0; i < 6; i++) {
-                        Image image = i < filled ? Panel.imgStar : Panel.imgMaxStar;
+                    for (int i = 0; i < count; i++) {
+                        int kind = InventoryFrame.StarKind(item, i);
+                        Image image = kind == 1 ? Panel.imgStar : kind == 2 ? (Panel.imgStar8 ?? Panel.imgStar)
+                            : kind == 3 ? (Panel.imgStarCuongHoa ?? Panel.imgMaxStar) : Panel.imgMaxStar;
                         if (image == null) continue;
-                        Rect star = StarBounds(cell, i);
+                        Rect star = StarBounds(cell, i, count);
                         GUI.DrawTexture(new Rect((star.x - viewport.x) * zoom, (star.y - viewport.y) * zoom,
                             star.width * zoom, star.height * zoom), image.texture);
                     }
@@ -150,6 +155,73 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
     }
+        // Fit native bitmap glyphs at one common size for every label in the row.
+        internal sealed class FittedTextRow
+        {
+            private GUIStyle style;
+            private readonly GUIContent[] content = new GUIContent[6];
+            private readonly Vector2[] sizes = new Vector2[6];
+            private Font font;
+            private int zoom, baseSize, count;
+            private float textScale = 1;
+            internal const float Padding = 4;
+
+            internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
+                Rect viewport, int selected, Color normalColor, Color selectedColor)
+            {
+                if (style == null) style = new GUIStyle(GUI.skin.label) {
+                    alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
+                    wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
+                };
+                int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, nativeFont.myFont.fontSize);
+                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length;
+                for (int i = 0; i < length; i++) {
+                    Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width * scale - 2 * Padding),
+                        Mathf.Max(0, bounds[i].height * scale - 4));
+                    if (content[i] == null || content[i].text != labels[i] || sizes[i] != available) dirty = true;
+                    if (content[i] == null) content[i] = new GUIContent(labels[i]); else content[i].text = labels[i];
+                    sizes[i] = available;
+                }
+                style.font = nativeFont.myFont;
+                if (dirty) {
+                    style.fontSize = size;
+                    // Bitmap fonts (notably x4) ignore GUIStyle.fontSize. Scale their native
+                    // glyphs rather than changing fontSize; tabs share the smallest fit.
+                    textScale = 1;
+                    for (int i = 0; i < length; i++) {
+                        Vector2 measured = style.CalcSize(content[i]);
+                        float fit = 1;
+                        if (measured.x > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].x - 1) / measured.x);
+                        if (measured.y > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].y - 1) / measured.y);
+                        textScale = Mathf.Min(textScale, Mathf.Max(.01f, fit));
+                    }
+                    font = nativeFont.myFont; zoom = scale; baseSize = size; count = length;
+                }
+                Color previous = GUI.color;
+                try {
+                    GUI.color = Color.white;
+                    for (int i = 0; i < length; i++) {
+                        Rect inset = new Rect(bounds[i].x + Padding / scale, bounds[i].y + 2f / scale,
+                            sizes[i].x / scale, sizes[i].y / scale);
+                        Rect clip = InventoryFrame.Intersection(inset, viewport);
+                        if (clip.width <= 0 || clip.height <= 0) continue;
+                        Color ink = i == selected ? selectedColor : normalColor;
+                        style.normal.textColor = style.hover.textColor = style.active.textColor = style.focused.textColor = ink;
+                        style.onNormal.textColor = style.onHover.textColor = style.onActive.textColor = style.onFocused.textColor = ink;
+                        Matrix4x4 matrix = GUI.matrix;
+                        Vector2 center = inset.center * scale;
+                        try {
+                            // These fixed rows are fully inside their viewport. Fit the label
+                            // itself, avoiding nested GUI clips that also scale bitmap glyphs.
+                            GUIUtility.ScaleAroundPivot(new Vector2(textScale, textScale), center);
+                            float width = inset.width * scale / textScale, height = inset.height * scale / textScale;
+                            GUI.Label(new Rect(center.x - width / 2, center.y - height / 2, width, height), content[i], style);
+                        }
+                        finally { GUI.matrix = matrix; }
+                    }
+                } finally { GUI.color = previous; }
+            }
+        }
         // Match SmallImage.drawSmallImage: entries outside the 256 atlas are separate images.
         internal static bool TryAtlasIcon(int id,out Image image,out Rect uv)
         {
@@ -221,6 +293,65 @@ namespace Hud
                 },smooth?FilterMode.Bilinear:FilterMode.Point);cache.Add(source.texture,grey);
             }
             return grey;
+        }
+        private static readonly Texture2D[] nativeTabSources = new Texture2D[2];
+        private static readonly Image[] nativeTabSkins = new Image[2];
+        private static Image NativeTabSkin(bool selected)
+        {
+            Image source = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp;
+            if (source?.texture == null) { PopUp.loadBg(); source = selected ? PopUp.imgPopUp2 : PopUp.imgPopUp; }
+            if (source?.texture == null) return null;
+            int index = selected ? 1 : 0;
+            if (nativeTabSources[index] != source.texture || nativeTabSkins[index]?.texture == null) {
+                if (nativeTabSkins[index]?.texture != null) UnityEngine.Object.Destroy(nativeTabSkins[index].texture);
+                // The imported atlas has mipmaps. Thin edge slices otherwise sample adjacent
+                // atlas rows when reduced. CopyNative creates a Point texture without mipmaps.
+                nativeTabSkins[index] = HudButtonSkin.CopyNative(source, null, FilterMode.Point);
+                nativeTabSources[index] = source.texture;
+            }
+            return nativeTabSkins[index];
+        }
+        // The popup button atlas has eight 10-logical-pixel slices. Stretch only its edges;
+        // tiling whole edge slices can overwrite the corners at narrow chip widths.
+        internal static void PaintNativeTab(mGraphics g, Rect bounds, Rect viewport, bool selected)
+        {
+            Image skin = NativeTabSkin(selected);
+            Rect clip = InventoryFrame.Intersection(bounds, viewport);
+            if (clip.width <= 0 || clip.height <= 0 || skin?.texture == null) return;
+            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            float cap = Mathf.Min(10, Mathf.Min(bounds.width, bounds.height) / 2);
+            InventoryFrame.Clip(g, clip);
+            Color previous = GUI.color;
+            try {
+                GUI.color = Color.white;
+                GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+                try {
+                    int fill = selected ? 12052656 : 16770503;
+                    GUI.color = new Color((fill >> 16 & 255) / 255f, (fill >> 8 & 255) / 255f, (fill & 255) / 255f, 1);
+                    GUI.DrawTexture(Pixels(cap, cap, bounds.width - 2 * cap, bounds.height - 2 * cap), Texture2D.whiteTexture);
+                    GUI.color = Color.white;
+                    Draw(0, 0, 0, cap, cap); Draw(10, cap, 0, bounds.width - 2 * cap, cap);
+                    Draw(20, bounds.width - cap, 0, cap, cap);
+                    Draw(30, 0, cap, cap, bounds.height - 2 * cap);
+                    Draw(40, bounds.width - cap, cap, cap, bounds.height - 2 * cap);
+                    Draw(50, 0, bounds.height - cap, cap, cap);
+                    Draw(60, cap, bounds.height - cap, bounds.width - 2 * cap, cap);
+                    Draw(70, bounds.width - cap, bounds.height - cap, cap, cap);
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.color = previous; }
+            Rect Pixels(float x, float y, float width, float height)
+            {
+                float left = Mathf.Round((bounds.x + x) * zoom), top = Mathf.Round((bounds.y + y) * zoom);
+                float right = Mathf.Round((bounds.x + x + width) * zoom), bottom = Mathf.Round((bounds.y + y + height) * zoom);
+                return new Rect(left - clip.x * zoom, top - clip.y * zoom, right - left, bottom - top);
+            }
+            void Draw(int sourceY, float x, float y, float width, float height)
+            {
+                if (width <= 0 || height <= 0) return;
+                GUI.DrawTextureWithTexCoords(Pixels(x, y, width, height), skin.texture,
+                    new Rect(0, 1f - (sourceY + 10f) * zoom / skin.texture.height,
+                        10f * zoom / skin.texture.width, 10f * zoom / skin.texture.height));
+            }
         }
         internal static void PaintNativeButton(mGraphics g,Rect bounds,bool enabled,bool selected,Rect viewport)
         {
