@@ -184,7 +184,8 @@ public partial class Panel
         Rect content = DiscipleLayout.Content;
         InventoryFrame.Clip(g, content);
         if (!Char.myCharz().havePet || !discipleLoaded) {
-            mFont.tahoma_7b_dark.drawString(g, Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử", W / 2, 90, mFont.CENTER); return;
+            string text = Char.myCharz().havePet ? "Đang tải đệ tử..." : "Chưa có đệ tử";
+            mFont.tahoma_7b_dark.drawTintedString(g, text, W / 2 - mFont.tahoma_7b_dark.getWidth(text) / 2, 90, InventoryFrame.LabelTint); return;
         }
         int activeStatus = DiscipleFused ? 4 : Char.myPetz().petStatus;
         for (int i = 0; i < 5; i++) {
@@ -199,10 +200,10 @@ public partial class Panel
             discipleStatusLabels[i] = label;
         }
         discipleStatusText.Paint(mFont.tahoma_7b_dark, discipleStatusLabels, discipleStatusBounds,
-            5, content, activeStatus, InventoryFrame.Border, InventoryFrame.Border, false);
+            5, content, activeStatus, InventoryFrame.LabelColor, InventoryFrame.LabelColor, false);
         InventoryFrame.Clip(g, content);
-        mFont.tahoma_7b_dark.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, 0);
-        mFont.tahoma_7b_dark.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, 0);
+        mFont.tahoma_7b_dark.drawTintedString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, InventoryFrame.LabelTint);
+        mFont.tahoma_7b_dark.drawTintedString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, InventoryFrame.LabelTint);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
@@ -246,7 +247,7 @@ public partial class Panel
     {
         if (string.IsNullOrEmpty(text)) return;
         foreach (string line in mFont.tahoma_7b_dark.splitFontArray(text, Mathf.Max(10, (int)r.width - 12))) {
-            mFont.tahoma_7b_dark.drawString(g, line, (int)r.x + 6, y, 0); y += 12;
+            mFont.tahoma_7b_dark.drawTintedString(g, line, (int)r.x + 6, y, InventoryFrame.LabelTint); y += 12;
         }
     }
 }
