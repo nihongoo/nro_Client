@@ -51,25 +51,6 @@ namespace Assets.src.g
 				ex.StackTrace.ToString();
 			}
 			Res.outz("vS size= " + vSource.size() + " vRMS size= " + vRms.size());
-			if (false)
-			{
-				for (int j = 0; j < vSource.size(); j++)
-				{
-					ImageSource imageSource = (ImageSource)vSource.elementAt(j);
-					if (!isExistID(imageSource.id))
-					{
-						myVector.addElement(imageSource);
-					}
-				}
-				for (int k = 0; k < vRms.size(); k++)
-				{
-					ImageSource imageSource2 = (ImageSource)vRms.elementAt(k);
-					if (getVersionRMSByID(imageSource2.id) != getCurrVersionByID(imageSource2.id))
-					{
-						myVector.addElement(imageSource2);
-					}
-				}
-			}
 			Service.gI().imageSource(myVector);
 		}
 
