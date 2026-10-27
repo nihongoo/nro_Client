@@ -114,7 +114,7 @@ namespace Hud
         }
         private static readonly Dictionary<mFont,Dictionary<string,CompactFit>> compactFits=new Dictionary<mFont,Dictionary<string,CompactFit>>();
         // Keep the game's font, fitting the complete value instead of dropping digits with ellipses.
-        internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false)
+        internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false,float fontScale=1,bool topAligned=false)
         {
             Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
             if(!compactStyles.TryGetValue(font,out GUIStyle style)) {
@@ -123,7 +123,7 @@ namespace Hud
                 compactStyles.Add(font,style);
             }
             style.font=font.myFont;
-            style.alignment=center?TextAnchor.MiddleCenter:TextAnchor.MiddleLeft;
+            style.alignment=center?(topAligned?TextAnchor.UpperCenter:TextAnchor.MiddleCenter):TextAnchor.MiddleLeft;
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
             if(!compactFits.TryGetValue(font,out Dictionary<string,CompactFit> fits)) {
                 fits=new Dictionary<string,CompactFit>();compactFits.Add(font,fits);
@@ -133,7 +133,7 @@ namespace Hud
 
                 fit=new CompactFit{Content=new GUIContent(text)};fits.Add(text,fit);
             }
-            int baseSize=Mathf.Max(1,font.myFont.fontSize);
+            int baseSize=Mathf.Max(1,Mathf.RoundToInt(font.myFont.fontSize*fontScale));
             if(fit.Font!=font.myFont||fit.BaseSize!=baseSize||fit.Width!=bounds.width||fit.Height!=bounds.height||fit.Zoom!=zoom) {
                 style.fontSize=baseSize;
                 while(style.fontSize>1) {
