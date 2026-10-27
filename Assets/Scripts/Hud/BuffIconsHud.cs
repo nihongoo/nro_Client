@@ -12,7 +12,9 @@ namespace Hud
         private static readonly List<BuffIconEntry> visible = new List<BuffIconEntry>(BuffIconStore.MaxVisible);
         private static BuffIconGrid grid;
         private static int selected, pressed, consumedTick = -1;
-        private static bool captured;
+        private static bool captured, moved, scrollPress;
+        private static int first, dragFirst;
+        private static float pressX;
         private static string[] effectLines = new string[0];
         internal static bool ConsumesInput => consumedTick == GameCanvas.gameTick;
         private static bool Visible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
@@ -24,11 +26,11 @@ namespace Hud
 
         internal static void Reset()
         {
-            selected = pressed = 0; captured = false; consumedTick = -1;
+            selected = pressed = first = 0; captured = moved = scrollPress = false; consumedTick = -1;
         }
         internal static void Register()
         {
-            HudLayout.Register(Root, Resolve, Order, () => Visible, false);
+            HudLayout.Register(Root, Resolve, Order, () => Visible);
             for (int i = 0; i < slots.Length; i++) {
                 int index = i; slots[i] = "buff-icons.slot." + i;
                 HudLayout.Register(slots[i], () => { HudLayout.GetRect(Root); return grid.Cell(index); },
@@ -44,13 +46,14 @@ namespace Hud
             grid = BuffIconGrid.Resolve(HudLayout.GetRect("top-info.bounds"), HudLayout.GetRect("top-info.hp"),
                 target, HudLayout.GetRect(TopActionsHud.Hub), GameCanvas.w, GameCanvas.h, mGraphics.zoomLevel,
                 mFont.tahoma_7_white.getHeight(), visible.Count);
+            first = Mathf.Clamp(first, 0, Mathf.Max(0, visible.Count - grid.Count));
             return grid.Bounds;
         }
         private static BuffIconEntry Selection()
         {
             if (selected == 0) return null;
             HudLayout.GetRect(Root);
-            for (int i = 0; i < grid.Count; i++) if (visible[i].Id == selected) return visible[i];
+            for (int i = 0; i < grid.Count; i++) if (visible[first + i].Id == selected) return visible[first + i];
             return null;
         }
         private static Rect TooltipBounds()
@@ -71,14 +74,22 @@ namespace Hud
             if (Selection() == null) selected = 0;
             string hit = HudLayout.HitTest(new Vector2(GameCanvas.px, GameCanvas.py));
             int id = 0;
-            for (int i = 0; i < grid.Count; i++) if (hit == slots[i]) { id = visible[i].Id; break; }
+            for (int i = 0; i < grid.Count; i++) if (hit == slots[i]) { id = visible[first + i].Id; break; }
             if (GameCanvas.isPointerJustDown) {
-                captured = id != 0 || selected != 0;
-                pressed = id;
+                captured = id != 0 || hit == Root || selected != 0;
+                pressed = id; scrollPress = id != 0 || hit == Root; moved = false; pressX = GameCanvas.px; dragFirst = first;
+            }
+            if (captured && scrollPress && Mathf.Abs(GameCanvas.px - pressX) >= 4) {
+                moved = true;
+                SetFirst(dragFirst + Mathf.RoundToInt((pressX - GameCanvas.px) / (grid.Size + grid.Gap)));
+            }
+            int wheel = GameCanvas.pXYScrollMouse;
+            if (wheel != 0 && grid.Bounds.Contains(new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse))) {
+                SetFirst(first - wheel); GameCanvas.pXYScrollMouse = 0; Consume(false);
             }
             if (!captured) return;
             if (GameCanvas.isPointerJustRelease) {
-                if (GameCanvas.isPointerClick && id == pressed) {
+                if (!moved && GameCanvas.isPointerClick && id == pressed) {
                     if (id != 0) selected = selected == id ? 0 : id;
                     else if (hit != Tooltip) selected = 0;
                 }
@@ -86,6 +97,12 @@ namespace Hud
                 HudLayout.Invalidate(); Consume(true); return;
             }
             if (GameCanvas.isPointerDown || GameCanvas.isPointerJustDown) Consume(false);
+        }
+        private static void SetFirst(int value)
+        {
+            int next = Mathf.Clamp(value, 0, Mathf.Max(0, visible.Count - grid.Count));
+            if (next == first) return;
+            first = next; selected = 0; HudLayout.Invalidate();
         }
         private static void Consume(bool released)
         {
@@ -100,7 +117,7 @@ namespace Hud
             Rect label = new Rect(cell.x, cell.yMax + 1, cell.width, mFont.tahoma_7_white.getHeight());
             Rect viewport = HudLayout.ScreenBounds;
             float stroke = 1f / Mathf.Max(1, mGraphics.zoomLevel);
-            // Fit long charm durations using the same game font; retain every minute digit.
+            // Fit long durations using the same game font; retain every minute digit.
             foreach (Vector2 offset in outline) {
                 Rect shadow = label; shadow.x += offset.x * stroke; shadow.y += offset.y * stroke;
                 InventoryItemVisuals.PaintCompactText(g, mFont.tahoma_7_white, text, shadow, viewport, 0x201000, true);
@@ -136,7 +153,7 @@ namespace Hud
             try {
                 HudLayout.GetRect(Root);
                 for (int i = 0; i < grid.Count; i++) {
-                    BuffIconEntry entry = visible[i]; Rect cell = HudLayout.GetRect(slots[i]);
+                    BuffIconEntry entry = visible[first + i]; Rect cell = HudLayout.GetRect(slots[i]);
                     // Native slot colors/corners; the timed fusion alone has a gold outline.
                     PaintFrame(g, cell, entry.Id == 1 ? 0xffd34e : InventoryFrame.Border);
                     // Kilis has no x1 asset in the existing pack; use the available Chibi icon there.

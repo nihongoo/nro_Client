@@ -15,7 +15,7 @@ namespace Hud
     // Frame rate, device clock/time-zone changes and application suspension do not extend a timer.
     internal static class BuffIconStore
     {
-        internal const int MaxEntries = 64, MaxVisible = 16;
+        internal const int MaxEntries = 64, MaxVisible = 7;
         private static List<BuffIconEntry> entries = new List<BuffIconEntry>();
         private static long sequence = -1, serverTime, receivedAt;
         internal static long Now => (long)(Stopwatch.GetTimestamp() * (1000d / Stopwatch.Frequency));
@@ -49,9 +49,9 @@ namespace Hud
         {
             output.Clear();
             foreach (BuffIconEntry entry in entries) {
-                if (Remaining(entry, now) <= 0) continue;
+                // IDs 30-46 are the NPC charm family, including snapshots from older servers.
+                if (entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
                 output.Add(entry);
-                if (output.Count == MaxVisible) break;
             }
         }
         internal static string FormatTime(int seconds) => seconds >= 60
