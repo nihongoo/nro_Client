@@ -124,6 +124,7 @@ public class Controller : IMessageHandler
 			GameCanvas.timeLoading = 15;
             // Custom account packets must be consumed exactly once, before legacy handlers.
             if (msg.command == GuestCredentials.Command) { EmailLinkFlow.Read(msg.reader()); return; }
+            if (msg.command == Notifications.NotificationProtocol.Command && Hud.BuffIconProtocol.TryRead(msg)) return;
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{

@@ -653,6 +653,7 @@ public class GameScr : mScreen, IChatable
     internal static void RegisterHudRects()
     {
         Hud.TopInfoHud.Register();
+        Hud.BuffIconsHud.Register();
         Hud.TopActionsHud.Register();
         Hud.TargetInfoHud.Register();
         PopUpYesNo.RegisterHudRects();
@@ -2494,7 +2495,7 @@ public class GameScr : mScreen, IChatable
     public override void updateKey()
     {
         SyncDeadHudCommand();
-        if (Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || Hud.MapListsHud.ConsumesInput || ChatTextField.gI().isShow) return;
+        if (Hud.BuffIconsHud.ConsumesInput || Hud.TopActionsHud.ConsumesInput || Notifications.NotificationCenter.ConsumesInput || Hud.MapListsHud.ConsumesInput || ChatTextField.gI().isShow) return;
         if (Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().isPaintNewSkill || InfoDlg.isLock)
         {
             return;
@@ -4245,6 +4246,7 @@ public class GameScr : mScreen, IChatable
     {
         MainMod.Update();
         Hud.SkillTabState.Update();
+        Hud.BuffIconProtocol.Update();
         if (GameCanvas.keyPressed[16])
         {
             GameCanvas.keyPressed[16] = false;
@@ -4448,11 +4450,11 @@ public class GameScr : mScreen, IChatable
                     cmy--;
                 }
             }
-            for (int num10 = 0; num10 < Char.vItemTime.size(); num10++)
+            for (int num10 = Char.vItemTime.size() - 1; num10 >= 0; num10--)
             {
                 ((ItemTime)Char.vItemTime.elementAt(num10)).update();
             }
-            for (int num11 = 0; num11 < textTime.size(); num11++)
+            for (int num11 = textTime.size() - 1; num11 >= 0; num11--)
             {
                 ((ItemTime)textTime.elementAt(num11)).update();
             }
@@ -4844,6 +4846,7 @@ public class GameScr : mScreen, IChatable
         if (!isPaintOther)
         {
             Hud.MapListsHud.Paint(g);
+            Hud.BuffIconsHud.PaintTooltip(g);
             MainMod.Paint(g);
             Notifications.NotificationCenter.PaintBell(g);
             GameCanvas.debug("PA21", 1);
@@ -5388,6 +5391,7 @@ public class GameScr : mScreen, IChatable
         g.translate(-g.getTranslateX(), -g.getTranslateY());
         Hud.TopInfoHud.Paint(g);
         Hud.TargetInfoHud.Paint(g);
+        Hud.BuffIconsHud.Paint(g);
         if (isVS() && secondVS > 0)
         {
             curr = mSystem.currentTimeMillis();

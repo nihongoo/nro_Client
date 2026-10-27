@@ -600,6 +600,7 @@ public class GameCanvas : IActionListener
 			Notifications.NotificationCenter.UpdateInput();
             Hud.MapListsHud.UpdateInput();
             Hud.TargetInfoHud.Update();
+            Hud.BuffIconsHud.UpdateInput();
             WorldChat.WorldChatHud.UpdateInput();
 			if (currentScreen != null)
 			{

@@ -126,13 +126,11 @@ namespace Hud
             Rect end = box.Items ? HudLayout.GetRect("top-info.exp") : chat;
             float width = Mathf.Max(0,end.xMax-start.xMin);
             float margin = box.Items ? top.xMin : GameCanvas.w - chat.xMax;
-            float minTop = (box.Items ? top.yMax : chat.yMax) + Gap;
+            float minTop = box.Items ? TopLeftHudStack.ItemsTop(Gap) : chat.yMax + Gap;
             Rect anchored = HudLayout.Anchor(box.Items ? HorizontalAnchor.Left : HorizontalAnchor.Right,
                 VerticalAnchor.Top, new Vector2(width, HeaderHeight), new Vector2(margin, minTop));
             float bottom = BottomLimit(anchored.x, width, minTop);
-            float desired = box.Items ? Mathf.Max(minTop, Unit(74)) : minTop;
-            anchored.y = Mathf.Min(desired, bottom - HeaderHeight);
-            return anchored.y < minTop || width <= 0 ? new Rect() : anchored;
+            return bottom < anchored.yMax || width <= 0 ? new Rect() : anchored;
         }
         private static Rect BodyBounds(ListBox box)
         {
