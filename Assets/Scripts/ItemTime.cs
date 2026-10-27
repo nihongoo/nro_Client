@@ -6,9 +6,7 @@ public class ItemTime
 
     public int minute;
 
-    private long curr;
-
-    private long last;
+    private long expiresAt;
 
     private bool isText;
 
@@ -35,7 +33,7 @@ public class ItemTime
         second = s % 60;
         time = s;
         coutTime = s;
-        curr = (last = mSystem.currentTimeMillis());
+        expiresAt = Hud.BuffIconStore.Now + System.Math.Max(0, (long)coutTime) * 1000;
         isPaint_coolDownBar = idIcon == 14;
     }
 
@@ -56,7 +54,7 @@ public class ItemTime
         this.time = time;
         coutTime = time;
         this.text = text;
-        curr = (last = mSystem.currentTimeMillis());
+        expiresAt = Hud.BuffIconStore.Now + System.Math.Max(0, (long)coutTime) * 1000;
         isPaint_coolDownBar = idIcon == 14;
     }
 
@@ -67,7 +65,7 @@ public class ItemTime
         this.time = time;
         coutTime = time;
         this.isText = isText;
-        curr = (last = mSystem.currentTimeMillis());
+        expiresAt = Hud.BuffIconStore.Now + System.Math.Max(0, (long)coutTime) * 1000;
     }
 
     public static bool isExistItem(int id)
@@ -124,22 +122,11 @@ public class ItemTime
 
     public void initTime(int time)
     {
+        this.time = time;
         minute = time / 60;
         second = time % 60;
         coutTime = time;
-        curr = (last = mSystem.currentTimeMillis());
-    }
-
-    public void paint(mGraphics g, int x, int y)
-    {
-        SmallImage.drawSmallImage(g, idIcon, x, y, 0, 3);
-        string empty = string.Empty;
-        empty = minute + "'";
-        if (minute == 0)
-        {
-            empty = second + "s";
-        }
-        mFont.tahoma_7b_white.drawString(g, empty, x, y + 15, 2, mFont.tahoma_7b_dark);
+        expiresAt = Hud.BuffIconStore.Now + System.Math.Max(0, (long)coutTime) * 1000;
     }
 
     public void paintText(mGraphics g, int x, int y)
@@ -188,29 +175,15 @@ public class ItemTime
 
     public void update()
     {
-        curr = mSystem.currentTimeMillis();
-        if (curr - last >= 1000)
-        {
-            last = mSystem.currentTimeMillis();
-            second--;
-            coutTime--;
-            if (second <= 0)
-            {
-                second = 60;
-                minute--;
-            }
-            if (time > 0)
-            {
-                per = coutTime * 100 / time;
-            }
-        }
-        if (minute < 0 && !isText)
-        {
-            Char.vItemTime.removeElement(this);
-        }
-        if (minute < 0 && isText && !dontClear)
-        {
-            GameScr.textTime.removeElement(this);
+        if (dontClear) return;
+        long remaining = System.Math.Max(0, expiresAt - Hud.BuffIconStore.Now);
+        coutTime = (int)System.Math.Min(int.MaxValue, (remaining + 999) / 1000);
+        minute = coutTime / 60;
+        second = coutTime % 60;
+        if (time > 0) per = (int)System.Math.Min(100, coutTime * 100L / time);
+        if (coutTime == 0) {
+            if (isText) GameScr.textTime.removeElement(this);
+            else Char.vItemTime.removeElement(this);
         }
     }
 }

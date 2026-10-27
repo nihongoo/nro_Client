@@ -857,6 +857,7 @@ public class Service
 		Notifications.NotificationCenter.BeginSession();
         Hud.MapListsHud.BeginSession();
         WorldChat.WorldChatHud.BeginSession();
+        Hud.BuffIconProtocol.BeginSession();
 		try
 		{
 			Message message = messageNotLogin(0);
@@ -2170,6 +2171,16 @@ public class Service
             session.sendMessage(message);
         }
         finally { message.cleanup(); }
+    }
+
+    public void requestBuffIconSnapshot()
+    {
+        Message message = new Message(Notifications.NotificationProtocol.Command);
+        try {
+            message.writer().writeByte(Notifications.NotificationProtocol.Version);
+            message.writer().writeByte(Hud.BuffIconProtocol.Snapshot);
+            session.sendMessage(message);
+        } finally { message.cleanup(); }
     }
 
     public void requestWorldChatSnapshot()

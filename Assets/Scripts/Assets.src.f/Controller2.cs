@@ -828,6 +828,11 @@ namespace Assets.src.f
 				{
 					short num36 = msg.reader().readShort();
 					int num37 = msg.reader().readShort();
+                    if (num37 <= 0) {
+                        ItemTime existing = ItemTime.getItemById(num36);
+                        if (existing != null) Char.vItemTime.removeElement(existing);
+                        break;
+                    }
 					if (ItemTime.isExistItem(num36))
 					{
 						ItemTime.getItemById(num36).initTime(num37);
