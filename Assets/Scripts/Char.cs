@@ -2568,7 +2568,7 @@ public class Char : IMapObject
                     posDisY++;
                     if (!TileMap.tileTypeAt(cx, cy - ch, 8192))
                     {
-                        if (posDisY == 20)
+                        if (posDisY == 20 && (!me || !UltiCastClient.OwnsCharge))
                         {
                             last = mSystem.currentTimeMillis();
                         }
