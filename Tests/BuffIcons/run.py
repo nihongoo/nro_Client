@@ -5,6 +5,18 @@ import sys
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/"Build/buff-icons-tests";OUT.mkdir(parents=True,exist_ok=True)
 packet=Path(sys.argv[1]) if len(sys.argv)>1 else Path(r"D:\dowload\SRC NRO NEW 03\SRC\build\buff-icons-tests\snapshot.bin")
+scripts=ROOT/"Assets/Scripts"
+map_source=(scripts/"Hud/MapListsHud.cs").read_text(encoding="utf-8-sig")
+def block(marker):
+    start=map_source.index(marker);brace=map_source.index("{",start);end=brace+1;depth=1
+    while depth:
+        depth+=(map_source[end]=="{")-(map_source[end]=="}");end+=1
+    return map_source[start:end]
+header=block("private static Rect HeaderBounds(")
+body=block("private static Rect BodyBounds(")
+activate=block("private static void Activate(")
+toggle=activate[activate.index("            if (name == box.Header)"):activate.index("            object entry")]
+assert "Unit(74)" not in header and "TopLeftHudStack.ItemsTop(Gap)" in header
 fixture=r"""
 using System;using System.Collections.Generic;using System.IO;using System.Linq;using System.Reflection;
 using Hud;using UnityEngine;
@@ -34,10 +46,12 @@ namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP
 public class Service{static Service s=new Service();public static Service gI()=>s;public int requests;public void requestBuffIconSnapshot(){requests++;}}
 namespace Hud {
  public static class TopActionsHud{public const string Hub="hub";}
+ public enum HorizontalAnchor{Left,Right}public enum VerticalAnchor{Top}
  public static class HudLayout {
   public const int MenuOrder=50;public static Rect ScreenBounds=>new Rect(0,0,GameCanvas.w,GameCanvas.h);
   class Slot{public string name;public Func<Rect> rect;public Func<bool> visible;public int order;public bool block;}
   static List<Slot> slots=new List<Slot>();public static float PixelsToLogical(float n)=>n/mGraphics.zoomLevel;
+  public const string ChatButton="chat";public static Rect Anchor(HorizontalAnchor h,VerticalAnchor v,Vector2 size,Vector2 margin)=>new Rect(h==HorizontalAnchor.Left?margin.x:GameCanvas.w-size.x-margin.x,margin.y,size.x,size.y);
   public static void Register(string n,Func<Rect> r,int order,Func<bool> visible=null,bool blocksPointer=true){slots.Add(new Slot{name=n,rect=r,visible=visible,order=order,block=blocksPointer});}
   public static Rect GetRect(string n)=>slots.First(s=>s.name==n).rect();public static bool TryGetRect(string n,out Rect r){var s=slots.FirstOrDefault(a=>a.name==n);r=s==null?new Rect():s.rect();return s!=null;}
   public static string HitTest(Vector2 p)=>slots.Where(s=>s.block&&(s.visible==null||s.visible())&&s.rect().Contains(p)).OrderByDescending(s=>s.order).Select(s=>s.name).FirstOrDefault();public static void Invalidate(){}
@@ -46,11 +60,56 @@ namespace Hud {
  public static class InventoryFrameSkin{public static int gold;public static Image Corners(int a,int b,int c){if(b==0xffd34e)gold++;return new Image();}}
  public static class InventoryItemVisuals{public static int icons;public static void PaintCompactIcon(mGraphics g,int id,Rect b,Rect v){icons++;}public static void PaintCompactText(mGraphics g,mFont f,string s,Rect b,Rect v,int c,bool center){} }
 }
+
+class StackLists {
+ class ListBox {public bool Items,Open=true;public int Count=5,RowHeight=16;public string Header,Body;}
+ static int Gap=>2;static int HeaderHeight=>16;const int MaxRows=5;
+ static int Unit(int pixels)=>pixels/mGraphics.zoomLevel;
+ static float BottomLimit(float x,float width,float top)=>GameCanvas.h-40;
+ static void ClampScroll(ListBox box){}
+ __HEADER__
+ __BODY__
+ static void Activate(ListBox box,string name){__TOGGLE__}
+ static int checks;static void Check(bool b,string m){checks++;if(!b)throw new Exception(m);}
+ public static void Run(){
+  HudLayout.Register("top-info.avatar",()=>new Rect(6,3,28,28),0,null,false);
+  HudLayout.Register("top-info.exp",()=>new Rect(40,22,90,8),0,null,false);
+  HudLayout.Register("chat",()=>new Rect(GameCanvas.w-40,2,34,34),40);
+  var items=new ListBox{Items=true,Header="stack.items.header",Body="stack.items.body"};
+  var people=new ListBox{Header="stack.people.header",Body="stack.people.body"};
+  HudLayout.Register(items.Header,()=>HeaderBounds(items),60);HudLayout.Register(items.Body,()=>BodyBounds(items),60);
+  HudLayout.Register(people.Header,()=>HeaderBounds(people),60);HudLayout.Register(people.Body,()=>BodyBounds(people),60);
+  foreach(int zoom in new[]{1,2,3,4})foreach(var physical in new[]{new[]{1280,720},new[]{2340,1080}}){
+   mGraphics.zoomLevel=zoom;GameCanvas.w=physical[0]/zoom;GameCanvas.h=physical[1]/zoom;
+   Rect fixedPeople=HeaderBounds(people),stats=HudLayout.GetRect("top-info.bounds");
+   foreach(int count in new[]{0,1,8,9,16,17,9,8,1,0}){
+    BuffIconStore.Reset();var entries=new List<BuffIconEntry>();for(int i=0;i<count;i++)entries.Add(new BuffIconEntry{Id=i+1,Icon=433,ExpiresAt=700000,Name="Bùa",Effect="Hiệu ứng"});BuffIconStore.Apply(entries,1,100000,BuffIconStore.Now);
+    Rect buffs=BuffIconsHud.StackBounds,head=HeaderBounds(items),list=BodyBounds(items);
+    Check(count!=0||buffs.height==0,"zero buffs retain height");
+    if(count>0){float labelBottom=0;for(int i=0;i<16;i++){Rect c=HudLayout.GetRect("buff-icons.slot."+i);if(c.height>0)labelBottom=Math.Max(labelBottom,c.yMax+1+8+1f/zoom);}Check(buffs.yMax+.01>=labelBottom,"countdown/outline excluded from stack height");}
+
+    float predecessor=count==0?stats.yMax:buffs.yMax;
+    Check(Math.Abs(head.y-(predecessor+Gap))<.01,"items do not follow measured buff bottom");
+    Check(list.y>=head.yMax+Gap&&list.yMax<=GameCanvas.h-40,"item rows overlap header/controls");
+    Check(Math.Abs(HeaderBounds(people).y-fixedPeople.y)<.01,"right-hand list moved with buffs");
+    Activate(items,items.Header);Check(!items.Open&&BodyBounds(items).height==0,"collapse arrow broken");
+    Check(HeaderBounds(items).y==head.y,"collapse moved item header");
+    Activate(items,items.Header);Check(items.Open&&BodyBounds(items).height==list.height,"expand arrow broken");
+   }
+  }
+  GameCanvas.w=640;GameCanvas.h=360;mGraphics.zoomLevel=2;
+  BuffIconStore.Reset();BuffIconStore.Apply(new List<BuffIconEntry>{new BuffIconEntry{Id=1,Icon=433,ExpiresAt=700000,Name="Bùa",Effect="Hiệu ứng"}},1,100000,BuffIconStore.Now);
+  Rect icon=HudLayout.GetRect("buff-icons.slot.0");BuffTests.Click((int)icon.center.x,(int)icon.center.y);
+  Rect tip=HudLayout.GetRect("buff-icons.tooltip");Check(HudLayout.HitTest(tip.center)=="buff-icons.tooltip","item rows cover tooltip input");
+  BuffIconsHud.PaintTooltip(new mGraphics());
+  Console.WriteLine("PASS: "+checks+" real list header/body/toggle + automatic PC/S22 vertical stack checks");
+ }
+}
 class BuffTests {
  static int checks;static void Check(bool b,string m){checks++;if(!b)throw new Exception(m);}
  static List<BuffIconEntry> Entries(int count,long expiry){var list=new List<BuffIconEntry>();for(int i=count;i>=1;i--)list.Add(new BuffIconEntry{Id=i,Icon=433,ExpiresAt=expiry,Name="Bùa "+i,Effect="Hiệu ứng"});return list;}
  static void Apply(int count,long expiry){BuffIconStore.Reset();BuffIconStore.Apply(Entries(count,expiry),1,100000,BuffIconStore.Now);}
- static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
+ public static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
  static void Main(string[] args){
   BuffIconStore.Reset();var list=Entries(20,160001);Check(BuffIconStore.Apply(list,1,100000,1000),"first snapshot");var visible=new List<BuffIconEntry>();BuffIconStore.CopyVisible(visible,1000);Check(visible.Count==16&&visible[0].Id==1&&visible[15].Id==16,"order/cap");
   Check(BuffIconStore.Remaining(visible[0],1000)==61&&BuffIconStore.FormatTime(61)=="2p","ceiling minute");Check(BuffIconStore.FormatTime(60)=="1p"&&BuffIconStore.FormatTime(59)=="59s"&&BuffIconStore.FormatTime(45)=="45s","format boundary");
@@ -77,13 +136,14 @@ class BuffTests {
   BuffIconsHud.Paint(new mGraphics());Check(InventoryItemVisuals.icons==16&&InventoryFrameSkin.gold==1,"paint cap/gold fusion outline");
   Click((int)first.center.x,(int)first.center.y);GameCanvas.panel.isShow=true;BuffIconsHud.UpdateInput();GameCanvas.panel.isShow=false;Check(HudLayout.GetRect("buff-icons.tooltip").width==0,"modal kept stale tooltip");
   var item=new ItemTime(433,120);Char.vItemTime.addElement(item);typeof(ItemTime).GetField("expiresAt",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(item,BuffIconStore.Now-1);item.update();Check(item.coutTime==0&&Char.vItemTime.size()==0,"legacy icon did not expire exactly");item.initTime(45);Check(item.time==45,"legacy renewal stale duration");
+  StackLists.Run();
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }
 }
-"""
+""".replace("__HEADER__",header).replace("__BODY__",body).replace("__TOGGLE__",toggle)
 cs=OUT/"BuffTests.cs";cs.write_text(fixture,encoding="utf-8")
 exe=OUT/"BuffTests.exe"
 scripts=ROOT/"Assets/Scripts"
-sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffIconsHud"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
+sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffIconsHud","TopLeftHudStack"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
 subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe","/nologo","/target:exe",f"/out:{exe}",*map(str,sources)],check=True)
 subprocess.run([str(exe),str(packet)],check=True)

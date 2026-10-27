@@ -4846,6 +4846,7 @@ public class GameScr : mScreen, IChatable
         if (!isPaintOther)
         {
             Hud.MapListsHud.Paint(g);
+            Hud.BuffIconsHud.PaintTooltip(g);
             MainMod.Paint(g);
             Notifications.NotificationCenter.PaintBell(g);
             GameCanvas.debug("PA21", 1);

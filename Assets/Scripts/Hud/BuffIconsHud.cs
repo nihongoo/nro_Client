@@ -34,8 +34,9 @@ namespace Hud
                 HudLayout.Register(slots[i], () => { HudLayout.GetRect(Root); return grid.Cell(index); },
                     Order, () => Visible);
             }
-            HudLayout.Register(Tooltip, TooltipBounds, HudLayout.MenuOrder - 1, () => Visible && Selection() != null);
+            HudLayout.Register(Tooltip, TooltipBounds, HudLayout.MenuOrder + 11, () => Visible && Selection() != null);
         }
+        internal static Rect StackBounds => Visible ? HudLayout.GetRect(Root) : new Rect();
         private static Rect Resolve()
         {
             BuffIconStore.CopyVisible(visible, BuffIconStore.Now);
@@ -144,6 +145,17 @@ namespace Hud
                     g.setClip(0, 0, GameCanvas.w, GameCanvas.h);
                     PaintCountdown(g, cell, BuffIconStore.FormatTime(BuffIconStore.Remaining(entry, BuffIconStore.Now)));
                 }
+            } finally {
+                g.setClip(0, 0, GameCanvas.w, GameCanvas.h); g.translate(tx, ty);
+            }
+        }
+        // Tooltips overlay neighboring list rows; paint/hit order both stay above those rows.
+        internal static void PaintTooltip(mGraphics g)
+        {
+            if (!Visible) return;
+            int tx = g.getTranslateX(), ty = g.getTranslateY() - mGraphics.addYWhenOpenKeyBoard;
+            g.translate(-tx, -ty);
+            try {
                 BuffIconEntry focus = Selection();
                 if (focus != null) {
                     Rect tooltip = HudLayout.GetRect(Tooltip);
