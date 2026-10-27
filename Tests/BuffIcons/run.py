@@ -30,7 +30,8 @@ namespace UnityEngine {
 }
 public class Image{public Texture2D texture=new Texture2D();}
 public class mGraphics {public static int zoomLevel=2,addYWhenOpenKeyBoard;public int getTranslateX()=>0;public int getTranslateY()=>0;public void translate(int x,int y){}public void setClip(int x,int y,int w,int h){}public void setColor(int c){}public void fillRect(int x,int y,int w,int h){} }
-public class mFont {public static mFont tahoma_7_white=new mFont(),tahoma_7b_white=new mFont(),tahoma_7b_dark=new mFont(),tahoma_7=new mFont();public const int LEFT=0;public int getHeight()=>8;public int getWidth(string s)=>s.Length*4;public string[] splitFontArray(string s,int width)=>new[]{s};public void drawString(mGraphics g,string s,int x,int y,int align,mFont shadow=null){} }
+public class TestFont {public int fontSize=24;}
+public class mFont {public TestFont myFont=new TestFont();public static mFont tahoma_7_white=new mFont(),tahoma_7b_white=new mFont(),tahoma_7b_dark=new mFont(),tahoma_7=new mFont();public const int LEFT=0;public int getHeight()=>8;public int getWidth(string s)=>s.Length*4;public string[] splitFontArray(string s,int width)=>new[]{s};public void drawString(mGraphics g,string s,int x,int y,int align,mFont shadow=null){} }
 public class Message {myReader r;public Message(byte[] data){r=new myReader(mSystem.convertToSbyte(data));}public myReader reader()=>r;}
 public static class mSystem {public static sbyte[] convertToSbyte(byte[] b){var a=new sbyte[b.Length];Buffer.BlockCopy(b,0,a,0,b.Length);return a;}}
 public class MyVector {public readonly List<object> list=new List<object>();public void removeElement(object o){list.Remove(o);}public void addElement(object o){list.Add(o);}public int size()=>list.Count;public object elementAt(int i)=>list[i];}
@@ -47,7 +48,7 @@ public class Service{static Service s=new Service();public static Service gI()=>
 namespace Hud {
  public static class TopActionsHud{public const string Hub="hub";}
  public enum HorizontalAnchor{Left,Right}public enum VerticalAnchor{Top}
- public static class HudLayout {
+ public static class HudLayout {public static bool IsMobileLayout;
   public const int MenuOrder=50;public static Rect ScreenBounds=>new Rect(0,0,GameCanvas.w,GameCanvas.h);
   class Slot{public string name;public Func<Rect> rect;public Func<bool> visible;public int order;public bool block;}
   static List<Slot> slots=new List<Slot>();public static float PixelsToLogical(float n)=>n/mGraphics.zoomLevel;
@@ -58,7 +59,7 @@ namespace Hud {
  }
  public static class InventoryFrame{public const int SlotBackground=9993045,Border=6702080,PanelBackground=14338484;public static Rect Inset(Rect r,float p)=>new Rect(r.x+p,r.y+p,r.width-2*p,r.height-2*p);public static void Rounded(mGraphics g,Rect r,int c,byte a,int b){} }
  public static class InventoryFrameSkin{public static int gold;public static Image Corners(int a,int b,int c){if(b==0xffd34e)gold++;return new Image();}}
- public static class InventoryItemVisuals{public static int icons;public static void PaintCompactIcon(mGraphics g,int id,Rect b,Rect v){icons++;}public static void PaintCompactText(mGraphics g,mFont f,string s,Rect b,Rect v,int c,bool center){} }
+ public static class InventoryItemVisuals{public static int icons;public static float MaxFontScale;public static bool TopAligned;public static mFont CaptionFont;public static void PaintCompactIcon(mGraphics g,int id,Rect b,Rect v){icons++;}public static void PaintCompactText(mGraphics g,mFont f,string s,Rect b,Rect v,int c,bool center,float fontScale=1,bool topAligned=false){MaxFontScale=Math.Max(MaxFontScale,fontScale);TopAligned=topAligned;CaptionFont=f;} }
 }
 
 class StackLists {
@@ -125,6 +126,14 @@ class BuffTests {
   }
   var overlap=BuffIconGrid.Resolve(new Rect(0,0,100,30),new Rect(30,0,100,8),new Rect(0,0,120,80),new Rect(500,0,34,34),640,360,2,8,16);Check(overlap.Count==0,"target covering buff origin must hide icons");
   foreach(int count in new[]{0,1,8,9,16,17,64}){var g=BuffIconGrid.Resolve(new Rect(0,0,100,30),new Rect(30,0,100,8),new Rect(),new Rect(500,0,34,34),640,360,2,8,count);Check(g.Count==Math.Min(7,count)&&g.Columns==7,"exact wide-screen 7x1 viewport policy");}
+  foreach(int zoom in new[]{2,3,4})foreach(int width in new[]{1280,1920,2340}){
+   float w=(float)width/zoom;var info=new Rect(6,3,150,28);var hp=new Rect(40,3,125,8);var target=new Rect(w/2,0,80,80);var actions=new Rect(w-110,2,34,34);
+   var desktop=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20);var phone=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20,true);
+   Check(phone.X==desktop.X&&phone.Y==desktop.Y,"mobile resize moved anchor");Check(phone.Size>=desktop.Size&&phone.Size*zoom<=74,"mobile icon target/cap");Check(phone.CaptionHeight*zoom>=phone.CaptionFontPixels&&desktop.CaptionHeight==8,"countdown size not scaled separately");
+   if(desktop.Columns==7)Check(phone.Columns==7,"mobile resize lost seven-cell lane");Check(phone.Bounds.yMax>=phone.Cell(0).yMax+phone.CaptionGap+phone.CaptionHeight+1f/zoom-.01,"larger caption overlaps next stack block");
+  }
+  var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==7,"S22 should use 72px icons with seven columns");
+  Check(Math.Abs(mobileWide.CaptionGap*3-1)<.01,"mobile icon-label gap must be one physical pixel");Check(mobileWide.CaptionFontPixels>=28&&mobileWide.CaptionFontPixels<=32,"mobile countdown must not fall back to tiny default font size");
   var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"Java packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết"),"real Java packet UTF/layout");
   var nonBuff=new Message(new byte[]{2,4,1,2});Check(!BuffIconProtocol.TryRead(nonBuff)&&nonBuff.reader().readByte()==2,"non-buff routing consumed notification bytes");
   Check(BuffIconProtocol.TryRead(new Message(raw)),"buff routing failed");
@@ -142,6 +151,7 @@ class BuffTests {
   Apply(2,700000);HudLayout.GetRect(BuffIconsHud.Root);Check((int)offset.GetValue(null)==0,"expiry did not clamp horizontal scroll");
   BuffIconStore.Reset();var npc=Entries(2,700000);npc.Add(new BuffIconEntry{Id=30,Icon=1403,ExpiresAt=700000,Name="Bùa NPC",Effect="Hiệu ứng"});BuffIconStore.Apply(npc,1,100000,BuffIconStore.Now);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==2&&visible.All(e=>e.Id<30),"NPC charms leaked from older-server snapshot");
   var item=new ItemTime(433,120);Char.vItemTime.addElement(item);typeof(ItemTime).GetField("expiresAt",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(item,BuffIconStore.Now-1);item.update();Check(item.coutTime==0&&Char.vItemTime.size()==0,"legacy icon did not expire exactly");item.initTime(45);Check(item.time==45,"legacy renewal stale duration");
+  HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=3;InventoryItemVisuals.MaxFontScale=0;BuffIconsHud.Paint(new mGraphics());Check(InventoryItemVisuals.MaxFontScale>1&&InventoryItemVisuals.TopAligned&&ReferenceEquals(InventoryItemVisuals.CaptionFont,mFont.tahoma_7b_white),"mobile countdown must use explicit larger native bold glyphs at the top");HudLayout.IsMobileLayout=false;
   StackLists.Run();
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }

@@ -45,7 +45,7 @@ namespace Hud
             HudLayout.TryGetRect("target-info.bounds", out Rect target);
             grid = BuffIconGrid.Resolve(HudLayout.GetRect("top-info.bounds"), HudLayout.GetRect("top-info.hp"),
                 target, HudLayout.GetRect(TopActionsHud.Hub), GameCanvas.w, GameCanvas.h, mGraphics.zoomLevel,
-                mFont.tahoma_7_white.getHeight(), visible.Count);
+                mFont.tahoma_7_white.getHeight(), visible.Count, HudLayout.IsMobileLayout);
             first = Mathf.Clamp(first, 0, Mathf.Max(0, visible.Count - grid.Count));
             return grid.Bounds;
         }
@@ -114,20 +114,23 @@ namespace Hud
         }
         private static void PaintCountdown(mGraphics g, Rect cell, string text)
         {
-            Rect label = new Rect(cell.x, cell.yMax + 1, cell.width, mFont.tahoma_7_white.getHeight());
+            Rect label = new Rect(cell.x, cell.yMax + grid.CaptionGap, cell.width, grid.CaptionHeight);
             Rect viewport = HudLayout.ScreenBounds;
+            bool mobile = HudLayout.IsMobileLayout;
+            mFont font = mobile ? mFont.tahoma_7b_white : mFont.tahoma_7_white;
+            float fontScale = mobile ? grid.CaptionFontPixels / (float)Mathf.Max(1, font.myFont.fontSize) : 1;
             float stroke = 1f / Mathf.Max(1, mGraphics.zoomLevel);
             // Fit long durations using the same game font; retain every minute digit.
             foreach (Vector2 offset in outline) {
                 Rect shadow = label; shadow.x += offset.x * stroke; shadow.y += offset.y * stroke;
-                InventoryItemVisuals.PaintCompactText(g, mFont.tahoma_7_white, text, shadow, viewport, 0x201000, true);
+                InventoryItemVisuals.PaintCompactText(g, font, text, shadow, viewport, 0x201000, true, fontScale, mobile);
             }
-            InventoryItemVisuals.PaintCompactText(g, mFont.tahoma_7_white, text, label, viewport, 0xffffff, true);
+            InventoryItemVisuals.PaintCompactText(g, font, text, label, viewport, 0xffffff, true, fontScale, mobile);
         }
         private static readonly Vector2[] outline = { new Vector2(-1,0), new Vector2(1,0), new Vector2(0,-1), new Vector2(0,1) };
         private static void PaintFrame(mGraphics g, Rect cell, int border)
         {
-            // Scale the original corner artwork only when the 30px cell is smaller than
+            // Scale the original corner artwork only when the cell is smaller than
             // the native 14x12 logical corner pair (Android zoom 3/4). Never overlap caps.
             int x = (int)cell.x, y = (int)cell.y, w = (int)cell.width, h = (int)cell.height;
             float scale = Mathf.Min(1, cell.width / 14, cell.height / 12);
