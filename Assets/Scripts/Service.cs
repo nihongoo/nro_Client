@@ -398,8 +398,17 @@ public class Service
 		}
 	}
 
+	public void sendUltiCast(UltiCastClient.Packet packet)
+	{
+		Message message = new Message((sbyte)-45);
+		try { message.writer().writeByte(UltiCastClient.Subtype); UltiCastClient.Write(message.writer(), packet); session.sendMessage(message); }
+        catch (Exception error) { UltiCastClient.Reset(); Cout.println(error.Message); }
+		finally { message.cleanup(); }
+	}
+
 	public void skill_not_focus(sbyte status)
 	{
+        if (UltiCastClient.InterceptStatus(status)) return;
 		Message message = null;
 		try
 		{
@@ -857,6 +866,7 @@ public class Service
 		Notifications.NotificationCenter.BeginSession();
         Hud.MapListsHud.BeginSession();
         WorldChat.WorldChatHud.BeginSession();
+        UltiCastClient.Reset();
         Hud.BuffIconProtocol.BeginSession();
 		try
 		{
@@ -1578,6 +1588,7 @@ public class Service
 
 	public void sendPlayerAttack(MyVector vMob, MyVector vChar, int type)
 	{
+        if (UltiCastClient.InterceptAttack()) return;
 		try
 		{
 			Res.outz(">>SEND ATTACT  vMob=" + vMob.size() + "  vChar=" + vChar.size());

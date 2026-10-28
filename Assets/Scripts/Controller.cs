@@ -1974,6 +1974,7 @@ public class Controller : IMessageHandler
 			case -45:
 			{
 				sbyte b49 = msg.reader().readByte();
+                if (b49 == UltiCastClient.Subtype) { UltiCastClient.Receive(UltiCastClient.Read(msg.reader())); break; }
 				int num119 = msg.reader().readInt();
 				short num120 = msg.reader().readShort();
 				Res.outz(">.SKILL_NOT_FOCUS      skillNotFocusID: " + num120 + " skill type= " + b49 + "   player use= " + num119);

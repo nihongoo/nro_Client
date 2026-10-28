@@ -4246,6 +4246,7 @@ public class GameScr : mScreen, IChatable
     {
         MainMod.Update();
         Hud.SkillTabState.Update();
+        UltiCastClient.Update();
         Hud.BuffIconProtocol.Update();
         if (GameCanvas.keyPressed[16])
         {

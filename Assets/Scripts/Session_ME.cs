@@ -631,6 +631,7 @@ public class Session_ME : ISession
 
 	private static void cleanNetwork()
 	{
+        UltiCastClient.Reset();
 		lock (networkLock)
 		{
 			networkGeneration++;
