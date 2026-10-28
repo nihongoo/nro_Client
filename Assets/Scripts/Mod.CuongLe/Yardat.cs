@@ -38,12 +38,10 @@ namespace Mod.CuongLe
                     autoChangeFocus = !autoChangeFocus;
                     GameScr.info1.addInfo("Auto đổi mục tiêu :  " + (autoChangeFocus ? "ON" : "Off"), 0);
                     break;
-                    break;
                 case 2:
                     new Thread(AutoPotaraFusion).Start();
                     autoPotara = !autoPotara;
                     GameScr.info1.addInfo("Auto bông tai :  " + (autoPotara ? "ON" : "Off"), 0);
-                    break;
                     break;
                 case 3:
                     petGoHome = !petGoHome;
