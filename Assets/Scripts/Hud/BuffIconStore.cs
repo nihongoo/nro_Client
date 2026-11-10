@@ -82,7 +82,7 @@ namespace Hud
                 // IDs 30-46 are the NPC charm family, including snapshots from older servers.
                 if (entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
                 output.Add(entry);
-                nextExpiry = Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
+                nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
             }
             return nextExpiry;
         }
