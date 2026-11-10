@@ -167,23 +167,26 @@ namespace Hud
             private readonly Vector2[] sizes;
             private readonly float horizontalPadding, verticalPadding;
             private readonly bool clipToViewport;
+            private readonly TextAnchor alignment;
             private Font font;
             private int zoom, baseSize, count;
             private float textScale = 1;
             internal const float Padding = 4;
 
-            internal FittedTextRow(int capacity = 6, float horizontalPadding = Padding, float verticalPadding = 2, bool clipToViewport = false)
+            internal FittedTextRow(int capacity = 6, float horizontalPadding = Padding, float verticalPadding = 2,
+                bool clipToViewport = false, TextAnchor alignment = TextAnchor.MiddleCenter)
             {
                 content = new GUIContent[capacity]; sizes = new Vector2[capacity];
                 this.horizontalPadding = horizontalPadding; this.verticalPadding = verticalPadding;
                 this.clipToViewport = clipToViewport;
+                this.alignment = alignment;
             }
 
             internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
                 Rect viewport, int selected, Color normalColor, Color selectedColor)
             {
                 if (style == null) style = new GUIStyle(GUI.skin.label) {
-                    alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
+                    alignment = this.alignment, padding = new RectOffset(), margin = new RectOffset(),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
                 if (length == 0 || viewport.width <= 0 || viewport.height <= 0) return;
@@ -281,22 +284,48 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
         }
-        internal static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false,float? iconInset=null)
+        // The native skill tile has a 4-pixel rim on a 28-pixel cell.
+        private const float SkillFrameInset = 4f / 28;
+        internal static void PaintSkillIcon(mGraphics g, int id, Rect bounds, Rect viewport, bool selected = false, bool frameOnTop = false)
         {
-            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
-            // Restore the actual orange skill-frame sprite, rather than a recolored popup border.
-            Image frame=selected?GameScr.imgSkill2:GameScr.imgSkill;
-            if(frame?.texture!=null) {
-                int zoom=Mathf.Max(1,mGraphics.zoomLevel);Color previous=GUI.color;
-                try {
-                    GUI.color=Color.white;GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
-                    try {GUI.DrawTexture(new Rect((bounds.x-clip.x)*zoom,(bounds.y-clip.y)*zoom,bounds.width*zoom,bounds.height*zoom),frame.texture);}
-                    finally {GUI.EndGroup();}
-                } finally {GUI.color=previous;}
+            Rect clip = InventoryFrame.Intersection(bounds, viewport);
+            if (clip.width <= 0 || clip.height <= 0) return;
+            Texture2D frame = (selected ? GameScr.imgSkill2 : GameScr.imgSkill)?.texture;
+            if (frame != null) PaintSkillFrame(frame, bounds, clip, false);
+            else {
+                InventoryFrame.Clip(g, clip);
+                InventoryFrame.Rounded(g, bounds, InventoryFrame.SlotBackground, 255, selected ? 0x00C86A : 0xFF9900);
             }
-            else {InventoryFrame.Clip(g,clip);InventoryFrame.Rounded(g,bounds,InventoryFrame.SlotBackground,255,selected?0x00C86A:0xFF9900);}
-            // The source is a 28-logical-pixel frame with an inset of four pixels.
-            PaintCompactIcon(g,id,InventoryFrame.Inset(bounds,iconInset ?? bounds.width/7f),viewport);
+            PaintCompactIcon(g, id, InventoryFrame.Inset(bounds, bounds.width * SkillFrameInset), viewport);
+            if (frameOnTop && frame != null) PaintSkillFrame(frame, bounds, clip, true);
+        }
+        private static void PaintSkillFrame(Texture2D frame, Rect bounds, Rect clip, bool rimOnly)
+        {
+            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            Rect pixels = new Rect((bounds.x - clip.x) * zoom, (bounds.y - clip.y) * zoom, bounds.width * zoom, bounds.height * zoom);
+            Color previous = GUI.color;
+            try {
+                GUI.color = Color.white;
+                GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+                try {
+                    if (!rimOnly) GUI.DrawTexture(pixels, frame);
+                    else {
+                        // The sprite's center is opaque. Draw only its rim above the icon.
+                        const float rim = SkillFrameInset, middle = 1 - 2 * rim;
+                        DrawRim(0, 0, 1, rim);
+                        DrawRim(0, 1 - rim, 1, rim);
+                        DrawRim(0, rim, rim, middle);
+                        DrawRim(1 - rim, rim, rim, middle);
+                    }
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.color = previous; }
+
+            void DrawRim(float x, float y, float width, float height)
+            {
+                GUI.DrawTextureWithTexCoords(
+                    new Rect(pixels.x + x * pixels.width, pixels.y + y * pixels.height, width * pixels.width, height * pixels.height),
+                    frame, new Rect(x, 1 - y - height, width, height));
+            }
         }
         private static readonly Dictionary<Texture2D,Image> disabledButtons=new Dictionary<Texture2D,Image>();
         private static readonly Dictionary<Texture2D,Image> smoothButtons=new Dictionary<Texture2D,Image>();

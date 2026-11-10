@@ -7,11 +7,12 @@ namespace Hud
     internal static class DiscipleLayout
     {
         internal const string Close = "disciple.detail.close", ScrollArea = "disciple.content";
+        private const float CellPixels = 72, GapPixels = 12;
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
         private struct Geometry
         {
             internal Rect Viewport;
-            internal float Left, Width, Size, Gap, Overhang, TitleHeight, ChipHeight;
+            internal float GridLeft, Size, Gap, Overhang, TitleHeight, ChipHeight;
             internal float EquipmentY, StatusTitleY, ChipY, SkillTitleY, SkillY;
         }
         private static Geometry geometry;
@@ -22,18 +23,20 @@ namespace Hud
                 if (frameVersion == version) return geometry;
 
                 Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
-                float blockGap = InventoryFrame.Unit(8), labelGap = InventoryFrame.Unit(3);
+                float blockGap = HudLayout.PixelsToLogical(6), labelGap = HudLayout.PixelsToLogical(3);
                 float top = tabs.yMax + blockGap;
                 var next = new Geometry {
                     Viewport = new Rect(tabs.x, top, Mathf.Max(0, tabs.width - 1),
                         Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - blockGap - top)),
-                    Gap = InventoryFrame.Unit(6), Overhang = InventoryFrame.Unit(2),
-                    TitleHeight = mFont.tahoma_7_grey.getHeight(), ChipHeight = InventoryFrame.Unit(32)
+                    Size = HudLayout.PixelsToLogical(CellPixels), Gap = HudLayout.PixelsToLogical(GapPixels),
+                    Overhang = HudLayout.PixelsToLogical(2), TitleHeight = HudLayout.PixelsToLogical(20),
+                    ChipHeight = HudLayout.PixelsToLogical(32)
                 };
-                next.Size = Mathf.Max(0, (next.Viewport.width - 3 * next.Gap - next.Overhang) / 4);
-                if (!HudLayout.IsMobileLayout) next.Size = Mathf.Min(next.Size, InventoryFrame.Unit(92));
-                next.Width = 4 * next.Size + 3 * next.Gap + next.Overhang;
-                next.Left = next.Viewport.x + Mathf.Max(0, (next.Viewport.width - next.Width) / 2);
+                float gridWidth = 4 * next.Size + 3 * next.Gap;
+                // Keep the reference sizes unless the viewport is too narrow for four cells.
+                float fit = Mathf.Clamp01((next.Viewport.width - next.Overhang) / gridWidth);
+                next.Size *= fit; next.Gap *= fit;
+                next.GridLeft = next.Viewport.center.x - (gridWidth * fit + next.Overhang) / 2;
                 next.EquipmentY = top + next.TitleHeight + labelGap;
                 next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.Gap + next.Overhang + blockGap;
                 next.ChipY = next.StatusTitleY + next.TitleHeight + labelGap;
@@ -54,29 +57,29 @@ namespace Hud
         internal static Rect Chip(int i)
         {
             Geometry layout = Layout;
-            float gap = layout.Overhang, width = Mathf.Max(0, (layout.Width - 4 * gap) / 5);
-            return new Rect(layout.Left + i * (width + gap), layout.ChipY - Scroll, width, layout.ChipHeight);
+            float gap = layout.Overhang, width = Mathf.Max(0, (layout.Viewport.width - 4 * gap) / 5);
+            return new Rect(layout.Viewport.x + i * (width + gap), layout.ChipY - Scroll, width, layout.ChipHeight);
         }
         internal static Rect EquipmentTitle => Title(Layout.Viewport.y);
         internal static Rect StatusTitle => Title(Layout.StatusTitleY);
         internal static Rect SkillTitle => Title(Layout.SkillTitleY);
-        private static Rect Title(float y) => new Rect(Layout.Left, y - Scroll, Layout.Width, Layout.TitleHeight);
+        private static Rect Title(float y) => new Rect(Layout.Viewport.x, y - Scroll, Layout.Viewport.width, Layout.TitleHeight);
         internal static Rect Cell(int i)
         {
             Geometry layout = Layout;
             float stride = layout.Size + layout.Gap;
             float top = i < 8 ? layout.EquipmentY + i / 4 * stride : layout.SkillY;
-            return new Rect(layout.Left + i % 4 * stride, top - Scroll, layout.Size, layout.Size);
+            return new Rect(layout.GridLeft + i % 4 * stride, top - Scroll, layout.Size, layout.Size);
         }
         internal static Rect Badge(Rect cell)
         {
-            float width = .30f * cell.width, height = Mathf.Min(InventoryFrame.Unit(14), .24f * cell.height);
+            float width = .30f * cell.width, height = Mathf.Min(HudLayout.PixelsToLogical(14), .24f * cell.height);
             float overhang = Layout.Overhang;
             return new Rect(cell.xMax - width + overhang, cell.yMax - height + overhang, width, height);
         }
         internal static Rect StarStrip(Rect cell, Rect badge)
         {
-            float inset = InventoryFrame.Unit(2), height = Mathf.Min(InventoryFrame.Unit(7), cell.height / 5);
+            float inset = Layout.Overhang, height = Mathf.Min(HudLayout.PixelsToLogical(7), cell.height / 5);
             return new Rect(cell.x + inset, cell.yMax - inset - height,
                 Mathf.Max(0, badge.x - cell.x - 2 * inset), height);
         }
@@ -111,6 +114,9 @@ public partial class Panel
     private readonly InventoryItemVisuals.FittedTextRow discipleStatusText = new InventoryItemVisuals.FittedTextRow(clipToViewport: true);
     private readonly InventoryItemVisuals.FittedTextRow discipleRuneText = new InventoryItemVisuals.FittedTextRow(clipToViewport: true);
     private readonly InventoryItemVisuals.FittedTextRow discipleLevelText = new InventoryItemVisuals.FittedTextRow(12, 1, 1, true);
+    private readonly InventoryItemVisuals.FittedTextRow discipleTitleText = new InventoryItemVisuals.FittedTextRow(3, 0, 0, true, TextAnchor.MiddleLeft);
+    private readonly string[] discipleTitles = { "Trang bị", "Trạng thái", "Kỹ năng" };
+    private readonly Rect[] discipleTitleBounds = new Rect[3];
     private static readonly string[] discipleLevels = { "Lv0", "Lv1", "Lv2", "Lv3", "Lv4", "Lv5", "Lv6", "Lv7" };
     private readonly string[] discipleLevelLabels = new string[12];
     private readonly Rect[] discipleLevelBounds = new Rect[12];
@@ -329,11 +335,14 @@ public partial class Panel
             statusTitle += " · Hợp thể " + seconds / 60 + ":" + (seconds % 60).ToString("00");
         }
         InventoryFrame.Clip(g, content);
-        mFont.tahoma_7_grey.drawString(g, statusTitle, (int)DiscipleLayout.StatusTitle.x, (int)DiscipleLayout.StatusTitle.y, mFont.LEFT);
-        mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
-        mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
+        discipleTitles[1] = statusTitle;
+        discipleTitleBounds[0] = DiscipleLayout.EquipmentTitle;
+        discipleTitleBounds[1] = DiscipleLayout.StatusTitle;
+        discipleTitleBounds[2] = DiscipleLayout.SkillTitle;
+        discipleTitleText.Paint(mFont.tahoma_7_grey, discipleTitles, discipleTitleBounds,
+            3, content, -1, mFont.tahoma_7_grey.color1, mFont.tahoma_7_grey.color1);
         int badgeCount = 0;
-        float iconInset = InventoryFrame.Unit(3);
+        float iconInset = HudLayout.PixelsToLogical(3);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             Rect badge = DiscipleLayout.Badge(cell);
@@ -354,7 +363,7 @@ public partial class Panel
                 }
             } else {
                 Skill skill = DiscipleSkill(i - 8);
-                InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen, iconInset);
+                InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen, frameOnTop: true);
                 if (skill?.template != null) level = skill.point;
             }
             InventoryFrame.Clip(g, content);
