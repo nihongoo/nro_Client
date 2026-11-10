@@ -9,6 +9,29 @@ namespace Hud
         internal int Id, Icon;
         internal long ExpiresAt;
         internal string Name, Effect;
+        private int countdownValue = int.MinValue;
+        private string countdown, tooltipCountdown;
+
+        internal string Countdown(long now)
+        {
+            int seconds = BuffIconStore.Remaining(this, now);
+            int value = seconds >= 60 ? (int)((seconds + 59L) / 60) : -seconds;
+            if (value != countdownValue) {
+                countdownValue = value; countdown = BuffIconStore.FormatTime(seconds); tooltipCountdown = null;
+            }
+            return countdown;
+        }
+        internal string TooltipCountdown(long now)
+        {
+            Countdown(now);
+            return tooltipCountdown ?? (tooltipCountdown = "Còn " + countdown);
+        }
+        internal void ReuseCountdown(BuffIconEntry previous)
+        {
+            countdownValue = previous.countdownValue;
+            countdown = previous.countdown;
+            tooltipCountdown = previous.tooltipCountdown;
+        }
     }
 
     // Server wall-time is anchored to a monotonic clock at each complete snapshot.
@@ -20,10 +43,11 @@ namespace Hud
         private static long sequence = -1, serverTime, receivedAt;
         internal static long Now => (long)(Stopwatch.GetTimestamp() * (1000d / Stopwatch.Frequency));
         internal static bool Ready { get; private set; }
+        internal static long Revision { get; private set; }
 
         internal static void Reset()
         {
-            entries.Clear(); sequence = -1; serverTime = receivedAt = 0; Ready = false;
+            entries.Clear(); sequence = -1; serverTime = receivedAt = 0; Ready = false; Revision++;
         }
         internal static bool Apply(List<BuffIconEntry> values, long value, long time, long now)
         {
@@ -36,7 +60,12 @@ namespace Hud
                     throw new ArgumentException("Buff entry");
             }
             values.Sort((a, b) => a.Id.CompareTo(b.Id));
-            entries = values; sequence = value; serverTime = time; receivedAt = now; Ready = true;
+            int previous = 0;
+            foreach (BuffIconEntry entry in values) {
+                while (previous < entries.Count && entries[previous].Id < entry.Id) previous++;
+                if (previous < entries.Count && entries[previous].Id == entry.Id) entry.ReuseCountdown(entries[previous]);
+            }
+            entries = values; sequence = value; serverTime = time; receivedAt = now; Ready = true; Revision++;
             return true;
         }
         internal static int Remaining(BuffIconEntry entry, long now)
@@ -45,14 +74,17 @@ namespace Hud
             long duration = entry.ExpiresAt - serverTime, elapsed = System.Math.Max(0, now - receivedAt);
             return elapsed >= duration ? 0 : (int)System.Math.Min(int.MaxValue, 1 + (duration - elapsed - 1) / 1000);
         }
-        internal static void CopyVisible(List<BuffIconEntry> output, long now)
+        internal static long CopyVisible(List<BuffIconEntry> output, long now)
         {
             output.Clear();
+            long nextExpiry = long.MaxValue;
             foreach (BuffIconEntry entry in entries) {
                 // IDs 30-46 are the NPC charm family, including snapshots from older servers.
                 if (entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
                 output.Add(entry);
+                nextExpiry = Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
             }
+            return nextExpiry;
         }
         internal static string FormatTime(int seconds) => seconds >= 60
             ? ((seconds + 59L) / 60) + "p" : System.Math.Max(0, seconds) + "s";

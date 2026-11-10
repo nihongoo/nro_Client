@@ -4,11 +4,17 @@ namespace Hud
 {
     internal struct BuffIconGrid
     {
-        internal float X, Y, Size, Gap, RowHeight, CaptionHeight, CaptionGap;
+        internal float X, Y, Size, Gap, CaptionHeight, CaptionGap;
         internal int CaptionFontPixels;
         internal int Columns, Count;
         internal Rect Bounds => Columns == 0 || Count == 0 ? new Rect()
-            : new Rect(X, Y, Columns * (Size + Gap) - Gap, RowHeight - Gap);
+            : new Rect(X, Y, Columns * (Size + Gap) - Gap, Height);
+        private float Height => Size + CaptionHeight + 2 * CaptionGap;
+        internal void FitCaption(float height, int count, float screenHeight)
+        {
+            CaptionHeight = height;
+            Count = Y + Height + Gap > screenHeight ? 0 : Mathf.Min(count, Columns);
+        }
         internal Rect Cell(int index) => index < 0 || index >= Count || Columns == 0 ? new Rect()
             : new Rect(X + index * (Size + Gap), Y, Size, Size);
         internal static BuffIconGrid Resolve(Rect info, Rect bar, Rect target, Rect actions,
@@ -26,13 +32,11 @@ namespace Hud
                 float sevenCellSize = Mathf.FloorToInt((right - grid.X - gap * (BuffIconStore.MaxVisible - 1)) / BuffIconStore.MaxVisible);
                 if (sevenCellSize >= 8) grid.Size = Mathf.Min(grid.Size, sevenCellSize);
             }
-            grid.CaptionGap = mobile ? unit : 1;
+            grid.CaptionGap = unit;
             grid.CaptionFontPixels = mobile ? Mathf.RoundToInt(Mathf.Clamp(grid.Size / unit * .42f, 20, 32)) : 0;
-            grid.CaptionHeight = mobile ? Mathf.Ceil(grid.CaptionFontPixels * 1.25f) * unit : fontHeight;
-            grid.RowHeight = grid.Size + grid.CaptionGap + grid.CaptionHeight + unit + gap;
-            if (bar.width <= 0 || grid.Y + grid.RowHeight > screenHeight) return grid;
-            grid.Columns = Mathf.Clamp(Mathf.FloorToInt((right - grid.X + gap) / (grid.Size + gap)), 0, BuffIconStore.MaxVisible);
-            grid.Count = Mathf.Min(count, grid.Columns);
+            if (bar.width > 0)
+                grid.Columns = Mathf.Clamp(Mathf.FloorToInt((right - grid.X + gap) / (grid.Size + gap)), 0, BuffIconStore.MaxVisible);
+            grid.FitCaption(mobile ? Mathf.Ceil(grid.CaptionFontPixels * 1.25f) * unit : fontHeight, count, screenHeight);
             return grid;
         }
     }
