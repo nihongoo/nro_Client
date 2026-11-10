@@ -74,7 +74,8 @@ public class PolishTests {
     Rect cell=HudLayout.GetRect(i==0?"buff-icons.slot.0":"buff-icons.slot.1");
     var ink=GUI.Ink.GetRange(start,count);
     float top=ink.Min(r=>r.yMin),left=ink.Min(r=>r.xMin),right=ink.Max(r=>r.xMax);
-    Check(top-cell.yMax*zoom>=0&&top-cell.yMax*zoom<=2.01f,"caption gap exceeds two design pixels");
+    float gap=top-cell.yMax*zoom;
+    Check(gap>=-.01f&&gap<=(platform==RuntimePlatform.WindowsPlayer?.01f:2.01f),"caption not flush with PC icon or mobile gap too large");
     Check(Math.Abs((left+right)/2-cell.center.x*zoom)<=.51f,"countdown off center");
     Check(ink.Max(r=>r.yMax)+1<=BuffIconsHud.StackBounds.yMax*zoom+.01f,"shadow exceeds stack bounds");
    }
@@ -100,7 +101,7 @@ public class PolishTests {
   for(int i=0;i<600;i++)Frame(i);
   allocated=GC.GetAllocatedBytesForCurrentThread()-allocated;
   Console.WriteLine("SCROLL 600 frames: grid="+Bench.Grids+" visibleCopies="+Bench.Copies+" timeFormats="+Bench.Formats+" globalInvalidations="+Bench.Invalidations+" icons="+InventoryItemVisuals.icons+" managedBytes="+allocated);
-  Check(InventoryItemVisuals.icons==4200,"must paint exactly seven visible icons per frame");
+  Check(InventoryItemVisuals.icons==(args.Length==0?3600:4200),"wrong mobile viewport size during scroll");
   if(args.Length==0) {
    Check(Bench.Grids==0,"scroll recomputed unchanged geometry");Check(Bench.Copies==0,"scroll recopied unchanged buff list");
    Check(Bench.Formats==0,"scroll reformatted unchanged countdowns");Check(Bench.Invalidations==0,"scroll invalidated unrelated HUD layout");

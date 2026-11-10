@@ -143,9 +143,12 @@ class BuffTests {
    float w=(float)width/zoom;var info=new Rect(6,3,150,28);var hp=new Rect(40,3,125,8);var target=new Rect(w/2,0,80,80);var actions=new Rect(w-110,2,34,34);
    var desktop=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20);var phone=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20,true);
    Check(phone.X==desktop.X&&phone.Y==desktop.Y,"mobile resize moved anchor");Check(phone.Size>=desktop.Size&&phone.Size*zoom<=74,"mobile icon target/cap");Check(phone.CaptionHeight*zoom>=phone.CaptionFontPixels&&desktop.CaptionHeight==8,"countdown size not scaled separately");
-   if(desktop.Columns==7)Check(phone.Columns==7,"mobile resize lost seven-cell lane");Check(phone.Bounds.yMax>=phone.Cell(0).yMax+phone.CaptionGap+phone.CaptionHeight+1f/zoom-.01,"larger caption overlaps next stack block");
+   Check(phone.Columns<=6&&phone.Cell(6).width==0,"mobile seventh cell must stay offscreen");
+   if(desktop.Columns==7)Check(phone.Columns==6,"mobile should fit six cells in a wide lane");
+   Check(phone.Bounds.xMax<target.xMin&&phone.Bounds.xMax<actions.xMin,"mobile row overlaps adjacent HUD");
+   Check(phone.Bounds.yMax>=phone.Cell(0).yMax+phone.CaptionGap+phone.CaptionHeight+1f/zoom-.01,"larger caption overlaps next stack block");
   }
-  var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==7,"S22 should use 72px icons with seven columns");
+  var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==6,"S22 should use 72px icons with six columns");
   Check(Math.Abs(mobileWide.CaptionGap*3-1)<.01,"mobile icon-label gap must be one physical pixel");Check(mobileWide.CaptionFontPixels>=28&&mobileWide.CaptionFontPixels<=32,"mobile countdown must not fall back to tiny default font size");
   var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"snapshot packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết"),"snapshot packet UTF/layout");
   var nonBuff=new Message(new byte[]{2,4,1,2});Check(!BuffIconProtocol.TryRead(nonBuff)&&nonBuff.reader().readByte()==2,"non-buff routing consumed notification bytes");
