@@ -7,13 +7,15 @@ namespace Hud
     internal static class DiscipleLayout
     {
         internal const string Close = "disciple.detail.close", ScrollArea = "disciple.content";
-        private const float CellPixels = 72, GapPixels = 12;
+        private const float CellRatio = .17f, GapRatio = .035f;
+        private const float ChipHeight = 24;
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
         private struct Geometry
         {
             internal Rect Viewport;
-            internal float GridLeft, Size, Gap, Overhang, TitleHeight, ChipHeight;
+            internal float GridLeft, Size, Gap, Overhang, BadgeWidth, StarHeight, TitleHeight;
             internal float EquipmentY, StatusTitleY, ChipY, SkillTitleY, SkillY;
+            internal int ScrollLimit;
         }
         private static Geometry geometry;
         private static long frameVersion = -1;
@@ -23,42 +25,44 @@ namespace Hud
                 if (frameVersion == version) return geometry;
 
                 Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
-                float blockGap = HudLayout.PixelsToLogical(6), labelGap = HudLayout.PixelsToLogical(3);
-                float top = tabs.yMax + blockGap;
+                const float padding = InventoryFrame.Gap, minBlockGap = 2;
+                float top = tabs.yMax + padding;
                 var next = new Geometry {
                     Viewport = new Rect(tabs.x, top, Mathf.Max(0, tabs.width - 1),
-                        Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - blockGap - top)),
-                    Size = HudLayout.PixelsToLogical(CellPixels), Gap = HudLayout.PixelsToLogical(GapPixels),
-                    Overhang = HudLayout.PixelsToLogical(2), TitleHeight = HudLayout.PixelsToLogical(20),
-                    ChipHeight = HudLayout.PixelsToLogical(32)
+                        Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - padding - top))
                 };
-                float gridWidth = 4 * next.Size + 3 * next.Gap;
-                // Keep the reference sizes unless the viewport is too narrow for four cells.
-                float fit = Mathf.Clamp01((next.Viewport.width - next.Overhang) / gridWidth);
-                next.Size *= fit; next.Gap *= fit;
-                next.GridLeft = next.Viewport.center.x - (gridWidth * fit + next.Overhang) / 2;
-                next.EquipmentY = top + next.TitleHeight + labelGap;
-                next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.Gap + next.Overhang + blockGap;
-                next.ChipY = next.StatusTitleY + next.TitleHeight + labelGap;
-                next.SkillTitleY = next.ChipY + next.ChipHeight + blockGap;
-                next.SkillY = next.SkillTitleY + next.TitleHeight + labelGap;
+                next.Size = next.Viewport.width * CellRatio;
+                next.Gap = next.Viewport.width * GapRatio;
+                next.Overhang = .025f * next.Size;
+                next.StarHeight = Mathf.Min(.09f * next.Size, HudLayout.PixelsToLogical(7));
+                next.BadgeWidth = Mathf.Min(.48f * next.Size,
+                    Mathf.Max(.32f * next.Size, mFont.tahoma_7.getWidth("Lv7") + 1));
+                next.TitleHeight = Mathf.Max(1, mFont.tahoma_7_grey.getHeight());
+                next.GridLeft = next.Viewport.center.x - (4 * next.Size + 3 * next.Gap) / 2;
+
+                float equipmentFoot = next.Overhang + next.StarHeight;
+                float titleBlock = next.TitleHeight + 1;
+                float usedHeight = 3 * titleBlock + 3 * next.Size + next.Gap + equipmentFoot + ChipHeight + next.Overhang;
+                float blockGap = Mathf.Max(minBlockGap, (next.Viewport.height - usedHeight) / 2);
+                next.EquipmentY = top + titleBlock;
+                next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.Gap + equipmentFoot + blockGap;
+                next.ChipY = next.StatusTitleY + titleBlock;
+                next.SkillTitleY = next.ChipY + ChipHeight + blockGap;
+                next.SkillY = next.SkillTitleY + titleBlock;
+                next.ScrollLimit = Mathf.Max(0, Mathf.CeilToInt(usedHeight + 2 * minBlockGap - next.Viewport.height));
                 geometry = next; frameVersion = version;
                 return geometry;
             }
         }
         private static int Scroll => GameCanvas.panel?.DiscipleScroll ?? 0;
         internal static Rect Content => Layout.Viewport;
-        internal static int MaxScroll {
-            get {
-                Geometry layout = Layout;
-                return Mathf.Max(0, Mathf.CeilToInt(layout.SkillY + layout.Size + layout.Overhang - layout.Viewport.yMax));
-            }
-        }
+        internal static int MaxScroll => Layout.ScrollLimit;
         internal static Rect Chip(int i)
         {
             Geometry layout = Layout;
-            float gap = layout.Overhang, width = Mathf.Max(0, (layout.Viewport.width - 4 * gap) / 5);
-            return new Rect(layout.Viewport.x + i * (width + gap), layout.ChipY - Scroll, width, layout.ChipHeight);
+            float width = Mathf.Max(0, Mathf.Floor((layout.Viewport.width - HudLayout.PixelsToLogical(8)) / 5));
+            float gap = (layout.Viewport.width - 5 * width) / 4;
+            return new Rect(layout.Viewport.x + Mathf.Floor(i * (width + gap)), layout.ChipY - Scroll, width, ChipHeight);
         }
         internal static Rect EquipmentTitle => Title(Layout.Viewport.y);
         internal static Rect StatusTitle => Title(Layout.StatusTitleY);
@@ -73,15 +77,15 @@ namespace Hud
         }
         internal static Rect Badge(Rect cell)
         {
-            float width = .30f * cell.width, height = Mathf.Min(HudLayout.PixelsToLogical(14), .24f * cell.height);
-            float overhang = Layout.Overhang;
-            return new Rect(cell.xMax - width + overhang, cell.yMax - height + overhang, width, height);
+            Geometry layout = Layout;
+            return new Rect(cell.xMax - layout.BadgeWidth + layout.Overhang, cell.yMax - InventoryItemVisuals.LevelHeight + layout.Overhang,
+                layout.BadgeWidth, InventoryItemVisuals.LevelHeight);
         }
         internal static Rect StarStrip(Rect cell, Rect badge)
         {
-            float inset = Layout.Overhang, height = Mathf.Min(HudLayout.PixelsToLogical(7), cell.height / 5);
-            return new Rect(cell.x + inset, cell.yMax - inset - height,
-                Mathf.Max(0, badge.x - cell.x - 2 * inset), height);
+            Geometry layout = Layout;
+            return new Rect(cell.x + layout.Overhang, cell.yMax + layout.Overhang,
+                Mathf.Max(0, badge.x - cell.x - 2 * layout.Overhang), layout.StarHeight);
         }
         internal static void Register()
         {
@@ -113,13 +117,6 @@ public partial class Panel
     private static readonly string[] discipleStatuses = { "Đi theo", "Bảo vệ", "Tấn công", "Về nhà", "Hợp thể" };
     private readonly InventoryItemVisuals.FittedTextRow discipleStatusText = new InventoryItemVisuals.FittedTextRow(clipToViewport: true);
     private readonly InventoryItemVisuals.FittedTextRow discipleRuneText = new InventoryItemVisuals.FittedTextRow(clipToViewport: true);
-    private readonly InventoryItemVisuals.FittedTextRow discipleLevelText = new InventoryItemVisuals.FittedTextRow(12, 1, 1, true);
-    private readonly InventoryItemVisuals.FittedTextRow discipleTitleText = new InventoryItemVisuals.FittedTextRow(3, 0, 0, true, TextAnchor.MiddleLeft);
-    private readonly string[] discipleTitles = { "Trang bị", "Trạng thái", "Kỹ năng" };
-    private readonly Rect[] discipleTitleBounds = new Rect[3];
-    private static readonly string[] discipleLevels = { "Lv0", "Lv1", "Lv2", "Lv3", "Lv4", "Lv5", "Lv6", "Lv7" };
-    private readonly string[] discipleLevelLabels = new string[12];
-    private readonly Rect[] discipleLevelBounds = new Rect[12];
     private readonly Rect[] discipleRuneBounds = new Rect[1];
     private static readonly string[] discipleRuneLabel = { "NGỌC" };
     private readonly Rect[] discipleStatusBounds = new Rect[5];
@@ -335,18 +332,15 @@ public partial class Panel
             statusTitle += " · Hợp thể " + seconds / 60 + ":" + (seconds % 60).ToString("00");
         }
         InventoryFrame.Clip(g, content);
-        discipleTitles[1] = statusTitle;
-        discipleTitleBounds[0] = DiscipleLayout.EquipmentTitle;
-        discipleTitleBounds[1] = DiscipleLayout.StatusTitle;
-        discipleTitleBounds[2] = DiscipleLayout.SkillTitle;
-        discipleTitleText.Paint(mFont.tahoma_7_grey, discipleTitles, discipleTitleBounds,
-            3, content, -1, mFont.tahoma_7_grey.color1, mFont.tahoma_7_grey.color1);
-        int badgeCount = 0;
+        mFont.tahoma_7_grey.drawString(g, statusTitle, (int)DiscipleLayout.StatusTitle.x, (int)DiscipleLayout.StatusTitle.y, mFont.LEFT);
+        mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
+        mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
         float iconInset = HudLayout.PixelsToLogical(3);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             Rect badge = DiscipleLayout.Badge(cell);
-            if (cell.yMin >= content.yMax || badge.yMax <= content.yMin) continue;
+            Rect stars = i < 8 ? DiscipleLayout.StarStrip(cell, badge) : new Rect();
+            if (cell.yMin >= content.yMax || Mathf.Max(badge.yMax, stars.yMax) <= content.yMin) continue;
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
             int level = -1;
             if (i < 8) {
@@ -355,7 +349,7 @@ public partial class Panel
                 if (item?.template != null) {
                     InventoryItemVisuals.PaintCompactIcon(g, item.template.iconID, InventoryFrame.Inset(cell, iconInset), content);
                     if (i < 6) level = InventoryFrame.Option(item, Item.OPT_LVITEM);
-                    InventoryItemVisuals.PaintStars(cell, content, item, DiscipleLayout.StarStrip(cell, badge));
+                    InventoryItemVisuals.PaintStars(cell, content, item, stars);
                 } else if (i == 7) {
                     discipleRuneBounds[0] = cell;
                     discipleRuneText.Paint(mFont.tahoma_7_grey, discipleRuneLabel, discipleRuneBounds,
@@ -369,12 +363,9 @@ public partial class Panel
             InventoryFrame.Clip(g, content);
             if (level >= 0) {
                 PaintDiscipleBadge(badge, content);
-                discipleLevelLabels[badgeCount] = discipleLevels[Mathf.Clamp(level, 0, 7)];
-                discipleLevelBounds[badgeCount++] = badge;
+                InventoryItemVisuals.PaintDiscipleLevelLabel(g, badge, content, level);
             }
         }
-        discipleLevelText.Paint(mFont.tahoma_7, discipleLevelLabels, discipleLevelBounds,
-            badgeCount, content, -1, Color.black, Color.black);
     }
     private static void PaintDiscipleBadge(Rect badge, Rect viewport)
     {
