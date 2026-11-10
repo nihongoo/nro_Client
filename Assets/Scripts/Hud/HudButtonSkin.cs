@@ -11,7 +11,15 @@ namespace Hud
         // Imported textures need not be CPU-readable. Copy once without altering the shared asset.
         internal static Image CopyNative(Image source, System.Action<Color32[], int, int> edit = null, FilterMode filter = FilterMode.Point)
         {
-            Texture2D original = source.texture;
+            Texture2D copy = CopyNativeTexture(source.texture, edit, filter);
+            Image result = new Image();
+            UnityEngine.Object.Destroy(result.texture);
+            result.texture = copy; result.w = copy.width; result.h = copy.height;
+            return result;
+        }
+
+        internal static Texture2D CopyNativeTexture(Texture original, System.Action<Color32[], int, int> edit, FilterMode filter = FilterMode.Point)
+        {
             RenderTexture previous = RenderTexture.active;
             RenderTexture temporary = RenderTexture.GetTemporary(original.width, original.height, 0, RenderTextureFormat.ARGB32);
             Texture2D copy = null;
@@ -29,10 +37,7 @@ namespace Hud
                 copy.wrapMode = TextureWrapMode.Clamp;
                 copy.hideFlags = HideFlags.DontSave;
                 copy.Apply(false, true);
-                Image result = new Image();
-                UnityEngine.Object.Destroy(result.texture);
-                result.texture = copy; result.w = original.width; result.h = original.height;
-                return result;
+                return copy;
             }
             catch { if (copy != null) UnityEngine.Object.Destroy(copy); throw; }
             finally { RenderTexture.active = previous; RenderTexture.ReleaseTemporary(temporary); }

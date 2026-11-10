@@ -26,7 +26,8 @@ namespace UnityEngine {
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public static int Min(int a,int b)=>Math.Min(a,b);public static float Min(params float[] a)=>a.Min();public static float Abs(float n)=>Math.Abs(n);public static int RoundToInt(float n)=>(int)Math.Round(n);public static int FloorToInt(float n)=>(int)Math.Floor(n);public static float Ceil(float n)=>(float)Math.Ceiling(n);public static float Round(float n)=>(float)Math.Round(n);public static int Clamp(int n,int a,int b)=>Math.Max(a,Math.Min(b,n));public static float Clamp(float n,float a,float b)=>Math.Max(a,Math.Min(b,n));}
  public struct Color {public float r,g,b,a;public Color(float r,float g,float b,float a){this.r=r;this.g=g;this.b=b;this.a=a;}public static Color white=>new Color(1,1,1,1);}
  public class Texture {public int width=512,height=512;public bool IsFont;}
- public struct Color32 {public byte a;}
+ public struct Color32 {public byte r,g,b,a;public Color32(byte r,byte g,byte b,byte a){this.r=r;this.g=g;this.b=b;this.a=a;}}
+ public static class Object {public static void Destroy(Texture texture){}}
  public class Texture2D:Texture {public static readonly Texture2D whiteTexture=new Texture2D();public Color32[] GetPixels32(){var pixels=new Color32[width*height];for(int i=0;i<pixels.Length;i++)pixels[i].a=255;return pixels;}}
  public enum TextAnchor{UpperLeft} public class GUIContent{public string text;}public class GUIStyleState{public Color textColor;}public class GUIStyle{public GUIStyle(){}public GUIStyle(GUIStyle source){}public TextAnchor alignment;public Font font;public GUIStyleState normal=new GUIStyleState();}public class GUISkin{public GUIStyle label=new GUIStyle();}
  public struct Matrix4x4{}public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){}}
@@ -56,6 +57,14 @@ namespace Notifications{public static class NotificationProtocol{public const by
 namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP;}}
 public class Service{static Service s=new Service();public static Service gI()=>s;public int requests;public void requestBuffIconSnapshot(){requests++;}}
 namespace Hud {
+ public static class HudButtonSkin {
+  public static Texture2D CopyNativeTexture(Texture source,Action<Color32[],int,int> edit){
+   var pixels=new[]{new Color32(0,0,0,127),new Color32(0,0,0,0)};edit(pixels,2,1);
+   if(pixels.Any(p=>p.r!=255||p.g!=255||p.b!=255)||pixels[0].a!=127||pixels[1].a!=0)
+    throw new Exception("countdown atlas must preserve glyph alpha and render white");
+   return new Texture2D{IsFont=source.IsFont};
+  }
+ }
  public static class TopActionsHud{public const string Hub="hub";}
  public enum HorizontalAnchor{Left,Right}public enum VerticalAnchor{Top}
  public static class HudLayout {public static bool IsMobileLayout;public static long FrameId=>GameCanvas.gameTick;public static long StateGeneration;

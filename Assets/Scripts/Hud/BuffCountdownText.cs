@@ -18,6 +18,7 @@ namespace Hud
         private mFont gameFont;
         private Font font;
         private Texture texture;
+        private Texture2D whiteAtlas;
         private int size, zoom, requested, digits;
         private float width, scale, top, bottom, widestDigit, widestSuffix;
         internal bool Dirty { get; private set; } = true;
@@ -54,10 +55,20 @@ namespace Hud
                 Store(i, new Glyph { Left = info.minX, Top = info.maxY, Width = info.maxX - info.minX,
                     Height = info.maxY - info.minY, Advance = info.advance, Uv = uv, Rotated = rotated });
             }
-            texture = font.material.mainTexture;
+            // The font shader reads atlas alpha. GUI.DrawTexture also reads RGB,
+            // which can be black even where the glyph is opaque.
+            Texture2D copy = HudButtonSkin.CopyNativeTexture(font.material.mainTexture, WhitenGlyphs);
+            if (whiteAtlas != null) Object.Destroy(whiteAtlas);
+            texture = whiteAtlas = copy;
+        }
+        private static void WhitenGlyphs(Color32[] pixels, int width, int height)
+        {
+            for (int i = 0; i < pixels.Length; i++)
+                pixels[i] = new Color32(255, 255, 255, pixels[i].a);
         }
         private void LoadBitmap()
         {
+            if (whiteAtlas != null) { Object.Destroy(whiteAtlas); whiteAtlas = null; }
             // Zoom 1 uses the same bitmap/table as mFont.tahoma_7_white.
             Image image = GameCanvas.loadImage("/myfont/tahoma_7_white.png");
             texture = image.texture;
