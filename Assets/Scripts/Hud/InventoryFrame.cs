@@ -335,10 +335,12 @@ public partial class Panel
             inventoryPressed = hit;
             if (hit == null || !hit.StartsWith("inventory.bag.cell.")) inventoryBagDoubleTap.Reset();
             if (hit != InventoryFrame.Slot(7)) inventoryEquipmentDoubleTap.Reset();
-            inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
+            inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px;
+            inventoryDragScroll = DisciplePanelActive ? DiscipleScroll : cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
         UpdateDiscipleSkillDrag();
+        UpdateDiscipleContentDrag();
         bool frameGesture = currentTabIndex == 1 || DisciplePanelActive || inventoryPressed == InventoryFrame.Close
             || inventoryPressed != null && inventoryPressed.StartsWith("inventory.tab.");
         // The legacy pointer stream keeps JustDown set until a handler consumes it.
