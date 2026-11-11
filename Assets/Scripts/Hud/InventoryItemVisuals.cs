@@ -4,6 +4,63 @@ using UnityEngine;
 
 namespace Hud
 {
+    internal static class SmoothRoundedSkin
+    {
+        private static readonly Dictionary<Vector4, Texture2D> textures = new Dictionary<Vector4, Texture2D>();
+
+        private static Texture2D Resolve(int width, int height, int fill, int border)
+        {
+            var key = new Vector4(width, height, fill, border);
+            if (textures.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
+            if (textures.Count >= 32) {
+                foreach (Texture2D old in textures.Values) UnityEngine.Object.Destroy(old);
+                textures.Clear();
+            }
+            var pixels = new Color32[width * height];
+            float radius = Mathf.Min(width, height) * .3f;
+            // Evaluate coverage in final screen pixels, including a one-pixel border.
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) {
+                float qx = Mathf.Abs(x + .5f - width * .5f) - (width * .5f - radius);
+                float qy = Mathf.Abs(y + .5f - height * .5f) - (height * .5f - radius);
+                float dx = Mathf.Max(qx, 0), dy = Mathf.Max(qy, 0);
+                float distance = Mathf.Sqrt(dx * dx + dy * dy) + Mathf.Min(Mathf.Max(qx, qy), 0) - radius;
+                float alpha = Mathf.Clamp01(.5f - distance);
+                float interior = alpha > 0 ? Mathf.Clamp01(-.5f - distance) / alpha : 0;
+                pixels[y * width + x] = new Color32((byte)((border >> 16) + ((fill >> 16) - (border >> 16)) * interior),
+                    (byte)(((border >> 8) & 255) + (((fill >> 8) & 255) - ((border >> 8) & 255)) * interior), (byte)((border & 255) + ((fill & 255) - (border & 255)) * interior), (byte)Mathf.RoundToInt(alpha * 255));
+            }
+            cached = new Texture2D(width, height, TextureFormat.RGBA32, false) {
+                name = "HUD rounded surface", filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
+            };
+            cached.SetPixels32(pixels);
+            cached.Apply(false, true);
+            textures[key] = cached;
+            return cached;
+        }
+        internal static void Paint(Rect bounds, Rect viewport, int fill = InventoryFrame.Accent, int border = 0)
+        {
+            Rect pixels = HudButtonSkin.ScreenPixels(bounds);
+            Rect clip = InventoryFrame.Intersection(pixels, HudButtonSkin.ScreenPixels(viewport));
+            if (clip.width <= 0 || clip.height <= 0) return;
+            Texture2D background = Resolve((int)pixels.width, (int)pixels.height, fill, border);
+            PaintTexture(pixels, clip, background);
+        }
+        internal static void PaintTexture(Rect pixels, Rect clip, Texture2D background)
+        {
+            Color previous = GUI.color;
+            Matrix4x4 matrix = GUI.matrix;
+            try {
+                GUI.matrix = Matrix4x4.identity;
+                GUI.color = Color.white;
+                GUI.BeginGroup(clip);
+                try {
+                    GUI.DrawTexture(new Rect(pixels.x - clip.x, pixels.y - clip.y, pixels.width, pixels.height), background);
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.matrix = matrix; GUI.color = previous; }
+        }
+    }
+
     internal static class InventoryItemVisuals
     {
         private static readonly Dictionary<int, Texture2D> auras = new Dictionary<int, Texture2D>();
@@ -21,10 +78,11 @@ namespace Hud
             float size = System.Math.Min(5, (cell.width - 2) / count);
             return new Rect(cell.center.x - count * size / 2 + index * size, cell.yMax + 3.5f, size, size);
         }
+        internal const float LevelHeight = 12;
         internal static Rect LevelBounds(Rect cell, float width, bool bag)
         {
             width = bag ? System.Math.Min(width, cell.width - 4) : width;
-            return new Rect(bag ? cell.x - 3 : cell.xMax - width + 3, bag ? cell.y - 3 : cell.yMax - 9, width, 12);
+            return new Rect(bag ? cell.x - 3 : cell.xMax - width + 3, bag ? cell.y - 3 : cell.yMax - 9, width, LevelHeight);
         }
 
         internal static Rect CompactLevelBounds(Rect cell,float width)
@@ -86,9 +144,10 @@ namespace Hud
                 finally { GUI.EndGroup(); }
             } finally { GUI.color = previous; }
         }
-        internal static void PaintStars(Rect cell, Rect viewport, Item item)
+        internal static void PaintStars(Rect cell, Rect viewport, Item item, Rect? strip = null)
         {
             int count = InventoryFrame.StarSlots(item);
+            if (strip.HasValue) count = Mathf.Min(count, 8);
             if (count == 0) return;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             Color previous = GUI.color;
@@ -101,7 +160,11 @@ namespace Hud
                         Image image = kind == 1 ? Panel.imgStar : kind == 2 ? (Panel.imgStar8 ?? Panel.imgStar)
                             : kind == 3 ? (Panel.imgStarCuongHoa ?? Panel.imgMaxStar) : Panel.imgMaxStar;
                         if (image == null) continue;
-                        Rect star = StarBounds(cell, i, count);
+                        Rect star;
+                        if (strip is Rect row) {
+                            float size = Mathf.Min(row.height, row.width / count);
+                            star = new Rect(row.x + i * size, row.yMax - size, size, size);
+                        } else star = StarBounds(cell, i, count);
                         GUI.DrawTexture(new Rect((star.x - viewport.x) * zoom, (star.y - viewport.y) * zoom,
                             star.width * zoom, star.height * zoom), image.texture);
                     }
@@ -161,10 +224,13 @@ namespace Hud
             private GUIStyle style;
             private readonly GUIContent[] content = new GUIContent[6];
             private readonly Vector2[] sizes = new Vector2[6];
+            private readonly bool clipToViewport;
             private Font font;
             private int zoom, baseSize, count;
             private float textScale = 1;
             internal const float Padding = 4;
+
+            internal FittedTextRow(bool clipToViewport = false) { this.clipToViewport = clipToViewport; }
 
             internal void Paint(mFont nativeFont, string[] labels, Rect[] bounds, int length,
                 Rect viewport, int selected, Color normalColor, Color selectedColor)
@@ -173,8 +239,10 @@ namespace Hud
                     alignment = TextAnchor.MiddleCenter, padding = new RectOffset(), margin = new RectOffset(),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
-                int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, nativeFont.myFont.fontSize);
-                bool dirty = font != nativeFont.myFont || zoom != scale || baseSize != size || count != length;
+                if (length == 0 || viewport.width <= 0 || viewport.height <= 0) return;
+                Font currentFont = nativeFont.myFont ?? GUI.skin.font;
+                int scale = Mathf.Max(1, mGraphics.zoomLevel), size = Mathf.Max(1, currentFont?.fontSize ?? 12);
+                bool dirty = font != currentFont || zoom != scale || baseSize != size || count != length;
                 for (int i = 0; i < length; i++) {
                     Vector2 available = new Vector2(Mathf.Max(0, bounds[i].width * scale - 2 * Padding),
                         Mathf.Max(0, bounds[i].height * scale - 4));
@@ -182,7 +250,7 @@ namespace Hud
                     if (content[i] == null) content[i] = new GUIContent(labels[i]); else content[i].text = labels[i];
                     sizes[i] = available;
                 }
-                style.font = nativeFont.myFont;
+                style.font = currentFont;
                 if (dirty) {
                     style.fontSize = size;
                     // Bitmap fonts (notably x4) ignore GUIStyle.fontSize. Scale their native
@@ -195,7 +263,7 @@ namespace Hud
                         if (measured.y > 0) fit = Mathf.Min(fit, Mathf.Max(0, sizes[i].y - 1) / measured.y);
                         textScale = Mathf.Min(textScale, Mathf.Max(.01f, fit));
                     }
-                    font = nativeFont.myFont; zoom = scale; baseSize = size; count = length;
+                    font = currentFont; zoom = scale; baseSize = size; count = length;
                 }
                 Color previous = GUI.color;
                 try {
@@ -211,11 +279,21 @@ namespace Hud
                         Matrix4x4 matrix = GUI.matrix;
                         Vector2 center = inset.center * scale;
                         try {
-                            // These fixed rows are fully inside their viewport. Fit the label
-                            // itself, avoiding nested GUI clips that also scale bitmap glyphs.
                             GUIUtility.ScaleAroundPivot(new Vector2(textScale, textScale), center);
-                            float width = inset.width * scale / textScale, height = inset.height * scale / textScale;
-                            GUI.Label(new Rect(center.x - width / 2, center.y - height / 2, width, height), content[i], style);
+                            float pixelsPerUnit = scale / textScale;
+                            float width = inset.width * pixelsPerUnit, height = inset.height * pixelsPerUnit;
+                            Rect label = new Rect(center.x - width / 2, center.y - height / 2, width, height);
+                            if (!clipToViewport || (clip.width >= inset.width - .01f && clip.height >= inset.height - .01f))
+                                GUI.Label(label, content[i], style);
+                            else {
+                                // Convert the clip to the scaled label's coordinate space.
+                                Rect group = new Rect(center.x + (clip.x - inset.center.x) * pixelsPerUnit,
+                                    center.y + (clip.y - inset.center.y) * pixelsPerUnit,
+                                    clip.width * pixelsPerUnit, clip.height * pixelsPerUnit);
+                                GUI.BeginGroup(group);
+                                try { GUI.Label(new Rect(label.x - group.x, label.y - group.y, label.width, label.height), content[i], style); }
+                                finally { GUI.EndGroup(); }
+                            }
                         }
                         finally { GUI.matrix = matrix; }
                     }
@@ -236,6 +314,17 @@ namespace Hud
             if(x+w>image.texture.width||y+h>image.texture.height){image=null;return false;}
             uv=new Rect(x/image.texture.width,1-(y+h)/image.texture.height,w/image.texture.width,h/image.texture.height);
             return true;
+        }
+        // Inventory equipment uses the zoom-specific sprite at native size.
+        // Keep the same integer anchor and sampling for every caller of this path.
+        internal static void PaintInventoryIcon(mGraphics g, int id, Rect cell, Rect viewport)
+        {
+            if (id < 0) return;
+            Rect clip = InventoryFrame.Intersection(cell, viewport);
+            if (clip.width <= 0 || clip.height <= 0) return;
+            InventoryFrame.Clip(g, clip);
+            SmallImage.drawSmallImage(g, id, (int)cell.center.x, (int)cell.center.y, 0, StaticObj.VCENTER_HCENTER);
+            InventoryFrame.Clip(g, viewport);
         }
         internal static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport)
         {
@@ -263,22 +352,49 @@ namespace Hud
                 finally {GUI.EndGroup();}
             } finally {GUI.color=previous;}
         }
-        internal static void PaintSkillIcon(mGraphics g,int id,Rect bounds,Rect viewport,bool selected=false)
+        // The native skill tile has a 4-pixel rim on a 28-pixel cell.
+        private const float SkillFrameInset = 4f / 28;
+        internal static void PaintSkillIcon(mGraphics g, int id, Rect bounds, Rect viewport, bool selected = false,
+            bool frameOnTop = false)
         {
-            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
-            // Restore the actual orange skill-frame sprite, rather than a recolored popup border.
-            Image frame=selected?GameScr.imgSkill2:GameScr.imgSkill;
-            if(frame?.texture!=null) {
-                int zoom=Mathf.Max(1,mGraphics.zoomLevel);Color previous=GUI.color;
-                try {
-                    GUI.color=Color.white;GUI.BeginGroup(new Rect(clip.x*zoom,clip.y*zoom,clip.width*zoom,clip.height*zoom));
-                    try {GUI.DrawTexture(new Rect((bounds.x-clip.x)*zoom,(bounds.y-clip.y)*zoom,bounds.width*zoom,bounds.height*zoom),frame.texture);}
-                    finally {GUI.EndGroup();}
-                } finally {GUI.color=previous;}
+            Rect clip = InventoryFrame.Intersection(bounds, viewport);
+            if (clip.width <= 0 || clip.height <= 0) return;
+            Texture2D frame = (selected ? GameScr.imgSkill2 : GameScr.imgSkill)?.texture;
+            if (frame != null) PaintSkillFrame(frame, bounds, clip, false);
+            else {
+                InventoryFrame.Clip(g, clip);
+                InventoryFrame.Rounded(g, bounds, InventoryFrame.SlotBackground, 255, selected ? 0x00C86A : 0xFF9900);
             }
-            else {InventoryFrame.Clip(g,clip);InventoryFrame.Rounded(g,bounds,InventoryFrame.SlotBackground,255,selected?0x00C86A:0xFF9900);}
-            // The source is a 28-logical-pixel frame with an inset of four pixels.
-            PaintCompactIcon(g,id,InventoryFrame.Inset(bounds,bounds.width/7f),viewport);
+            PaintCompactIcon(g, id, InventoryFrame.Inset(bounds, bounds.width * SkillFrameInset), viewport);
+            if (frameOnTop && frame != null) PaintSkillFrame(frame, bounds, clip, true);
+        }
+        private static void PaintSkillFrame(Texture2D frame, Rect bounds, Rect clip, bool rimOnly)
+        {
+            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            Rect pixels = new Rect((bounds.x - clip.x) * zoom, (bounds.y - clip.y) * zoom, bounds.width * zoom, bounds.height * zoom);
+            Color previous = GUI.color;
+            try {
+                GUI.color = Color.white;
+                GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+                try {
+                    if (!rimOnly) GUI.DrawTexture(pixels, frame);
+                    else {
+                        // The sprite's center is opaque. Draw only its rim above the icon.
+                        const float rim = SkillFrameInset, middle = 1 - 2 * rim;
+                        DrawRim(0, 0, 1, rim);
+                        DrawRim(0, 1 - rim, 1, rim);
+                        DrawRim(0, rim, rim, middle);
+                        DrawRim(1 - rim, rim, rim, middle);
+                    }
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.color = previous; }
+
+            void DrawRim(float x, float y, float width, float height)
+            {
+                GUI.DrawTextureWithTexCoords(
+                    new Rect(pixels.x + x * pixels.width, pixels.y + y * pixels.height, width * pixels.width, height * pixels.height),
+                    frame, new Rect(x, 1 - y - height, width, height));
+            }
         }
         private static readonly Dictionary<Texture2D,Image> disabledButtons=new Dictionary<Texture2D,Image>();
         private static readonly Dictionary<Texture2D,Image> smoothButtons=new Dictionary<Texture2D,Image>();
@@ -382,28 +498,39 @@ namespace Hud
         }
         internal static void PaintLevel(mGraphics g, Rect cell, Rect viewport, int level, bool bag, bool compact = false)
         {
+            mFont font = PrepareLevelFont();
+            Rect badge = compact ? CompactLevelBounds(cell,levelWidth) : LevelBounds(cell, levelWidth, bag);
+            InventoryFrame.Clip(g, viewport);
+            if (compact) InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
+            else SmoothRoundedSkin.Paint(badge, viewport);
+            PaintLevelLabel(g, badge, viewport, level, font, badge.width, compact);
+        }
+        private static mFont PrepareLevelFont()
+        {
             mFont font = mFont.tahoma_7;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             if (levelFont != font.myFont || levelZoom != zoom || levelWidth <= 0) {
                 levelFont = font.myFont; levelZoom = zoom; levelWidth = font.getWidth("Lv7") + 6; levelStyles.Clear();
             }
-            Rect badge = compact ? CompactLevelBounds(cell,levelWidth) : LevelBounds(cell, levelWidth, bag);
-            InventoryFrame.Clip(g, viewport);
-            InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
+            return font;
+        }
+        private static void PaintLevelLabel(mGraphics g, Rect badge, Rect viewport, int level, mFont font, float fitWidth, bool compact)
+        {
+            int zoom = levelZoom;
             string label = "Lv" + Mathf.Clamp(level, 0, 7);
             if (zoom == 1) {
                 font.drawString(g, label, (int)badge.center.x, (int)(badge.center.y - font.getHeight() / 2f), mFont.CENTER);
                 return;
             }
-            int key = Mathf.RoundToInt(badge.width * zoom) * 2 + (compact ? 1 : 0);
+            int key = Mathf.RoundToInt(fitWidth * zoom) * 2 + (compact ? 1 : 0);
             if (!levelStyles.TryGetValue(key, out GUIStyle style)) {
                 style = new GUIStyle(GUI.skin.label) {
                     font = font.myFont, fontSize = Mathf.Max(1, font.myFont.fontSize), alignment = TextAnchor.MiddleCenter,
                     padding = new RectOffset(0, 0, 0, 0), margin = new RectOffset(0, 0, 0, 0),
                     wordWrap = false, richText = false, fixedWidth = 0, fixedHeight = 0
                 };
-                while (style.fontSize > 1 && (style.CalcSize(new GUIContent("Lv7")).x > badge.width * zoom - 4
-                    || style.CalcSize(new GUIContent("Lv7")).y > badge.height * zoom - 2)) style.fontSize--;
+                while (style.fontSize > 1 && (style.CalcSize(new GUIContent("Lv7")).x > fitWidth * zoom - 4
+                    || style.CalcSize(new GUIContent("Lv7")).y > LevelHeight * zoom - 2)) style.fontSize--;
                 style.normal.textColor = style.hover.textColor = Color.black;
                 style.active.textColor = style.focused.textColor = Color.black;
                 style.onNormal.textColor = style.onHover.textColor = style.onActive.textColor = style.onFocused.textColor = Color.black;

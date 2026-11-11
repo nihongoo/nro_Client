@@ -135,10 +135,12 @@ namespace Hud
                     () => Visible && GameCanvas.panel.InventoryBagDetailOpen && button < GameCanvas.panel.InventoryDetailButtonCount);
             }
         }
+        internal static float EquipmentSize { get { EnsureMetrics(); return metrics.EquipmentSize; } }
+        internal static float EquipmentGap { get { EnsureMetrics(); return metrics.EquipmentGap; } }
         internal static Rect EquipmentBounds(int slot)
         {
             EnsureMetrics();
-            float size=metrics.EquipmentSize,gap=metrics.EquipmentGap,left=metrics.EquipmentLeft;
+            float size=EquipmentSize,gap=EquipmentGap,left=metrics.EquipmentLeft;
             return new Rect(left + slot % 3 * (size + gap), 73 + Padding + 12 + Gap + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
         }
         internal static float EquipmentBottom => EquipmentBounds(8).yMax + 10;
@@ -335,10 +337,12 @@ public partial class Panel
             inventoryPressed = hit;
             if (hit == null || !hit.StartsWith("inventory.bag.cell.")) inventoryBagDoubleTap.Reset();
             if (hit != InventoryFrame.Slot(7)) inventoryEquipmentDoubleTap.Reset();
-            inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px; inventoryDragScroll = cmy; inventoryDragging = false;
+            inventoryDragY = GameCanvas.py; inventoryDragX = GameCanvas.px;
+            inventoryDragScroll = DisciplePanelActive ? DiscipleScroll : cmy; inventoryDragging = false;
         }
         UpdateInventoryBagDetailDrag();
         UpdateDiscipleSkillDrag();
+        UpdateDiscipleContentDrag();
         bool frameGesture = currentTabIndex == 1 || DisciplePanelActive || inventoryPressed == InventoryFrame.Close
             || inventoryPressed != null && inventoryPressed.StartsWith("inventory.tab.");
         // The legacy pointer stream keeps JustDown set until a handler consumes it.
@@ -526,8 +530,7 @@ public partial class Panel
             InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
             mFont.tahoma_7_white.drawString(g, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER);
         } else {
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
-            SmallImage.drawSmallImage(g, item.template.iconID, (int)rect.center.x, (int)rect.center.y, 0, 3);
+            InventoryItemVisuals.PaintInventoryIcon(g, item.template.iconID, rect, viewport);
         }
         InventoryFrame.Clip(g, viewport);
         if (slot < 6) {
