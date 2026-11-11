@@ -1,5 +1,7 @@
 public class Item
 {
+    public const int TYPE_DISCIPLE_GEM = 80;
+
     public const int OPT_STAR = 34;
 
     public const int OPT_MOON = 35;
@@ -497,6 +499,7 @@ public class Item
 
     public string getFullName()
     {
+        if (template.type == TYPE_DISCIPLE_GEM) return template.name + "\n" + template.description;
         string text = template.name;
         if (itemOption != null)
         {

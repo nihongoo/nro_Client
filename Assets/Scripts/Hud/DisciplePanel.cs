@@ -172,8 +172,7 @@ namespace Hud
 public partial class Panel
 {
     internal const int DiscipleTab = 7;
-    // New rune item contract. Slot 7 is separate from legacy pet accessories at slot 8.
-    internal const int DiscipleRuneType = 80;
+    // Gem slot 7 is separate from legacy pet accessories at slot 8.
     private static readonly int[] discipleBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7 };
     private static readonly string[] discipleStatuses = { "Đi theo", "Bảo vệ", "Tấn công", "Về nhà", "Hợp thể" };
     private readonly InventoryItemVisuals.FittedTextRow discipleStatusText = new InventoryItemVisuals.FittedTextRow(clipToViewport: true);
@@ -190,6 +189,7 @@ public partial class Panel
     internal bool DisciplePanelActive => InventoryFrameActive && Char.myCharz().havePet && currentTabIndex == DiscipleTab;
     internal bool DiscipleSkillOpen => DisciplePanelActive && discipleSkill >= 0;
     internal bool DiscipleFused => Char.myPetz().petStatus >= 4;
+    internal bool DiscipleEquipmentLocked => DiscipleFused && discipleFusionUntil >= 0;
     private int InventoryToolIndex(int visual) => InventoryFrameActive && Char.myCharz().havePet && visual >= 3 ? visual + 1 : visual;
 
     internal void ClearDiscipleInfo()
@@ -293,12 +293,12 @@ public partial class Panel
         if (item?.template == null) return -1;
         int type = item.template.type;
         if (type >= 0 && type <= 5) return type;
-        return type == 32 ? 6 : type == DiscipleRuneType ? 7 : -1;
+        return type == 32 ? 6 : type == Item.TYPE_DISCIPLE_GEM ? 7 : -1;
     }
     private bool CanEquipForDisciple(Item item)
     {
         return Char.myCharz().havePet && ReferenceEquals(discipleOwner, Char.myCharz()) && discipleLoaded
-            && discipleKind >= 0 && !DiscipleFused && DiscipleSlot(item) >= 0
+            && discipleKind >= 0 && !DiscipleEquipmentLocked && DiscipleSlot(item) >= 0
             && (discipleKind > 0 || item.template.gender >= 3 || item.template.gender == Char.myPetz().cgender);
     }
     private void EquipForDisciple(Item item)
@@ -408,7 +408,8 @@ public partial class Panel
                 if (item?.template != null) {
                     InventoryItemVisuals.PaintInventoryIcon(g, item.template.iconID, cell, content);
                     if (i < 6) level = InventoryFrame.Option(item, Item.OPT_LVITEM);
-                    InventoryItemVisuals.PaintStars(cell, content, item, stars);
+                    if (item.template.type != Item.TYPE_DISCIPLE_GEM)
+                        InventoryItemVisuals.PaintStars(cell, content, item, stars);
                 } else if (i == 7) {
                     discipleRuneBounds[0] = cell;
                     discipleRuneText.Paint(mFont.tahoma_7_grey, discipleRuneLabel, discipleRuneBounds,

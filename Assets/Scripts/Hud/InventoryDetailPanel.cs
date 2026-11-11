@@ -81,13 +81,13 @@ public partial class Panel
         inventoryDetailButtons.Clear(); inventoryDetailQuick = inventoryDetailDiscard = inventoryDetailPet = false;
         inventoryDetailCommands = null;
         if (DisciplePanelActive) {
-            if (!DiscipleFused) AddInventoryDetailButton("Tháo", new Command("Tháo", this, 2106, inventoryBagDetailItem), 0, 0);
+            if (!DiscipleEquipmentLocked) AddInventoryDetailButton("Tháo", new Command("Tháo", this, 2106, inventoryBagDetailItem), 0, 0);
             inventoryDetailTopScroll = inventoryDetailBottomScroll = 0;
             PrepareInventoryBagDetail(); HudLayout.Invalidate(); return;
         }
         Item item = inventoryBagDetailItem;
         if (item?.template == null) return;
-        bool rune = item.template.type == DiscipleRuneType;
+        bool rune = item.template.type == Item.TYPE_DISCIPLE_GEM;
         if (!rune) doFireInventory(true); // Keep the original player-use and discard commands.
         bool worn = selected >= 0 && selected < (Char.myCharz().arrItemBody?.Length ?? 0);
         bool equipment = InventoryBag.CanEquip(item);
@@ -169,32 +169,34 @@ public partial class Panel
         bool worn = DisciplePanelActive || selected >= 0 && selected < (inventoryDetailBody?.Length ?? 0);
         AddInventoryDetailText(inventoryDetailInfo, item.template.name + (InventoryBag.HasLevel(item) ? " [+" + level + "]" : ""), mFont.tahoma_7b_dark);
         AddInventoryDetailText(inventoryDetailInfo, worn ? "Đang mặc" : "Chưa mặc", mFont.tahoma_7_grey);
-        if (InventoryBag.HasLevel(item)) {
-            inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Cấp " + level + "/7", Font = mFont.tahoma_7b_dark, Meter = 7, Value = level });
-        }
-        if (slots > 0) inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/" + slots, Font = mFont.tahoma_7b_dark, StarItem = item });
-        if (item.itemOption != null) foreach (ItemOption option in item.itemOption) {
-            if (option?.optionTemplate == null) continue;
-            int id = option.optionTemplate.id;
-            if (id == Item.OPT_LVITEM || id == Item.OPT_STARSLOT || id == Item.OPT_MAXSTARSLOT) continue;
-            if (IsInventorySetOption(id) && (item.template.type < 0 || item.template.type > 4)) continue;
-            AddInventoryDetailText(inventoryDetailInfo, option.getOptionString(), IsInventorySetOption(id) ? mFont.tahoma_7_green2 : mFont.tahoma_7_blue);
-            if (item.template.type >= 0 && item.template.type <= 4 && IsInventorySetOption(id)) {
-                int count = 0;
-                if (inventoryDetailBody != null) foreach (Item gear in inventoryDetailBody)
-                    if (gear?.template != null && gear.template.type >= 0 && gear.template.type <= 4 && gear.itemOption != null)
-                        foreach (ItemOption attached in gear.itemOption) if (attached?.optionTemplate != null && attached.optionTemplate.id == id) { count++; break; }
-                AddInventoryDetailText(inventoryDetailInfo, "Đang mặc set: " + count + "/5", mFont.tahoma_7_green2);
+        if (item.template.type != Item.TYPE_DISCIPLE_GEM) {
+            if (InventoryBag.HasLevel(item)) {
+                inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Cấp " + level + "/7", Font = mFont.tahoma_7b_dark, Meter = 7, Value = level });
             }
+            if (slots > 0) inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Sao " + stars + "/" + slots, Font = mFont.tahoma_7b_dark, StarItem = item });
+            if (item.itemOption != null) foreach (ItemOption option in item.itemOption) {
+                if (option?.optionTemplate == null) continue;
+                int id = option.optionTemplate.id;
+                if (id == Item.OPT_LVITEM || id == Item.OPT_STARSLOT || id == Item.OPT_MAXSTARSLOT) continue;
+                if (IsInventorySetOption(id) && (item.template.type < 0 || item.template.type > 4)) continue;
+                AddInventoryDetailText(inventoryDetailInfo, option.getOptionString(), IsInventorySetOption(id) ? mFont.tahoma_7_green2 : mFont.tahoma_7_blue);
+                if (item.template.type >= 0 && item.template.type <= 4 && IsInventorySetOption(id)) {
+                    int count = 0;
+                    if (inventoryDetailBody != null) foreach (Item gear in inventoryDetailBody)
+                        if (gear?.template != null && gear.template.type >= 0 && gear.template.type <= 4 && gear.itemOption != null)
+                            foreach (ItemOption attached in gear.itemOption) if (attached?.optionTemplate != null && attached.optionTemplate.id == id) { count++; break; }
+                    AddInventoryDetailText(inventoryDetailInfo, "Đang mặc set: " + count + "/5", mFont.tahoma_7_green2);
+                }
+            }
+            AddInventoryDetailComparison(item, worn);
+            if (!worn && CanEquipForDisciple(item)) AddInventoryDetailComparison(item, false, Char.myPetz().arrItemBody);
+            AddInventoryDetailText(inventoryDetailInfo, "Số lượng: " + item.quantity, mFont.tahoma_7b_dark);
+            if (item.template.strRequire > 1) AddInventoryDetailText(inventoryDetailInfo, mResources.pow_request + ": " + item.template.strRequire,
+                (DisciplePanelActive ? Char.myPetz().cPower : Char.myCharz().cPower) < item.template.strRequire ? mFont.tahoma_7_red : mFont.tahoma_7_grey);
+            if (!DisciplePanelActive && worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
         }
-        AddInventoryDetailComparison(item, worn);
-        if (!worn && CanEquipForDisciple(item)) AddInventoryDetailComparison(item, false, Char.myPetz().arrItemBody);
-        AddInventoryDetailText(inventoryDetailInfo, "Số lượng: " + item.quantity, mFont.tahoma_7b_dark);
-        if (item.template.strRequire > 1) AddInventoryDetailText(inventoryDetailInfo, mResources.pow_request + ": " + item.template.strRequire,
-            (DisciplePanelActive ? Char.myPetz().cPower : Char.myCharz().cPower) < item.template.strRequire ? mFont.tahoma_7_red : mFont.tahoma_7_grey);
-        if (!DisciplePanelActive && worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
         AddInventoryDetailText(inventoryDetailDescription, item.template.description, mFont.tahoma_7b_dark);
-        if (!string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
+        if (item.template.type != Item.TYPE_DISCIPLE_GEM && !string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
         if (inventoryDetailDescription.Count == 0) AddInventoryDetailText(inventoryDetailDescription, "Không có mô tả", mFont.tahoma_7_grey);
         for (int i = 0; i < inventoryDetailButtons.Count; i++) {
             var button = inventoryDetailButtons[i];
@@ -237,7 +239,7 @@ public partial class Panel
         Command action = inventoryDetailButtons[index].Action;
         if (action?.idAction == 2105) { EquipForDisciple(inventoryBagDetailItem); return true; }
         if (action?.idAction == 2106) {
-            if (!DiscipleFused && Char.myCharz().havePet) Service.gI().getItem(PET_BAG, (sbyte)selected);
+            if (!DiscipleEquipmentLocked && Char.myCharz().havePet) Service.gI().getItem(PET_BAG, (sbyte)selected);
             CloseInventoryBagDetail(); return true;
         }
         if (action != null) { action.performAction(); if (InventoryBagDetailOpen) BuildInventoryDetail(); }
