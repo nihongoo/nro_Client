@@ -530,8 +530,7 @@ public partial class Panel
             InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
             mFont.tahoma_7_white.drawString(g, inventorySlotLabels[slot], (int)rect.center.x, (int)rect.center.y - 5, mFont.CENTER);
         } else {
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(rect, viewport));
-            SmallImage.drawSmallImage(g, item.template.iconID, (int)rect.center.x, (int)rect.center.y, 0, 3);
+            InventoryItemVisuals.PaintInventoryIcon(g, item.template.iconID, rect, viewport);
         }
         InventoryFrame.Clip(g, viewport);
         if (slot < 6) {

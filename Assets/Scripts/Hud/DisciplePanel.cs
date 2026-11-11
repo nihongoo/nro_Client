@@ -396,7 +396,6 @@ public partial class Panel
         mFont.tahoma_7_grey.drawString(g, statusTitle, (int)DiscipleLayout.StatusTitle.x, (int)DiscipleLayout.StatusTitle.y, mFont.LEFT);
         mFont.tahoma_7_grey.drawString(g, "Trang bị", (int)DiscipleLayout.EquipmentTitle.x, (int)DiscipleLayout.EquipmentTitle.y, mFont.LEFT);
         mFont.tahoma_7_grey.drawString(g, "Kỹ năng", (int)DiscipleLayout.SkillTitle.x, (int)DiscipleLayout.SkillTitle.y, mFont.LEFT);
-        float iconInset = HudLayout.PixelsToLogical(3);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             Rect stars = i < 8 ? DiscipleLayout.StarStrip(cell) : new Rect();
@@ -407,7 +406,7 @@ public partial class Panel
                 InventoryFrame.Rounded(g, cell, InventoryFrame.SlotBackground, 255, chosen ? InventoryFrame.Accent : 0);
                 Item item = DiscipleItem(i);
                 if (item?.template != null) {
-                    InventoryItemVisuals.PaintCompactIcon(g, item.template.iconID, InventoryFrame.Inset(cell, iconInset), content);
+                    InventoryItemVisuals.PaintInventoryIcon(g, item.template.iconID, cell, content);
                     if (i < 6) level = InventoryFrame.Option(item, Item.OPT_LVITEM);
                     InventoryItemVisuals.PaintStars(cell, content, item, stars);
                 } else if (i == 7) {
@@ -417,7 +416,8 @@ public partial class Panel
                 }
             } else {
                 Skill skill = DiscipleSkill(i - 8);
-                InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen, frameOnTop: true);
+                InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen,
+                    frameOnTop: true, nativeIcon: true);
                 if (skill?.template != null) level = skill.point;
             }
             InventoryFrame.Clip(g, content);

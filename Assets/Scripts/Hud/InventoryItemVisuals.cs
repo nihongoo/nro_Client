@@ -258,6 +258,17 @@ namespace Hud
             uv=new Rect(x/image.texture.width,1-(y+h)/image.texture.height,w/image.texture.width,h/image.texture.height);
             return true;
         }
+        // Inventory equipment uses the zoom-specific sprite at native size.
+        // Keep the same integer anchor and sampling for every caller of this path.
+        internal static void PaintInventoryIcon(mGraphics g, int id, Rect cell, Rect viewport, float inset = 0)
+        {
+            if (id < 0) return;
+            Rect clip = InventoryFrame.Intersection(InventoryFrame.Inset(cell, inset), viewport);
+            if (clip.width <= 0 || clip.height <= 0) return;
+            InventoryFrame.Clip(g, clip);
+            SmallImage.drawSmallImage(g, id, (int)cell.center.x, (int)cell.center.y, 0, StaticObj.VCENTER_HCENTER);
+            InventoryFrame.Clip(g, viewport);
+        }
         internal static void PaintCompactIcon(mGraphics g,int id,Rect bounds,Rect viewport)
         {
             Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
@@ -286,7 +297,8 @@ namespace Hud
         }
         // The native skill tile has a 4-pixel rim on a 28-pixel cell.
         private const float SkillFrameInset = 4f / 28;
-        internal static void PaintSkillIcon(mGraphics g, int id, Rect bounds, Rect viewport, bool selected = false, bool frameOnTop = false)
+        internal static void PaintSkillIcon(mGraphics g, int id, Rect bounds, Rect viewport, bool selected = false,
+            bool frameOnTop = false, bool nativeIcon = false)
         {
             Rect clip = InventoryFrame.Intersection(bounds, viewport);
             if (clip.width <= 0 || clip.height <= 0) return;
@@ -296,7 +308,8 @@ namespace Hud
                 InventoryFrame.Clip(g, clip);
                 InventoryFrame.Rounded(g, bounds, InventoryFrame.SlotBackground, 255, selected ? 0x00C86A : 0xFF9900);
             }
-            PaintCompactIcon(g, id, InventoryFrame.Inset(bounds, bounds.width * SkillFrameInset), viewport);
+            if (nativeIcon) PaintInventoryIcon(g, id, bounds, viewport, bounds.width * SkillFrameInset);
+            else PaintCompactIcon(g, id, InventoryFrame.Inset(bounds, bounds.width * SkillFrameInset), viewport);
             if (frameOnTop && frame != null) PaintSkillFrame(frame, bounds, clip, true);
         }
         private static void PaintSkillFrame(Texture2D frame, Rect bounds, Rect clip, bool rimOnly)
