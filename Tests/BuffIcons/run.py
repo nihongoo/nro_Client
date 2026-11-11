@@ -24,21 +24,32 @@ namespace UnityEngine {
  public struct Vector2 { public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;} }
  public struct Rect {public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public float xMin=>x;public float yMin=>y;public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>width>0&&height>0&&p.x>=x&&p.y>=y&&p.x<xMax&&p.y<yMax;}
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public static int Min(int a,int b)=>Math.Min(a,b);public static float Min(params float[] a)=>a.Min();public static float Abs(float n)=>Math.Abs(n);public static int RoundToInt(float n)=>(int)Math.Round(n);public static int FloorToInt(float n)=>(int)Math.Floor(n);public static float Ceil(float n)=>(float)Math.Ceiling(n);public static float Round(float n)=>(float)Math.Round(n);public static int Clamp(int n,int a,int b)=>Math.Max(a,Math.Min(b,n));public static float Clamp(float n,float a,float b)=>Math.Max(a,Math.Min(b,n));}
- public struct Color {public static Color white=>new Color();}public class Texture2D{}
- public static class GUI {public static Color color;public static void DrawTextureWithTexCoords(Rect r,Texture2D t,Rect uv){} }
+ public struct Color {public float r,g,b,a;public Color(float r,float g,float b,float a){this.r=r;this.g=g;this.b=b;this.a=a;}public static Color white=>new Color(1,1,1,1);}
+ public class Texture {public int width=512,height=512;public bool IsFont;}
+ public struct Color32 {public byte r,g,b,a;public Color32(byte r,byte g,byte b,byte a){this.r=r;this.g=g;this.b=b;this.a=a;}}
+ public static class Object {public static void Destroy(Texture texture){}}
+ public class Texture2D:Texture {public static readonly Texture2D whiteTexture=new Texture2D();public Color32[] GetPixels32(){var pixels=new Color32[width*height];for(int i=0;i<pixels.Length;i++)pixels[i].a=255;return pixels;}}
+ public enum TextAnchor{UpperLeft} public class GUIContent{public string text;}public class GUIStyleState{public Color textColor;}public class GUIStyle{public GUIStyle(){}public GUIStyle(GUIStyle source){}public TextAnchor alignment;public Font font;public GUIStyleState normal=new GUIStyleState();}public class GUISkin{public GUIStyle label=new GUIStyle();}
+ public struct Matrix4x4{}public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){}}
+ public static class GUI {public static Color color;public static Matrix4x4 matrix;public static readonly GUISkin skin=new GUISkin();public static bool Capture;public static readonly List<Rect> Ink=new List<Rect>(100);public static void Label(Rect r,GUIContent content,GUIStyle style){}public static void DrawTexture(Rect r,Texture t){}public static void DrawTextureWithTexCoords(Rect r,Texture t,Rect uv){if(Capture&&t.IsFont&&color.r==1&&color.g==1&&color.b==1)Ink.Add(r);} }
+ public enum FontStyle{Normal}public class Material{public Texture mainTexture=new Texture2D{IsFont=true};}
+ public struct CharacterInfo{public int minX,maxX,minY,maxY,advance;public Vector2 uvBottomLeft,uvBottomRight,uvTopLeft,uvTopRight;}
+ public class Font {public int fontSize=24;public bool dynamic=true;public Material material=new Material();public static Font LastRequested;public static int GlyphRequests;public static event Action<Font> textureRebuilt;public static void Rebuild(Font f){textureRebuilt?.Invoke(f);}public void RequestCharactersInTexture(string s,int size,FontStyle style){LastRequested=this;}public bool GetCharacterInfo(char c,out CharacterInfo info,int size,FontStyle style){GlyphRequests++;int width=c=='1'?9:c=='p'||c=='s'?12:14;info=new CharacterInfo{minX=1,maxX=width,minY=c=='p'?-5:0,maxY=c=='p'||c=='s'?14:18,advance=width+1,uvBottomLeft=new Vector2(0,0),uvBottomRight=new Vector2(.1f,0),uvTopLeft=new Vector2(0,.1f),uvTopRight=new Vector2(.1f,.1f)};return true;}}
  public class TextAsset {public byte[] bytes;}public static class Resources{public static object Load(string s,Type t)=>null;}
 }
 public class Image{public Texture2D texture=new Texture2D();}
 public class mGraphics {public static int zoomLevel=2,addYWhenOpenKeyBoard;public int getTranslateX()=>0;public int getTranslateY()=>0;public void translate(int x,int y){}public void setClip(int x,int y,int w,int h){}public void setColor(int c){}public void fillRect(int x,int y,int w,int h){} }
-public class TestFont {public int fontSize=24;}
-public class mFont {public TestFont myFont=new TestFont();public static mFont tahoma_7_white=new mFont(),tahoma_7b_white=new mFont(),tahoma_7b_dark=new mFont(),tahoma_7=new mFont();public const int LEFT=0;public int getHeight()=>8;public int getWidth(string s)=>s.Length*4;public string[] splitFontArray(string s,int width)=>new[]{s};public void drawString(mGraphics g,string s,int x,int y,int align,mFont shadow=null){} }
+public class mFont {public Font myFont=new Font();public sbyte id;public Color color1;public static int yAddFont;public const string str=" 0123456789ps";public static mFont tahoma_7_white=new mFont(),tahoma_7b_white=new mFont(),tahoma_7b_dark=new mFont(),tahoma_7=new mFont();public const int LEFT=0;public int getHeight()=>8;public int getWidth(string s)=>s.Length*4;public string[] splitFontArray(string s,int width)=>new[]{s};public void drawString(mGraphics g,string s,int x,int y,int align,mFont shadow=null){} }
+public class DataInputStream {int position=-1;public int readShort(){if(position++<0)return mFont.str.Length;return position%4==0?8:position%4==3?4:0;}public void close(){}}
+public static class MyStream{public static DataInputStream readFile(string s)=>new DataInputStream();}
+public static class PopUp{public static Image goc=new Image();public static void loadBg(){}}
 public class Message {myReader r;public Message(byte[] data){r=new myReader(mSystem.convertToSbyte(data));}public myReader reader()=>r;}
 public static class mSystem {public static sbyte[] convertToSbyte(byte[] b){var a=new sbyte[b.Length];Buffer.BlockCopy(b,0,a,0,b.Length);return a;}}
 public class MyVector {public readonly List<object> list=new List<object>();public void removeElement(object o){list.Remove(o);}public void addElement(object o){list.Add(o);}public int size()=>list.Count;public object elementAt(int i)=>list[i];}
 public class GameScr {public static GameScr instance=new GameScr();public static bool isPaint=true,isPaintOther;public static int isPaintRada=1;public static MyVector textTime=new MyVector();public bool isPointerDowning;public bool isPaintPopup()=>false;}
 public class Char {public static Char player=new Char();public static Char ExistingLocalPlayer=>player;public static bool ischangingMap;public object currentMovePoint;public static MyVector vItemTime=new MyVector();public static Char myCharz()=>player;}
 public class Panel{public bool isShow;}public class Menu{public bool showMenu;}
-public static class GameCanvas {public static object currentScreen=GameScr.instance,currentDialog;public static bool isLoading,isPointerJustDown,isPointerDown,isPointerJustRelease,isPointerClick;public static int w=640,h=360,px,py,pxMouse,pyMouse,pXYScrollMouse,gameTick;public static Panel panel=new Panel();public static Menu menu=new Menu();public static void clearAllPointerEvent(){isPointerJustDown=isPointerDown=isPointerJustRelease=isPointerClick=false;} }
+public static class GameCanvas {public static Image loadImage(string s)=>new Image();public static object currentScreen=GameScr.instance,currentDialog;public static bool isLoading,isPointerJustDown,isPointerDown,isPointerJustRelease,isPointerClick;public static int w=640,h=360,px,py,pxMouse,pyMouse,pXYScrollMouse,gameTick;public static Panel panel=new Panel();public static Menu menu=new Menu();public static void clearAllPointerEvent(){isPointerJustDown=isPointerDown=isPointerJustRelease=isPointerClick=false;} }
 public static class TileMap{public static int mapID=1,zoneID=1;}public static class InfoDlg{public static bool isLock;}
 public class ChatTextField {static ChatTextField c=new ChatTextField();public bool isShow;public static ChatTextField gI()=>c;}
 public static class ChatPopup{public static object currChatPopup,serverChatPopUp;}
@@ -46,16 +57,24 @@ namespace Notifications{public static class NotificationProtocol{public const by
 namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP;}}
 public class Service{static Service s=new Service();public static Service gI()=>s;public int requests;public void requestBuffIconSnapshot(){requests++;}}
 namespace Hud {
+ public static class HudButtonSkin {
+  public static Texture2D CopyNativeTexture(Texture source,Action<Color32[],int,int> edit){
+   var pixels=new[]{new Color32(0,0,0,127),new Color32(0,0,0,0)};edit(pixels,2,1);
+   if(pixels.Any(p=>p.r!=255||p.g!=255||p.b!=255)||pixels[0].a!=127||pixels[1].a!=0)
+    throw new Exception("countdown atlas must preserve glyph alpha and render white");
+   return new Texture2D{IsFont=source.IsFont};
+  }
+ }
  public static class TopActionsHud{public const string Hub="hub";}
  public enum HorizontalAnchor{Left,Right}public enum VerticalAnchor{Top}
- public static class HudLayout {public static bool IsMobileLayout;
+ public static class HudLayout {public static bool IsMobileLayout;public static long FrameId=>GameCanvas.gameTick;public static long StateGeneration;
   public const int MenuOrder=50;public static Rect ScreenBounds=>new Rect(0,0,GameCanvas.w,GameCanvas.h);
   class Slot{public string name;public Func<Rect> rect;public Func<bool> visible;public int order;public bool block;}
   static List<Slot> slots=new List<Slot>();public static float PixelsToLogical(float n)=>n/mGraphics.zoomLevel;
   public const string ChatButton="chat";public static Rect Anchor(HorizontalAnchor h,VerticalAnchor v,Vector2 size,Vector2 margin)=>new Rect(h==HorizontalAnchor.Left?margin.x:GameCanvas.w-size.x-margin.x,margin.y,size.x,size.y);
-  public static void Register(string n,Func<Rect> r,int order,Func<bool> visible=null,bool blocksPointer=true){slots.Add(new Slot{name=n,rect=r,visible=visible,order=order,block=blocksPointer});}
+  public static void Register(string n,Func<Rect> r,int order,Func<bool> visible=null,bool blocksPointer=true,Func<long> cacheVersion=null){slots.Add(new Slot{name=n,rect=()=>{if(cacheVersion!=null)cacheVersion();return r();},visible=visible,order=order,block=blocksPointer});}
   public static Rect GetRect(string n)=>slots.First(s=>s.name==n).rect();public static bool TryGetRect(string n,out Rect r){var s=slots.FirstOrDefault(a=>a.name==n);r=s==null?new Rect():s.rect();return s!=null;}
-  public static string HitTest(Vector2 p)=>slots.AsEnumerable().Reverse().Where(s=>s.block&&(s.visible==null||s.visible())&&s.rect().Contains(p)).OrderByDescending(s=>s.order).Select(s=>s.name).FirstOrDefault();public static void Invalidate(){}
+  public static string HitTest(Vector2 p)=>slots.AsEnumerable().Reverse().Where(s=>s.block&&(s.visible==null||s.visible())&&s.rect().Contains(p)).OrderByDescending(s=>s.order).Select(s=>s.name).FirstOrDefault();public static void Invalidate(){StateGeneration++;}
  }
  public static class InventoryFrame{public const int SlotBackground=9993045,Border=6702080,PanelBackground=14338484;public static Rect Inset(Rect r,float p)=>new Rect(r.x+p,r.y+p,r.width-2*p,r.height-2*p);public static void Rounded(mGraphics g,Rect r,int c,byte a,int b){} }
  public static class InventoryFrameSkin{public static int gold;public static Image Corners(int a,int b,int c){if(b==0xffd34e)gold++;return new Image();}}
@@ -87,7 +106,10 @@ class StackLists {
     BuffIconStore.Reset();var entries=new List<BuffIconEntry>();for(int i=0;i<count;i++)entries.Add(new BuffIconEntry{Id=i+1,Icon=433,ExpiresAt=700000,Name="Bùa",Effect="Hiệu ứng"});BuffIconStore.Apply(entries,1,100000,BuffIconStore.Now);
     Rect buffs=BuffIconsHud.StackBounds,head=HeaderBounds(items),list=BodyBounds(items);
     Check(count!=0||buffs.height==0,"zero buffs retain height");
-    if(count>0){float labelBottom=0;for(int i=0;i<7;i++){Rect c=HudLayout.GetRect("buff-icons.slot."+i);if(c.height>0)labelBottom=Math.Max(labelBottom,c.yMax+1+8+1f/zoom);}Check(buffs.yMax+.01>=labelBottom,"countdown/outline excluded from stack height");}
+    if(count>0){
+     GUI.Ink.Clear();GUI.Capture=true;BuffIconsHud.Paint(new mGraphics());GUI.Capture=false;
+     Check(GUI.Ink.Count>0&&buffs.yMax*zoom+.01>=GUI.Ink.Max(r=>r.yMax)+1,"countdown/shadow excluded from stack height");
+    }
 
     float predecessor=count==0?stats.yMax:buffs.yMax;
     Check(Math.Abs(head.y-(predecessor+Gap))<.01,"items do not follow measured buff bottom");
@@ -130,11 +152,14 @@ class BuffTests {
    float w=(float)width/zoom;var info=new Rect(6,3,150,28);var hp=new Rect(40,3,125,8);var target=new Rect(w/2,0,80,80);var actions=new Rect(w-110,2,34,34);
    var desktop=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20);var phone=BuffIconGrid.Resolve(info,hp,target,actions,w,360,zoom,8,20,true);
    Check(phone.X==desktop.X&&phone.Y==desktop.Y,"mobile resize moved anchor");Check(phone.Size>=desktop.Size&&phone.Size*zoom<=74,"mobile icon target/cap");Check(phone.CaptionHeight*zoom>=phone.CaptionFontPixels&&desktop.CaptionHeight==8,"countdown size not scaled separately");
-   if(desktop.Columns==7)Check(phone.Columns==7,"mobile resize lost seven-cell lane");Check(phone.Bounds.yMax>=phone.Cell(0).yMax+phone.CaptionGap+phone.CaptionHeight+1f/zoom-.01,"larger caption overlaps next stack block");
+   Check(phone.Columns<=6&&phone.Cell(6).width==0,"mobile seventh cell must stay offscreen");
+   if(desktop.Columns==7)Check(phone.Columns==6,"mobile should fit six cells in a wide lane");
+   Check(phone.Bounds.xMax<target.xMin&&phone.Bounds.xMax<actions.xMin,"mobile row overlaps adjacent HUD");
+   Check(phone.Bounds.yMax>=phone.Cell(0).yMax+phone.CaptionGap+phone.CaptionHeight+1f/zoom-.01,"larger caption overlaps next stack block");
   }
-  var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==7,"S22 should use 72px icons with seven columns");
+  var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==6,"S22 should use 72px icons with six columns");
   Check(Math.Abs(mobileWide.CaptionGap*3-1)<.01,"mobile icon-label gap must be one physical pixel");Check(mobileWide.CaptionFontPixels>=28&&mobileWide.CaptionFontPixels<=32,"mobile countdown must not fall back to tiny default font size");
-  var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"Java packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết"),"real Java packet UTF/layout");
+  var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"snapshot packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết"),"snapshot packet UTF/layout");
   var nonBuff=new Message(new byte[]{2,4,1,2});Check(!BuffIconProtocol.TryRead(nonBuff)&&nonBuff.reader().readByte()==2,"non-buff routing consumed notification bytes");
   Check(BuffIconProtocol.TryRead(new Message(raw)),"buff routing failed");
   reader=new myReader(mSystem.convertToSbyte(raw.Take(raw.Length-1).ToArray()));reader.readByte();reader.readByte();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==8,"truncated packet cleared icons");
@@ -151,7 +176,7 @@ class BuffTests {
   Apply(2,700000);HudLayout.GetRect(BuffIconsHud.Root);Check((int)offset.GetValue(null)==0,"expiry did not clamp horizontal scroll");
   BuffIconStore.Reset();var npc=Entries(2,700000);npc.Add(new BuffIconEntry{Id=30,Icon=1403,ExpiresAt=700000,Name="Bùa NPC",Effect="Hiệu ứng"});BuffIconStore.Apply(npc,1,100000,BuffIconStore.Now);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==2&&visible.All(e=>e.Id<30),"NPC charms leaked from older-server snapshot");
   var item=new ItemTime(433,120);Char.vItemTime.addElement(item);typeof(ItemTime).GetField("expiresAt",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(item,BuffIconStore.Now-1);item.update();Check(item.coutTime==0&&Char.vItemTime.size()==0,"legacy icon did not expire exactly");item.initTime(45);Check(item.time==45,"legacy renewal stale duration");
-  HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=3;InventoryItemVisuals.MaxFontScale=0;BuffIconsHud.Paint(new mGraphics());Check(InventoryItemVisuals.MaxFontScale>1&&InventoryItemVisuals.TopAligned&&ReferenceEquals(InventoryItemVisuals.CaptionFont,mFont.tahoma_7b_white),"mobile countdown must use explicit larger native bold glyphs at the top");HudLayout.IsMobileLayout=false;
+  HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=3;BuffIconsHud.Paint(new mGraphics());Check(ReferenceEquals(Font.LastRequested,mFont.tahoma_7b_white.myFont),"mobile countdown must keep the native bold game font");HudLayout.IsMobileLayout=false;
   StackLists.Run();
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }
@@ -160,6 +185,6 @@ class BuffTests {
 cs=OUT/"BuffTests.cs";cs.write_text(fixture,encoding="utf-8")
 exe=OUT/"BuffTests.exe"
 scripts=ROOT/"Assets/Scripts"
-sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffIconsHud","TopLeftHudStack"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
+sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffCountdownText","BuffIconsHud","TopLeftHudStack"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
 subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe","/nologo","/target:exe",f"/out:{exe}",*map(str,sources)],check=True)
 subprocess.run([str(exe),str(packet)],check=True)
