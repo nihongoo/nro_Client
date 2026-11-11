@@ -436,7 +436,9 @@ public partial class Panel
         int zoom = Mathf.Max(1, mGraphics.zoomLevel);
         Image corner = InventoryFrameSkin.Corners(fill, 0, 255);
         Rect pixels = new Rect((badge.x - clip.x) * zoom, (badge.y - clip.y) * zoom, badge.width * zoom, badge.height * zoom);
-        float capWidth = Mathf.Min(3, pixels.width / 2), capHeight = Mathf.Min(3, pixels.height / 2);
+        // Keep the native corner proportions instead of squeezing them into 3 pixels.
+        float cornerScale = Mathf.Min(zoom, Mathf.Min(pixels.width / 14, pixels.height * .3f / 6));
+        float capWidth = 7 * cornerScale, capHeight = 6 * cornerScale;
         float border = DiscipleBadgeText.Border;
         Color previous = GUI.color;
         try {
