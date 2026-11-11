@@ -417,7 +417,7 @@ public partial class Panel
             } else {
                 Skill skill = DiscipleSkill(i - 8);
                 InventoryItemVisuals.PaintSkillIcon(g, skill?.template?.iconId ?? -1, cell, content, chosen,
-                    frameOnTop: true, nativeIcon: true);
+                    frameOnTop: true);
                 if (skill?.template != null) level = skill.point;
             }
             InventoryFrame.Clip(g, content);
