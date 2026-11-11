@@ -383,7 +383,7 @@ public partial class Panel
         for (int i = 0; i < 5; i++) {
             Rect chip = DiscipleLayout.Chip(i);
             discipleStatusBounds[i] = chip;
-            InventoryItemVisuals.PaintNativeTab(g, chip, content, i == activeStatus);
+            NativeHudSkin.PaintTab(chip, content, i == activeStatus);
         }
         discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatuses, discipleStatusBounds,
             5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);
@@ -403,7 +403,7 @@ public partial class Panel
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
             int level = -1;
             if (i < 8) {
-                InventoryFrame.Rounded(g, cell, InventoryFrame.SlotBackground, 255, chosen ? InventoryFrame.Accent : 0);
+                NativeHudSkin.PaintFrame(cell, content, InventoryFrame.SlotBackground, chosen ? InventoryFrame.Accent : 0);
                 Item item = DiscipleItem(i);
                 if (item?.template != null) {
                     InventoryItemVisuals.PaintInventoryIcon(g, item.template.iconID, cell, content);

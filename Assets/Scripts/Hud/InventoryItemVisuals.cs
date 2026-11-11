@@ -44,6 +44,10 @@ namespace Hud
             Rect clip = InventoryFrame.Intersection(pixels, HudButtonSkin.ScreenPixels(viewport));
             if (clip.width <= 0 || clip.height <= 0) return;
             Texture2D background = Resolve((int)pixels.width, (int)pixels.height, fill, border);
+            PaintTexture(pixels, clip, background);
+        }
+        internal static void PaintTexture(Rect pixels, Rect clip, Texture2D background)
+        {
             Color previous = GUI.color;
             Matrix4x4 matrix = GUI.matrix;
             try {
