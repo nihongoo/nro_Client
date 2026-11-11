@@ -383,7 +383,7 @@ public partial class Panel
         for (int i = 0; i < 5; i++) {
             Rect chip = DiscipleLayout.Chip(i);
             discipleStatusBounds[i] = chip;
-            SmoothRoundedSkin.Paint(chip, content, i == activeStatus ? 12052656 : 16770503, i == activeStatus ? 0x287C3B : 0x806124);
+            InventoryItemVisuals.PaintNativeTab(g, chip, content, i == activeStatus);
         }
         discipleStatusText.Paint(mFont.tahoma_7_grey, discipleStatuses, discipleStatusBounds,
             5, content, activeStatus, mFont.tahoma_7_grey.color1, mFont.tahoma_7_green2.color1);
