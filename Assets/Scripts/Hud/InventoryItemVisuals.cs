@@ -4,6 +4,59 @@ using UnityEngine;
 
 namespace Hud
 {
+    internal static class SmoothRoundedSkin
+    {
+        private static readonly Dictionary<Vector4, Texture2D> textures = new Dictionary<Vector4, Texture2D>();
+
+        private static Texture2D Resolve(int width, int height, int fill, int border)
+        {
+            var key = new Vector4(width, height, fill, border);
+            if (textures.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
+            if (textures.Count >= 32) {
+                foreach (Texture2D old in textures.Values) UnityEngine.Object.Destroy(old);
+                textures.Clear();
+            }
+            var pixels = new Color32[width * height];
+            float radius = Mathf.Min(width, height) * .3f;
+            // Evaluate coverage in final screen pixels, including a one-pixel border.
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) {
+                float qx = Mathf.Abs(x + .5f - width * .5f) - (width * .5f - radius);
+                float qy = Mathf.Abs(y + .5f - height * .5f) - (height * .5f - radius);
+                float dx = Mathf.Max(qx, 0), dy = Mathf.Max(qy, 0);
+                float distance = Mathf.Sqrt(dx * dx + dy * dy) + Mathf.Min(Mathf.Max(qx, qy), 0) - radius;
+                float alpha = Mathf.Clamp01(.5f - distance);
+                float interior = alpha > 0 ? Mathf.Clamp01(-.5f - distance) / alpha : 0;
+                pixels[y * width + x] = new Color32((byte)((border >> 16) + ((fill >> 16) - (border >> 16)) * interior),
+                    (byte)(((border >> 8) & 255) + (((fill >> 8) & 255) - ((border >> 8) & 255)) * interior), (byte)((border & 255) + ((fill & 255) - (border & 255)) * interior), (byte)Mathf.RoundToInt(alpha * 255));
+            }
+            cached = new Texture2D(width, height, TextureFormat.RGBA32, false) {
+                name = "HUD rounded surface", filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
+            };
+            cached.SetPixels32(pixels);
+            cached.Apply(false, true);
+            textures[key] = cached;
+            return cached;
+        }
+        internal static void Paint(Rect bounds, Rect viewport, int fill = InventoryFrame.Accent, int border = 0)
+        {
+            Rect pixels = HudButtonSkin.ScreenPixels(bounds);
+            Rect clip = InventoryFrame.Intersection(pixels, HudButtonSkin.ScreenPixels(viewport));
+            if (clip.width <= 0 || clip.height <= 0) return;
+            Texture2D background = Resolve((int)pixels.width, (int)pixels.height, fill, border);
+            Color previous = GUI.color;
+            Matrix4x4 matrix = GUI.matrix;
+            try {
+                GUI.matrix = Matrix4x4.identity;
+                GUI.color = Color.white;
+                GUI.BeginGroup(clip);
+                try {
+                    GUI.DrawTexture(new Rect(pixels.x - clip.x, pixels.y - clip.y, pixels.width, pixels.height), background);
+                } finally { GUI.EndGroup(); }
+            } finally { GUI.matrix = matrix; GUI.color = previous; }
+        }
+    }
+
     internal static class InventoryItemVisuals
     {
         private static readonly Dictionary<int, Texture2D> auras = new Dictionary<int, Texture2D>();
@@ -444,7 +497,8 @@ namespace Hud
             mFont font = PrepareLevelFont();
             Rect badge = compact ? CompactLevelBounds(cell,levelWidth) : LevelBounds(cell, levelWidth, bag);
             InventoryFrame.Clip(g, viewport);
-            InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
+            if (compact) InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
+            else SmoothRoundedSkin.Paint(badge, viewport);
             PaintLevelLabel(g, badge, viewport, level, font, badge.width, compact);
         }
         private static mFont PrepareLevelFont()
