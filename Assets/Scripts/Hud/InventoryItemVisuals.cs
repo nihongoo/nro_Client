@@ -435,13 +435,6 @@ namespace Hud
             InventoryFrame.Rounded(g, badge, InventoryFrame.Accent);
             PaintLevelLabel(g, badge, viewport, level, font, badge.width, compact);
         }
-        internal static void PaintDiscipleLevelLabel(mGraphics g, Rect badge, Rect viewport, int level)
-        {
-            // Match the bag's text size even though this badge has different geometry.
-            mFont font = PrepareLevelFont();
-            float bagWidth = Mathf.Min(levelWidth, InventoryFrame.BagSize - 4);
-            PaintLevelLabel(g, badge, viewport, level, font, bagWidth, false);
-        }
         private static mFont PrepareLevelFont()
         {
             mFont font = mFont.tahoma_7;

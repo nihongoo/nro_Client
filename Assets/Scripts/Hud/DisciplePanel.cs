@@ -4,6 +4,68 @@ using UnityEngine;
 
 namespace Hud
 {
+    internal static class DiscipleBadgeText
+    {
+        internal const float HorizontalPadding = 3, VerticalPadding = 2, Border = 1;
+        private sealed class Label
+        {
+            internal GUIContent Content;
+            internal Vector2 Size;
+        }
+        private static readonly System.Collections.Generic.Dictionary<int, Label> labels = new System.Collections.Generic.Dictionary<int, Label>();
+        private static GUIStyle style;
+        private static mFont gameFont;
+        private static Font font;
+        private static int fontSize, zoom;
+
+        private static Label Resolve(int level)
+        {
+            mFont current = mFont.tahoma_7;
+            int currentZoom = Mathf.Max(1, mGraphics.zoomLevel);
+            int currentSize = current.myFont == null ? 0 : current.myFont.fontSize;
+            if (style == null || gameFont != current || font != current.myFont || fontSize != currentSize || zoom != currentZoom) {
+                gameFont = current; font = current.myFont; fontSize = currentSize; zoom = currentZoom;
+                style = new GUIStyle {
+                    font = font, fontSize = fontSize, alignment = TextAnchor.MiddleCenter,
+                    padding = new RectOffset(), margin = new RectOffset(), wordWrap = false, richText = false
+                };
+                style.normal.textColor = Color.black;
+                labels.Clear();
+            }
+            level = Mathf.Max(0, level);
+            if (!labels.TryGetValue(level, out Label label)) {
+                GUIContent content = new GUIContent("Lv" + level);
+                Vector2 measured = font == null
+                    ? new Vector2(gameFont.getWidth(content.text), gameFont.getHeight()) : style.CalcSize(content) / zoom;
+                label = new Label { Content = content, Size = new Vector2(
+                    measured.x + 2 * (HorizontalPadding + Border) / zoom,
+                    measured.y + 2 * (VerticalPadding + Border) / zoom) };
+                if (labels.Count >= 64) labels.Clear();
+                labels.Add(level, label);
+            }
+            return label;
+        }
+        internal static Vector2 Measure(int level) => Resolve(level).Size;
+        internal static void Paint(mGraphics g, Rect badge, Rect viewport, int level)
+        {
+            Label label = Resolve(level);
+            if (font == null) {
+                gameFont.drawString(g, label.Content.text, (int)badge.center.x,
+                    (int)(badge.center.y - gameFont.getHeight() / 2f), mFont.CENTER);
+                return;
+            }
+            float insetX = (HorizontalPadding + Border) / zoom, insetY = (VerticalPadding + Border) / zoom;
+            Color previous = GUI.color;
+            try {
+                GUI.color = Color.white;
+                GUI.BeginGroup(new Rect(viewport.x * zoom, viewport.y * zoom, viewport.width * zoom, viewport.height * zoom));
+                try { GUI.Label(new Rect((badge.x - viewport.x + insetX) * zoom, (badge.y - viewport.y + insetY) * zoom,
+                    (badge.width - 2 * insetX) * zoom, (badge.height - 2 * insetY) * zoom), label.Content, style); }
+                finally { GUI.EndGroup(); }
+            } finally { GUI.color = previous; }
+        }
+    }
+
     internal static class DiscipleLayout
     {
         internal const string Close = "disciple.detail.close", ScrollArea = "disciple.content";
@@ -12,7 +74,7 @@ namespace Hud
         private struct Geometry
         {
             internal Rect Viewport;
-            internal float GridLeft, Size, Gap, RowGap, Overhang, BadgeWidth, StarHeight, StarGap, TitleHeight;
+            internal float GridLeft, Size, Gap, RowGap, Overhang, StarHeight, StarGap, TitleHeight;
             internal float EquipmentY, StatusTitleY, ChipY, SkillTitleY, SkillY;
             internal int ScrollLimit;
         }
@@ -24,7 +86,7 @@ namespace Hud
                 if (frameVersion == version) return geometry;
 
                 Rect tabs = HudLayout.GetRect(InventoryFrame.Tabs);
-                const float padding = InventoryFrame.Gap, minBlockGap = 2;
+                const float padding = InventoryFrame.Gap;
                 float top = tabs.yMax + padding;
                 var next = new Geometry {
                     Viewport = new Rect(tabs.x, top, Mathf.Max(0, tabs.width - 1),
@@ -35,22 +97,20 @@ namespace Hud
                 next.Overhang = .025f * next.Size;
                 next.StarHeight = .95f * next.Size / 8;
                 next.StarGap = HudLayout.PixelsToLogical(1);
-                next.BadgeWidth = Mathf.Min(.48f * next.Size,
-                    Mathf.Max(.32f * next.Size, mFont.tahoma_7.getWidth("Lv7") + 1));
                 next.TitleHeight = Mathf.Max(1, mFont.tahoma_7_grey.getHeight());
                 next.GridLeft = next.Viewport.center.x - (4 * next.Size + 3 * next.Gap) / 2;
 
                 float equipmentFoot = next.Overhang + next.StarGap + next.StarHeight;
-                next.RowGap = Mathf.Max(next.Gap, equipmentFoot + minBlockGap);
-                float titleBlock = next.TitleHeight + 1;
+                next.RowGap = Mathf.Max(next.Gap, equipmentFoot + .15f * next.Size);
+                float titleBlock = next.TitleHeight + .15f * next.Size;
                 float usedHeight = 3 * titleBlock + 3 * next.Size + next.RowGap + equipmentFoot + ChipHeight + next.Overhang;
-                float blockGap = Mathf.Max(minBlockGap, (next.Viewport.height - usedHeight) / 2);
+                float blockGap = .35f * next.Size;
                 next.EquipmentY = top + titleBlock;
                 next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.RowGap + equipmentFoot + blockGap;
                 next.ChipY = next.StatusTitleY + titleBlock;
                 next.SkillTitleY = next.ChipY + ChipHeight + blockGap;
                 next.SkillY = next.SkillTitleY + titleBlock;
-                next.ScrollLimit = Mathf.Max(0, Mathf.CeilToInt(usedHeight + 2 * minBlockGap - next.Viewport.height));
+                next.ScrollLimit = Mathf.Max(0, Mathf.CeilToInt(usedHeight + 2 * blockGap - next.Viewport.height));
                 geometry = next; frameVersion = version;
                 return geometry;
             }
@@ -76,11 +136,11 @@ namespace Hud
             float top = i < 8 ? layout.EquipmentY + i / 4 * (layout.Size + layout.RowGap) : layout.SkillY;
             return new Rect(layout.GridLeft + i % 4 * stride, top - Scroll, layout.Size, layout.Size);
         }
-        internal static Rect Badge(Rect cell)
+        internal static Rect Badge(Rect cell, int level)
         {
             Geometry layout = Layout;
-            return new Rect(cell.xMax - layout.BadgeWidth + layout.Overhang, cell.yMax - InventoryItemVisuals.LevelHeight + layout.Overhang,
-                layout.BadgeWidth, InventoryItemVisuals.LevelHeight);
+            Vector2 size = DiscipleBadgeText.Measure(level);
+            return new Rect(cell.xMax - size.x + layout.Overhang, cell.yMax - size.y + layout.Overhang, size.x, size.y);
         }
         internal static Rect StarStrip(Rect cell)
         {
@@ -339,9 +399,8 @@ public partial class Panel
         float iconInset = HudLayout.PixelsToLogical(3);
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
-            Rect badge = DiscipleLayout.Badge(cell);
             Rect stars = i < 8 ? DiscipleLayout.StarStrip(cell) : new Rect();
-            if (cell.yMin >= content.yMax || Mathf.Max(badge.yMax, stars.yMax) <= content.yMin) continue;
+            if (cell.yMin >= content.yMax || Mathf.Max(cell.yMax + .025f * cell.width, stars.yMax) <= content.yMin) continue;
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
             int level = -1;
             if (i < 8) {
@@ -363,8 +422,9 @@ public partial class Panel
             }
             InventoryFrame.Clip(g, content);
             if (level >= 0) {
+                Rect badge = DiscipleLayout.Badge(cell, level);
                 PaintDiscipleBadge(badge, content);
-                InventoryItemVisuals.PaintDiscipleLevelLabel(g, badge, content, level);
+                DiscipleBadgeText.Paint(g, badge, content, level);
             }
         }
     }
@@ -376,8 +436,8 @@ public partial class Panel
         int zoom = Mathf.Max(1, mGraphics.zoomLevel);
         Image corner = InventoryFrameSkin.Corners(fill, 0, 255);
         Rect pixels = new Rect((badge.x - clip.x) * zoom, (badge.y - clip.y) * zoom, badge.width * zoom, badge.height * zoom);
-        float capWidth = Mathf.Min(7 * zoom, pixels.width / 2), capHeight = Mathf.Min(6 * zoom, pixels.height / 2);
-        float border = Mathf.Min(zoom, Mathf.Min(pixels.width, pixels.height) / 4);
+        float capWidth = Mathf.Min(3, pixels.width / 2), capHeight = Mathf.Min(3, pixels.height / 2);
+        float border = DiscipleBadgeText.Border;
         Color previous = GUI.color;
         try {
             GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
