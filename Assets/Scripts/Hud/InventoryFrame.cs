@@ -135,10 +135,12 @@ namespace Hud
                     () => Visible && GameCanvas.panel.InventoryBagDetailOpen && button < GameCanvas.panel.InventoryDetailButtonCount);
             }
         }
+        internal static float EquipmentSize { get { EnsureMetrics(); return metrics.EquipmentSize; } }
+        internal static float EquipmentGap { get { EnsureMetrics(); return metrics.EquipmentGap; } }
         internal static Rect EquipmentBounds(int slot)
         {
             EnsureMetrics();
-            float size=metrics.EquipmentSize,gap=metrics.EquipmentGap,left=metrics.EquipmentLeft;
+            float size=EquipmentSize,gap=EquipmentGap,left=metrics.EquipmentLeft;
             return new Rect(left + slot % 3 * (size + gap), 73 + Padding + 12 + Gap + slot / 3 * (size + 9) - (GameCanvas.panel?.InventoryFrameScroll ?? 0), size, size);
         }
         internal static float EquipmentBottom => EquipmentBounds(8).yMax + 10;

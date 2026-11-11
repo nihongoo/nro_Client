@@ -90,6 +90,7 @@ namespace Hud
         internal static void PaintStars(Rect cell, Rect viewport, Item item, Rect? strip = null)
         {
             int count = InventoryFrame.StarSlots(item);
+            if (strip.HasValue) count = Mathf.Min(count, 8);
             if (count == 0) return;
             int zoom = Mathf.Max(1, mGraphics.zoomLevel);
             Color previous = GUI.color;

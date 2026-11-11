@@ -7,13 +7,12 @@ namespace Hud
     internal static class DiscipleLayout
     {
         internal const string Close = "disciple.detail.close", ScrollArea = "disciple.content";
-        private const float CellRatio = .17f, GapRatio = .035f;
         private const float ChipHeight = 24;
         internal static bool Visible => InventoryFrame.Visible && GameCanvas.panel.DisciplePanelActive;
         private struct Geometry
         {
             internal Rect Viewport;
-            internal float GridLeft, Size, Gap, Overhang, BadgeWidth, StarHeight, TitleHeight;
+            internal float GridLeft, Size, Gap, RowGap, Overhang, BadgeWidth, StarHeight, StarGap, TitleHeight;
             internal float EquipmentY, StatusTitleY, ChipY, SkillTitleY, SkillY;
             internal int ScrollLimit;
         }
@@ -31,21 +30,23 @@ namespace Hud
                     Viewport = new Rect(tabs.x, top, Mathf.Max(0, tabs.width - 1),
                         Mathf.Max(0, HudLayout.GetRect(InventoryFrame.Money).y - padding - top))
                 };
-                next.Size = next.Viewport.width * CellRatio;
-                next.Gap = next.Viewport.width * GapRatio;
+                next.Size = InventoryFrame.EquipmentSize;
+                next.Gap = InventoryFrame.EquipmentGap;
                 next.Overhang = .025f * next.Size;
-                next.StarHeight = Mathf.Min(.09f * next.Size, HudLayout.PixelsToLogical(7));
+                next.StarHeight = .95f * next.Size / 8;
+                next.StarGap = HudLayout.PixelsToLogical(1);
                 next.BadgeWidth = Mathf.Min(.48f * next.Size,
                     Mathf.Max(.32f * next.Size, mFont.tahoma_7.getWidth("Lv7") + 1));
                 next.TitleHeight = Mathf.Max(1, mFont.tahoma_7_grey.getHeight());
                 next.GridLeft = next.Viewport.center.x - (4 * next.Size + 3 * next.Gap) / 2;
 
-                float equipmentFoot = next.Overhang + next.StarHeight;
+                float equipmentFoot = next.Overhang + next.StarGap + next.StarHeight;
+                next.RowGap = Mathf.Max(next.Gap, equipmentFoot + minBlockGap);
                 float titleBlock = next.TitleHeight + 1;
-                float usedHeight = 3 * titleBlock + 3 * next.Size + next.Gap + equipmentFoot + ChipHeight + next.Overhang;
+                float usedHeight = 3 * titleBlock + 3 * next.Size + next.RowGap + equipmentFoot + ChipHeight + next.Overhang;
                 float blockGap = Mathf.Max(minBlockGap, (next.Viewport.height - usedHeight) / 2);
                 next.EquipmentY = top + titleBlock;
-                next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.Gap + equipmentFoot + blockGap;
+                next.StatusTitleY = next.EquipmentY + 2 * next.Size + next.RowGap + equipmentFoot + blockGap;
                 next.ChipY = next.StatusTitleY + titleBlock;
                 next.SkillTitleY = next.ChipY + ChipHeight + blockGap;
                 next.SkillY = next.SkillTitleY + titleBlock;
@@ -72,7 +73,7 @@ namespace Hud
         {
             Geometry layout = Layout;
             float stride = layout.Size + layout.Gap;
-            float top = i < 8 ? layout.EquipmentY + i / 4 * stride : layout.SkillY;
+            float top = i < 8 ? layout.EquipmentY + i / 4 * (layout.Size + layout.RowGap) : layout.SkillY;
             return new Rect(layout.GridLeft + i % 4 * stride, top - Scroll, layout.Size, layout.Size);
         }
         internal static Rect Badge(Rect cell)
@@ -81,11 +82,11 @@ namespace Hud
             return new Rect(cell.xMax - layout.BadgeWidth + layout.Overhang, cell.yMax - InventoryItemVisuals.LevelHeight + layout.Overhang,
                 layout.BadgeWidth, InventoryItemVisuals.LevelHeight);
         }
-        internal static Rect StarStrip(Rect cell, Rect badge)
+        internal static Rect StarStrip(Rect cell)
         {
             Geometry layout = Layout;
-            return new Rect(cell.x + layout.Overhang, cell.yMax + layout.Overhang,
-                Mathf.Max(0, badge.x - cell.x - 2 * layout.Overhang), layout.StarHeight);
+            float width = 8 * layout.StarHeight;
+            return new Rect(cell.center.x - width / 2, cell.yMax + layout.Overhang + layout.StarGap, width, layout.StarHeight);
         }
         internal static void Register()
         {
@@ -339,7 +340,7 @@ public partial class Panel
         for (int i = 0; i < 12; i++) {
             Rect cell = DiscipleLayout.Cell(i);
             Rect badge = DiscipleLayout.Badge(cell);
-            Rect stars = i < 8 ? DiscipleLayout.StarStrip(cell, badge) : new Rect();
+            Rect stars = i < 8 ? DiscipleLayout.StarStrip(cell) : new Rect();
             if (cell.yMin >= content.yMax || Mathf.Max(badge.yMax, stars.yMax) <= content.yMin) continue;
             bool chosen = i < 8 ? InventoryBagDetailOpen && selected == discipleBodySlots[i] : discipleSkill == i - 8;
             int level = -1;
@@ -373,10 +374,26 @@ public partial class Panel
         if (clip.width <= 0 || clip.height <= 0) return;
         const int fill = InventoryFrame.Accent;
         int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+        Image corner = InventoryFrameSkin.Corners(fill, 0, 255);
+        Rect pixels = new Rect((badge.x - clip.x) * zoom, (badge.y - clip.y) * zoom, badge.width * zoom, badge.height * zoom);
+        float capWidth = Mathf.Min(7 * zoom, pixels.width / 2), capHeight = Mathf.Min(6 * zoom, pixels.height / 2);
+        float border = Mathf.Min(zoom, Mathf.Min(pixels.width, pixels.height) / 4);
         Color previous = GUI.color;
         try {
-            GUI.color = new Color32((byte)(fill >> 16), (byte)((fill >> 8) & 255), (byte)(fill & 255), 255);
-            GUI.DrawTexture(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom), Texture2D.whiteTexture);
+            GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+            try {
+                GUI.color = Color.black;
+                GUI.DrawTexture(new Rect(pixels.x + capWidth, pixels.y, pixels.width - 2 * capWidth, pixels.height), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(pixels.x, pixels.y + capHeight, pixels.width, pixels.height - 2 * capHeight), Texture2D.whiteTexture);
+                GUI.color = new Color32((byte)(fill >> 16), (byte)((fill >> 8) & 255), (byte)(fill & 255), 255);
+                GUI.DrawTexture(new Rect(pixels.x + capWidth, pixels.y + border, pixels.width - 2 * capWidth, pixels.height - 2 * border), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(pixels.x + border, pixels.y + capHeight, pixels.width - 2 * border, pixels.height - 2 * capHeight), Texture2D.whiteTexture);
+                GUI.color = Color.white;
+                GUI.DrawTextureWithTexCoords(new Rect(pixels.x, pixels.y, capWidth, capHeight), corner.texture, new Rect(0, 0, 1, 1));
+                GUI.DrawTextureWithTexCoords(new Rect(pixels.xMax - capWidth, pixels.y, capWidth, capHeight), corner.texture, new Rect(1, 0, -1, 1));
+                GUI.DrawTextureWithTexCoords(new Rect(pixels.x, pixels.yMax - capHeight, capWidth, capHeight), corner.texture, new Rect(0, 1, 1, -1));
+                GUI.DrawTextureWithTexCoords(new Rect(pixels.xMax - capWidth, pixels.yMax - capHeight, capWidth, capHeight), corner.texture, new Rect(1, 1, -1, -1));
+            } finally { GUI.EndGroup(); }
         } finally { GUI.color = previous; }
     }
     private void PaintDiscipleSkillDetail(mGraphics g)
