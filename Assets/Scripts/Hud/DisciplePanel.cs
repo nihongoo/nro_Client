@@ -4,6 +4,43 @@ using UnityEngine;
 
 namespace Hud
 {
+    internal static class DiscipleBadgeSkin
+    {
+        private static readonly System.Collections.Generic.Dictionary<long, Texture2D> textures = new System.Collections.Generic.Dictionary<long, Texture2D>();
+
+        internal static Texture2D Resolve(int width, int height)
+        {
+            long key = ((long)width << 32) | (uint)height;
+            if (textures.TryGetValue(key, out Texture2D cached) && cached != null) return cached;
+            if (textures.Count >= 32) {
+                foreach (Texture2D old in textures.Values) UnityEngine.Object.Destroy(old);
+                textures.Clear();
+            }
+            var pixels = new Color32[width * height];
+            float radius = Mathf.Min(width, height) * .3f;
+            const int fill = InventoryFrame.Accent;
+            // Evaluate coverage in final screen pixels, including a one-pixel black border.
+            for (int y = 0; y < height; y++) for (int x = 0; x < width; x++) {
+                float qx = Mathf.Abs(x + .5f - width * .5f) - (width * .5f - radius);
+                float qy = Mathf.Abs(y + .5f - height * .5f) - (height * .5f - radius);
+                float dx = Mathf.Max(qx, 0), dy = Mathf.Max(qy, 0);
+                float distance = Mathf.Sqrt(dx * dx + dy * dy) + Mathf.Min(Mathf.Max(qx, qy), 0) - radius;
+                float alpha = Mathf.Clamp01(.5f - distance);
+                float interior = alpha > 0 ? Mathf.Clamp01(-.5f - distance) / alpha : 0;
+                pixels[y * width + x] = new Color32((byte)((fill >> 16) * interior),
+                    (byte)(((fill >> 8) & 255) * interior), (byte)((fill & 255) * interior), (byte)Mathf.RoundToInt(alpha * 255));
+            }
+            cached = new Texture2D(width, height, TextureFormat.RGBA32, false) {
+                name = "Disciple Lv badge", filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.DontSave
+            };
+            cached.SetPixels32(pixels);
+            cached.Apply(false, true);
+            textures[key] = cached;
+            return cached;
+        }
+    }
+
     internal static class DiscipleBadgeText
     {
         internal const float HorizontalPadding = 3, VerticalPadding = 2, Border = 1;
@@ -430,33 +467,20 @@ public partial class Panel
     }
     private static void PaintDiscipleBadge(Rect badge, Rect viewport)
     {
-        Rect clip = InventoryFrame.Intersection(badge, viewport);
+        Rect pixels = HudButtonSkin.ScreenPixels(badge);
+        Rect clip = InventoryFrame.Intersection(pixels, HudButtonSkin.ScreenPixels(viewport));
         if (clip.width <= 0 || clip.height <= 0) return;
-        const int fill = InventoryFrame.Accent;
-        int zoom = Mathf.Max(1, mGraphics.zoomLevel);
-        Image corner = InventoryFrameSkin.Corners(fill, 0, 255);
-        Rect pixels = new Rect((badge.x - clip.x) * zoom, (badge.y - clip.y) * zoom, badge.width * zoom, badge.height * zoom);
-        // Keep the native corner proportions instead of squeezing them into 3 pixels.
-        float cornerScale = Mathf.Min(zoom, Mathf.Min(pixels.width / 14, pixels.height * .3f / 6));
-        float capWidth = 7 * cornerScale, capHeight = 6 * cornerScale;
-        float border = DiscipleBadgeText.Border;
+        Texture2D background = DiscipleBadgeSkin.Resolve((int)pixels.width, (int)pixels.height);
         Color previous = GUI.color;
+        Matrix4x4 matrix = GUI.matrix;
         try {
-            GUI.BeginGroup(new Rect(clip.x * zoom, clip.y * zoom, clip.width * zoom, clip.height * zoom));
+            GUI.matrix = Matrix4x4.identity;
+            GUI.color = Color.white;
+            GUI.BeginGroup(clip);
             try {
-                GUI.color = Color.black;
-                GUI.DrawTexture(new Rect(pixels.x + capWidth, pixels.y, pixels.width - 2 * capWidth, pixels.height), Texture2D.whiteTexture);
-                GUI.DrawTexture(new Rect(pixels.x, pixels.y + capHeight, pixels.width, pixels.height - 2 * capHeight), Texture2D.whiteTexture);
-                GUI.color = new Color32((byte)(fill >> 16), (byte)((fill >> 8) & 255), (byte)(fill & 255), 255);
-                GUI.DrawTexture(new Rect(pixels.x + capWidth, pixels.y + border, pixels.width - 2 * capWidth, pixels.height - 2 * border), Texture2D.whiteTexture);
-                GUI.DrawTexture(new Rect(pixels.x + border, pixels.y + capHeight, pixels.width - 2 * border, pixels.height - 2 * capHeight), Texture2D.whiteTexture);
-                GUI.color = Color.white;
-                GUI.DrawTextureWithTexCoords(new Rect(pixels.x, pixels.y, capWidth, capHeight), corner.texture, new Rect(0, 0, 1, 1));
-                GUI.DrawTextureWithTexCoords(new Rect(pixels.xMax - capWidth, pixels.y, capWidth, capHeight), corner.texture, new Rect(1, 0, -1, 1));
-                GUI.DrawTextureWithTexCoords(new Rect(pixels.x, pixels.yMax - capHeight, capWidth, capHeight), corner.texture, new Rect(0, 1, 1, -1));
-                GUI.DrawTextureWithTexCoords(new Rect(pixels.xMax - capWidth, pixels.yMax - capHeight, capWidth, capHeight), corner.texture, new Rect(1, 1, -1, -1));
+                GUI.DrawTexture(new Rect(pixels.x - clip.x, pixels.y - clip.y, pixels.width, pixels.height), background);
             } finally { GUI.EndGroup(); }
-        } finally { GUI.color = previous; }
+        } finally { GUI.matrix = matrix; GUI.color = previous; }
     }
     private void PaintDiscipleSkillDetail(mGraphics g)
     {
