@@ -20,7 +20,9 @@ namespace Hud
             internal int Scroll;
             internal readonly RowSlot[] Rows = new RowSlot[Slots];
             internal int Count => Items ? drops.Count : people.Count;
-            internal int RowHeight => Mathf.Max(Unit(Items ? 32 : 28), mFont.tahoma_7_white.getHeight() + Unit(4));
+            internal int RowHeight => Mathf.Max(
+                Items && HudLayout.IsMobileLayout ? Mathf.CeilToInt(HudLayout.GetRect(TopActionsHud.Hub).height) : Unit(Items ? 32 : 28),
+                mFont.tahoma_7_white.getHeight() + Unit(4));
             internal int First => Scroll / RowHeight;
         }
         private static readonly ListBox persons = new ListBox { Header = "map-lists.people.header", Body = "map-lists.people.body", Rail = "map-lists.people.rail" };
@@ -91,7 +93,8 @@ namespace Hud
                 // Gray items still capture a click for focus only (user's follow-up choice).
                 HudLayout.Register(row.Hit, () => Intersection(HudLayout.GetRect(row.Full), HudLayout.GetRect(box.Body)), Order, show);
                 HudLayout.Register(row.Icon, () => {
-                    Rect full = HudLayout.GetRect(row.Full); int size = Unit(20);
+                    Rect full = HudLayout.GetRect(row.Full); int size = box.Items && HudLayout.IsMobileLayout
+                        ? Mathf.Max(Unit(20), box.RowHeight - Gap * 2) : Unit(20);
                     return new Rect(full.x + Padding, full.center.y - size / 2f, size, size);
                 }, Order, show, false);
                 HudLayout.Register(row.Dot, () => {

@@ -6,6 +6,9 @@ namespace Hud
     internal static class BuffIconsHud
     {
         internal const string Root = "buff-icons.bounds";
+        internal const string GemSlot = "buff-icons.gem";
+        private static Rect gemBounds;
+        private static BuffIconEntry gem;
         private const string Tooltip = "buff-icons.tooltip";
         private const int Order = 15;
         private static readonly string[] slots = new string[BuffIconStore.MaxVisible];
@@ -64,6 +67,7 @@ namespace Hud
         internal static void Register()
         {
             HudLayout.Register(Root, () => grid.Bounds, Order, () => Visible, cacheVersion: () => LayoutVersion);
+            HudLayout.Register(GemSlot, () => gemBounds, Order, () => Visible && gem != null, cacheVersion: () => LayoutVersion);
             for (int i = 0; i < slots.Length; i++) {
                 int index = i; slots[i] = "buff-icons.slot." + i;
                 HudLayout.Register(slots[i], () => grid.Cell(index), Order, () => Visible, cacheVersion: () => LayoutVersion);
@@ -71,7 +75,18 @@ namespace Hud
             HudLayout.Register(Tooltip, () => tooltipBounds, HudLayout.MenuOrder + 11, () => Visible && Selection() != null,
                 cacheVersion: () => TooltipVersion);
         }
-        internal static Rect StackBounds => Visible ? HudLayout.GetRect(Root) : new Rect();
+        internal static Rect StackBounds {
+            get {
+                if (!Visible) return new Rect();
+                Rect buffs = HudLayout.GetRect(Root);
+                if (gem == null) return buffs;
+                Rect rune = HudLayout.GetRect(GemSlot);
+                float bottom = rune.yMax + (BuffIconStore.Remaining(gem, BuffIconStore.Now) > 0 ? grid.CaptionGap + grid.CaptionHeight : 0);
+                if (buffs.height <= 0) return new Rect(rune.x, rune.y, rune.width, bottom - rune.y);
+                return new Rect(Mathf.Min(buffs.x, rune.x), Mathf.Min(buffs.y, rune.y),
+                    Mathf.Max(buffs.xMax, rune.xMax) - Mathf.Min(buffs.x, rune.x), Mathf.Max(buffs.yMax, bottom) - Mathf.Min(buffs.y, rune.y));
+            }
+        }
         private static long LayoutVersion { get { EnsureLayout(); return layoutVersion; } }
         private static bool Same(Rect a, Rect b) => a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
         private static void EnsureLayout()
@@ -87,7 +102,7 @@ namespace Hud
             if (!entriesChanged && !fontChanged && !viewportChanged && checkedFrame == frame && checkedState == state) return;
             checkedFrame = frame; checkedState = state;
             if (entriesChanged) {
-                nextExpiry = BuffIconStore.CopyVisible(visible, now); storeRevision = BuffIconStore.Revision;
+                nextExpiry = BuffIconStore.CopyVisible(visible, now); gem = BuffIconStore.Gem; storeRevision = BuffIconStore.Revision;
                 countdownDigits = 2;
                 for (int i = 0; i < visible.Count; i++) countdownDigits = Mathf.Max(countdownDigits, visible[i].Countdown(now).Length - 1);
             }
@@ -109,12 +124,18 @@ namespace Hud
                 grid.FitCaption(countdown.Height, visible.Count, layoutHeight);
                 if (geometryChanged || oldHeight != grid.CaptionHeight) layoutVersion++;
             }
+            Rect avatar = HudLayout.GetRect("top-info.avatar");
+            float gemSize = Mathf.Min(avatar.width, grid.Size);
+            gemBounds = gem == null ? new Rect() : new Rect(Mathf.Round(avatar.center.x - gemSize / 2),
+                Mathf.Ceil(avatar.yMax + grid.Gap), gemSize, gemSize);
+            if (entriesChanged) layoutVersion++;
             first = Mathf.Clamp(first, 0, Mathf.Max(0, visible.Count - grid.Count));
         }
         private static BuffIconEntry Selection()
         {
             if (selected == 0) return null;
             EnsureLayout();
+            if (selected == BuffIconEntry.GemId) return gem;
             for (int i = 0; i < grid.Count; i++) if (visible[first + i].Id == selected) return visible[first + i];
             return null;
         }
@@ -130,8 +151,11 @@ namespace Hud
                             mFont.tahoma_7b_white.getWidth(entry.Name) + 12));
                         effectLines = mFont.tahoma_7_white.splitFontArray(entry.Effect, (int)width - 12);
                         float height = (Mathf.Min(effectLines.Length, 5) + 2) * mFont.tahoma_7_white.getHeight() + 12;
-                        tooltipBounds = new Rect(Mathf.Clamp(grid.X, 4, GameCanvas.w - width - 4),
-                            Mathf.Clamp(grid.Bounds.yMax + grid.Gap, 4, Mathf.Max(4, GameCanvas.h - height - 4)), width, height);
+                        Rect anchor = entry.IsGem ? gemBounds : grid.Bounds;
+                        float bottom = anchor.yMax + (entry.IsGem && BuffIconStore.Remaining(entry, BuffIconStore.Now) > 0
+                            ? grid.CaptionHeight + grid.CaptionGap : 0);
+                        tooltipBounds = new Rect(Mathf.Clamp(anchor.x, 4, GameCanvas.w - width - 4),
+                            Mathf.Clamp(bottom + grid.Gap, 4, Mathf.Max(4, GameCanvas.h - height - 4)), width, height);
                     }
                 }
                 return tooltipVersion;
@@ -145,11 +169,11 @@ namespace Hud
             if (Selection() == null) selected = 0;
             if (!captured && !GameCanvas.isPointerJustDown && !GameCanvas.isPointerJustRelease && GameCanvas.pXYScrollMouse == 0) return;
             string hit = HudLayout.HitTest(new Vector2(GameCanvas.px, GameCanvas.py));
-            int id = 0;
+            int id = hit == GemSlot && gem != null ? BuffIconEntry.GemId : 0;
             for (int i = 0; i < grid.Count; i++) if (hit == slots[i]) { id = visible[first + i].Id; break; }
             if (GameCanvas.isPointerJustDown) {
                 captured = id != 0 || hit == Root || selected != 0;
-                pressed = id; scrollPress = id != 0 || hit == Root; moved = false; pressX = GameCanvas.px; dragFirst = first;
+                pressed = id; scrollPress = id != 0 && id != BuffIconEntry.GemId || hit == Root; moved = false; pressX = GameCanvas.px; dragFirst = first;
             }
             if (captured && scrollPress && Mathf.Abs(GameCanvas.px - pressX) >= 4) {
                 moved = true;
@@ -225,9 +249,15 @@ namespace Hud
             g.translate(-tx, -ty);
             try {
                 HudLayout.GetRect(Root);
-                if (grid.Count == 0) return;
+                if (grid.Count == 0 && gem == null) return;
                 EnsureFrames();
                 long now = BuffIconStore.Now;
+                if (gem != null) {
+                    PaintFrame(gemBounds, InventoryFrame.SlotBackground, InventoryFrame.Border, normalCorner);
+                    InventoryItemVisuals.PaintCompactIcon(g, gem.Icon, InventoryFrame.Inset(gemBounds, 1), gemBounds);
+                    if (BuffIconStore.Remaining(gem, now) > 0) countdown.Paint(gemBounds, gem.Countdown(now), grid.CaptionGap);
+                    if (gem.Inactive) PaintInactive(gemBounds);
+                }
                 for (int i = 0; i < grid.Count; i++) {
                     BuffIconEntry entry = visible[first + i]; Rect cell = grid.Cell(i);
                     // Native slot colors/corners; the timed fusion alone has a gold outline.
@@ -241,6 +271,17 @@ namespace Hud
             } finally {
                 g.setClip(0, 0, GameCanvas.w, GameCanvas.h); g.translate(tx, ty);
             }
+        }
+        private static void PaintInactive(Rect cell)
+        {
+            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            Matrix4x4 matrix = GUI.matrix; Color color = GUI.color;
+            try {
+                GUI.color = new Color(1, 0, 0, 1);
+                Rect pixels = new Rect(cell.x * zoom, cell.y * zoom, cell.width * zoom, cell.height * zoom);
+                GUIUtility.RotateAroundPivot(-45, pixels.center);
+                GUI.DrawTexture(new Rect(pixels.center.x - pixels.width / 2, pixels.center.y - 1, pixels.width, 2), Texture2D.whiteTexture);
+            } finally { GUI.matrix = matrix; GUI.color = color; }
         }
         // Tooltips overlay neighboring list rows; paint/hit order both stay above those rows.
         internal static void PaintTooltip(mGraphics g)

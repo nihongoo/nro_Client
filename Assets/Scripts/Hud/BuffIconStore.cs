@@ -6,6 +6,10 @@ namespace Hud
 {
     internal sealed class BuffIconEntry
     {
+        internal const int GemId = 80;
+        internal bool IsGem => Id == GemId;
+        internal bool Inactive => IsGem && ExpiresAt < 0;
+        internal long Deadline => IsGem ? (ExpiresAt == -1 ? 0 : System.Math.Abs(ExpiresAt)) : ExpiresAt;
         internal int Id, Icon;
         internal long ExpiresAt;
         internal string Name, Effect;
@@ -24,6 +28,7 @@ namespace Hud
         internal string TooltipCountdown(long now)
         {
             Countdown(now);
+            if (IsGem && BuffIconStore.Remaining(this, now) == 0) return Inactive ? "Chưa có tác dụng" : "Đang có tác dụng";
             return tooltipCountdown ?? (tooltipCountdown = "Còn " + countdown);
         }
         internal void ReuseCountdown(BuffIconEntry previous)
@@ -55,7 +60,7 @@ namespace Hud
             if (value < 0 || time <= 0 || values.Count > MaxEntries) throw new ArgumentException("Buff snapshot");
             var ids = new HashSet<int>();
             foreach (BuffIconEntry entry in values) {
-                if (entry.Id <= 0 || entry.Icon < 0 || !ids.Add(entry.Id) || string.IsNullOrEmpty(entry.Name)
+                if (entry.ExpiresAt == long.MinValue || entry.Id <= 0 || entry.Icon < 0 || !ids.Add(entry.Id) || string.IsNullOrEmpty(entry.Name)
                     || entry.Name.Length > 100 || entry.Effect == null || entry.Effect.Length > 1000)
                     throw new ArgumentException("Buff entry");
             }
@@ -70,8 +75,8 @@ namespace Hud
         }
         internal static int Remaining(BuffIconEntry entry, long now)
         {
-            if (entry.ExpiresAt <= serverTime) return 0;
-            long duration = entry.ExpiresAt - serverTime, elapsed = System.Math.Max(0, now - receivedAt);
+            if (entry.Deadline <= serverTime) return 0;
+            long duration = entry.Deadline - serverTime, elapsed = System.Math.Max(0, now - receivedAt);
             return elapsed >= duration ? 0 : (int)System.Math.Min(int.MaxValue, 1 + (duration - elapsed - 1) / 1000);
         }
         internal static long CopyVisible(List<BuffIconEntry> output, long now)
@@ -80,12 +85,13 @@ namespace Hud
             long nextExpiry = long.MaxValue;
             foreach (BuffIconEntry entry in entries) {
                 // IDs 30-46 are the NPC charm family, including snapshots from older servers.
-                if (entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
+                if (entry.IsGem || entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
                 output.Add(entry);
                 nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
             }
             return nextExpiry;
         }
+        internal static BuffIconEntry Gem { get { foreach (var entry in entries) if (entry.IsGem) return entry; return null; } }
         internal static string FormatTime(int seconds) => seconds >= 60
             ? ((seconds + 59L) / 60) + "p" : System.Math.Max(0, seconds) + "s";
     }
