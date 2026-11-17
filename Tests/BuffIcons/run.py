@@ -136,9 +136,9 @@ class BuffTests {
  static void Apply(int count,long expiry){BuffIconStore.Reset();BuffIconStore.Apply(Entries(count,expiry),1,100000,BuffIconStore.Now);}
  public static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
  static void GemHudChecks(){
-  foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4})foreach(long deadline in new long[]{0,-1,-115000}){
+  foreach(int itemId in Enumerable.Range(1987,8))foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4})foreach(long deadline in new long[]{0,-1,-115000}){
    HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconStore.Reset();BuffIconsHud.Reset();
-   var entries=Entries(2,700000);var gem=new BuffIconEntry{Id=80,Icon=16005,ExpiresAt=deadline,Name="Ngọc",Effect="Tác dụng"};entries.Add(gem);
+   var entries=Entries(2,700000);var gem=new BuffIconEntry{Id=80,Icon=16000+itemId-1987,ExpiresAt=deadline,Name="Ngọc "+itemId,Effect="Tác dụng"};entries.Add(gem);
    long now=BuffIconStore.Now;BuffIconStore.Apply(entries,1,100000,now);
    var normal=new List<BuffIconEntry>();BuffIconStore.CopyVisible(normal,now);
    Check(normal.Count==2&&BuffIconStore.Gem==gem,"gem must have its own slot outside buff row");
@@ -149,6 +149,11 @@ class BuffTests {
    Check(GUI.RedSlashes==red+(deadline<0?1:0),"inactive/cooldown gem red slash");
    Click((int)rect.center.x,(int)rect.center.y);
    Check(HudLayout.GetRect("buff-icons.tooltip").width>0,"gem tooltip input");
+   var ready=new BuffIconEntry{Id=80,Icon=gem.Icon,ExpiresAt=0,Name=gem.Name,Effect="Đang có tác dụng"};
+   BuffIconStore.Apply(new List<BuffIconEntry>{ready},2,100001,now);
+   red=GUI.RedSlashes;BuffIconsHud.Paint(new mGraphics());
+   Check(!BuffIconStore.Gem.Inactive&&GUI.RedSlashes==red,"active snapshot must clear stale red slash for gem "+itemId);
+   Check(BuffIconStore.Gem.TooltipCountdown(now)=="Đang có tác dụng","ready gem must not retain inactive tooltip");
    BuffIconStore.Reset();BuffIconStore.Apply(Entries(1,700000),1,100000,now);GameCanvas.gameTick++;
    Check(HudLayout.GetRect(BuffIconsHud.GemSlot).width==0,"unequipping must remove gem slot");
   }
