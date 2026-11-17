@@ -182,9 +182,8 @@ namespace Mod.CuongLe
     		case 13:
     		{
     			int num = (int)p;
-    			GameScr.keySkill[num].coolDown = 0;
-    			GameScr.keySkill[num].manaUse = 0;
-    			GameScr.info1.addInfo("Đóng Băng " + GameScr.keySkill[num].template.name, 0);
+                GameScr.keySkill[num].RestoreServerValues();
+                GameScr.info1.addInfo("Đồng bộ hồi chiêu " + GameScr.keySkill[num].template.name, 0);
     			break;
     		}
     		}
@@ -221,7 +220,7 @@ namespace Mod.CuongLe
     		MyVector myVector = new MyVector();
     		myVector.addElement(new Command("Auto Sử Dụng\n" + (isAutoUseSkills[skillIndex] ? ("[" + NinjaUtil.getMoneys(timeAutoSkills[skillIndex]) + " mili giây]") : "[STATUS: OFF]"), getInstance(), 11, skillIndex));
     		myVector.addElement(new Command("Nhập Delay\n[mili giây]", getInstance(), 12, skillIndex));
-    		myVector.addElement(new Command("Đóng Băng\n" + GameScr.keySkill[skillIndex].template.name, getInstance(), 13, skillIndex));
+            myVector.addElement(new Command("Đồng bộ hồi chiêu\n" + GameScr.keySkill[skillIndex].template.name, getInstance(), 13, skillIndex));
     		GameCanvas.menu.startAt(myVector, 3);
     	}
 
@@ -236,15 +235,9 @@ namespace Mod.CuongLe
     	{
     	}
 
-    	private static void smethod_6()
-    	{
-    	}
-
-
-
     	public static void AutoSendAttack()
     	{
-    		if (Char.myCharz().meDead || Char.myCharz().cHP <= 0 || Char.myCharz().statusMe == 14 || Char.myCharz().statusMe == 5 || Char.myCharz().myskill.template.type == 3 || Char.myCharz().myskill.template.id == 10 || Char.myCharz().myskill.template.id == 11 || (Char.myCharz().myskill.paintCanNotUseSkill && !GameCanvas.panel.isShow))
+            if (Char.myCharz().meDead || Char.myCharz().cHP <= 0 || Char.myCharz().statusMe == 14 || Char.myCharz().statusMe == 5 || Char.myCharz().myskill.template.type == 3 || Char.myCharz().myskill.template.id == 10 || Char.myCharz().myskill.template.id == 11 || mSystem.currentTimeMillis() - Char.myCharz().myskill.lastTimeUseThisSkill < Char.myCharz().myskill.EffectiveCooldown)
     		{
     			return;
     		}
@@ -253,13 +246,13 @@ namespace Mod.CuongLe
     		{
     			if (GameScr.gI().isMeCanAttackMob(Char.myCharz().mobFocus))
     			{
-    				Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
+                    if (!AttackSync.IsBasicAttack(Char.myCharz().myskill)) Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
     				SendAttackToMobFocus();
     				lastTimeSendAttack[mySkillIndex] = mSystem.currentTimeMillis();
     			}
     			else if (Char.myCharz().charFocus != null && isMeCanAttackChar(Char.myCharz().charFocus) && (double)Math.abs(Char.myCharz().charFocus.cx - Char.myCharz().cx) < (double)Char.myCharz().myskill.dx * 1.7)
     			{
-    				Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
+                    if (!AttackSync.IsBasicAttack(Char.myCharz().myskill)) Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
     				SendAttackToCharFocus();
     				lastTimeSendAttack[mySkillIndex] = mSystem.currentTimeMillis();
     			}
@@ -280,7 +273,7 @@ namespace Mod.CuongLe
     		{
     			skillIndex = 0;
     		}
-    		if (GameScr.keySkill[skillIndex] == null || GameScr.keySkill[skillIndex].paintCanNotUseSkill)
+            if (GameScr.keySkill[skillIndex] == null || mSystem.currentTimeMillis() - GameScr.keySkill[skillIndex].lastTimeUseThisSkill < GameScr.keySkill[skillIndex].EffectiveCooldown)
     		{
     			return;
     		}
@@ -358,7 +351,7 @@ namespace Mod.CuongLe
     			MyVector myVector = new MyVector();
     			myVector.addElement(Char.myCharz().charFocus);
     			Service.gI().sendPlayerAttack(new MyVector(), myVector, 2);
-                global::Char.myCharz().cMP -= global::Char.myCharz().myskill.manaUse;
+                if (!AttackSync.IsBasicAttack(global::Char.myCharz().myskill)) global::Char.myCharz().cMP -= global::Char.myCharz().myskill.manaUse;
             }
     		catch
     		{
@@ -372,7 +365,7 @@ namespace Mod.CuongLe
                 MyVector myVector = new MyVector();
     			myVector.addElement(Char.myCharz().mobFocus);
     			Service.gI().sendPlayerAttack(myVector, new MyVector(), -1);
-                global::Char.myCharz().cMP -= global::Char.myCharz().myskill.manaUse;
+                if (!AttackSync.IsBasicAttack(global::Char.myCharz().myskill)) global::Char.myCharz().cMP -= global::Char.myCharz().myskill.manaUse;
             }
     		catch
     		{
@@ -383,7 +376,7 @@ namespace Mod.CuongLe
     	{
     		if (skill.template.id != 20 && skill.template.id != 22 && skill.template.id != 7 && skill.template.id != 18 && skill.template.id != 23)
     		{
-    			return skill.coolDown + 100;
+                return skill.EffectiveCooldown + 100;
     		}
     		return (long)skill.coolDown + 500L;
     	}
@@ -409,7 +402,7 @@ namespace Mod.CuongLe
     		}
     		else
     		{
-    			if (Char.myCharz().meDead || Char.myCharz().statusMe == 14 || Char.myCharz().statusMe == 5 || Char.myCharz().myskill.template.type == 3 || Char.myCharz().myskill.template.id == 10 || Char.myCharz().myskill.template.id == 11 || Char.myCharz().myskill.paintCanNotUseSkill)
+                if (Char.myCharz().meDead || Char.myCharz().statusMe == 14 || Char.myCharz().statusMe == 5 || Char.myCharz().myskill.template.type == 3 || Char.myCharz().myskill.template.id == 10 || Char.myCharz().myskill.template.id == 11 || mSystem.currentTimeMillis() - Char.myCharz().myskill.lastTimeUseThisSkill < Char.myCharz().myskill.EffectiveCooldown)
     			{
     				return;
     			}
@@ -429,7 +422,7 @@ namespace Mod.CuongLe
     				}
     				if (Char.myCharz().charFocus != null && isMeCanAttackChar(Char.myCharz().charFocus) && (double)Math.abs(Char.myCharz().charFocus.cx - Char.myCharz().cx) < (double)Char.myCharz().myskill.dx * 1.5)
     				{
-    					Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
+                        if (!AttackSync.IsBasicAttack(Char.myCharz().myskill)) Char.myCharz().myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
     					SendAttackToCharFocus();
     				}
     			}
@@ -443,10 +436,6 @@ namespace Mod.CuongLe
     			return 1000L;
     		}
     		return (long)((double)skill.coolDown * 1.2 + 200.0);
-    	}
-
-    	private static void smethod_0()
-    	{
     	}
 
     	static AutoSkill()
@@ -463,9 +452,8 @@ namespace Mod.CuongLe
     	public static void FreezeSelectedSkill()
     	{
     		int mySkillIndex = GetMySkillIndex();
-    		GameScr.keySkill[mySkillIndex].coolDown = 0;
-    		GameScr.keySkill[mySkillIndex].manaUse = 0;
-    		GameScr.info1.addInfo("Đóng Băng\n" + GameScr.keySkill[mySkillIndex].template.name, 0);
+            GameScr.keySkill[mySkillIndex].RestoreServerValues();
+            GameScr.info1.addInfo("Đồng bộ hồi chiêu\n" + GameScr.keySkill[mySkillIndex].template.name, 0);
     	}
 
     	public static void findMobforPet()

@@ -2,14 +2,13 @@
 
 Only rendering, transport, world objects and the clock are fixtures. The actual
 setSkillPaint/start/finish/cancel methods and timed completion block are extracted
-unchanged from Char.cs and compiled by standalone Roslyn into a temporary folder.
+unchanged from Char.cs and compiled by standalone Roslyn into an existing test output directory.
 Run: python Tests/Skills/run.py [--ref develop]
 """
 from pathlib import Path
 import argparse
 import re
 import subprocess
-import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
 parser = argparse.ArgumentParser()
@@ -132,13 +131,11 @@ class UltiTests {
 }
 '''
 program = fixture.replace("__COMPLETION__", completion).replace("__METHODS__", "\n".join(methods))
-output = (ROOT / "Build/ulti-tests").resolve()
-assert output.is_relative_to(ROOT.resolve())
-output.mkdir(parents=True, exist_ok=True)
-with tempfile.TemporaryDirectory(prefix="client-ulti-tests-", dir=output) as folder:
-    path = Path(folder)
-    cs = path / "UltiTests.cs"
-    exe = path / "UltiTests.exe"
-    cs.write_text(program, encoding="utf-8")
-    subprocess.run([args.compiler, "/nologo", "/target:exe", f"/out:{exe}", str(cs)], check=True)
-    subprocess.run([str(exe)], check=True)
+program=program.replace("public long lastTimeUseThisSkill;","public int EffectiveCooldown=>coolDown;public long lastTimeUseThisSkill;")
+program+="\nstatic class AttackSync { public static bool Start(Char c,SkillPaint p,int t)=>false; }\n"
+output=(ROOT/"Build/buff-icons-tests").resolve()
+assert output.is_relative_to(ROOT.resolve()) and output.is_dir()
+cs=output/"UltiTests.cs";exe=output/"UltiTests.exe"
+cs.write_text(program,encoding="utf-8")
+subprocess.run([args.compiler,"/nologo","/target:exe",f"/out:{exe}",str(cs)],check=True)
+subprocess.run([str(exe)],check=True)

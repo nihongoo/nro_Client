@@ -4902,7 +4902,6 @@ public class Char : IMapObject
 
     public void setSkillPaint(SkillPaint skillPaint, int sType)
     {
-        hasSendAttack = false;
         if (stone || (me && myskill.template.id == 9 && cHP <= cHPFull / 10))
         {
             return;
@@ -4938,11 +4937,13 @@ public class Char : IMapObject
             {
                 return;
             }
-            if (num - myskill.lastTimeUseThisSkill < myskill.coolDown)
+            if (num - myskill.lastTimeUseThisSkill < myskill.EffectiveCooldown)
             {
                 myskill.paintCanNotUseSkill = true;
                 return;
             }
+            if (AttackSync.Start(this, skillPaint, sType)) return;
+            hasSendAttack = false;
             myskill.lastTimeUseThisSkill = num;
             if (myskill.template.manaUseType != 2)
             {
@@ -5078,6 +5079,14 @@ public class Char : IMapObject
         setAutoSkillPaint(skillPaint, sType);
     }
 
+    internal void ConfirmAttack(SkillPaint confirmed, int type)
+    {
+        if (confirmed == null) return;
+        if (isMonkey == 1 && confirmed.id >= 35 && confirmed.id <= 41) confirmed = GameScr.sks[106];
+        hasSendAttack = true; // This cast already has a server result; its hit frame must not resend.
+        setAutoSkillPaint(confirmed, type);
+    }
+
     private void finishTuSatCharge(int sType)
     {
         if (!me || myskill == null || myskill.template.id != 14 || !isStandAndCharge)
@@ -5111,7 +5120,7 @@ public class Char : IMapObject
             return;
         }
         long num = mSystem.currentTimeMillis();
-        if (me && num - myskill.lastTimeUseThisSkill < myskill.coolDown)
+        if (me && num - myskill.lastTimeUseThisSkill < myskill.EffectiveCooldown)
         {
             myskill.paintCanNotUseSkill = true;
             return;

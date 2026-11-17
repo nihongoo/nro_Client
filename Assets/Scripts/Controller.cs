@@ -125,6 +125,7 @@ public class Controller : IMessageHandler
             // Custom account packets must be consumed exactly once, before legacy handlers.
             if (msg.command == GuestCredentials.Command) { EmailLinkFlow.Read(msg.reader()); return; }
             if (msg.command == Notifications.NotificationProtocol.Command && Hud.BuffIconProtocol.TryRead(msg)) return;
+            if (msg.command == Notifications.NotificationProtocol.Command && AttackSync.TryRead(msg)) return;
 			Controller2.readMessage(msg);
 			switch (msg.command)
 			{
@@ -4392,6 +4393,7 @@ public class Controller : IMessageHandler
 					GameScr.nClasss[j].skillTemplates[k].skills[l].powRequire = d.readLong();
 					GameScr.nClasss[j].skillTemplates[k].skills[l].manaUse = d.readShort();
 					GameScr.nClasss[j].skillTemplates[k].skills[l].coolDown = d.readInt();
+                    GameScr.nClasss[j].skillTemplates[k].skills[l].RememberServerValues();
 					GameScr.nClasss[j].skillTemplates[k].skills[l].dx = d.readShort();
 					GameScr.nClasss[j].skillTemplates[k].skills[l].dy = d.readShort();
 					GameScr.nClasss[j].skillTemplates[k].skills[l].maxFight = d.readByte();
