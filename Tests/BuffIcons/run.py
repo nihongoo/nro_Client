@@ -48,7 +48,8 @@ public class Message {myReader r;public Message(byte[] data){r=new myReader(mSys
 public static class mSystem {public static sbyte[] convertToSbyte(byte[] b){var a=new sbyte[b.Length];Buffer.BlockCopy(b,0,a,0,b.Length);return a;}}
 public class MyVector {public readonly List<object> list=new List<object>();public void removeElement(object o){list.Remove(o);}public void addElement(object o){list.Add(o);}public int size()=>list.Count;public object elementAt(int i)=>list[i];}
 public class GameScr {public static GameScr instance=new GameScr();public static bool isPaint=true,isPaintOther;public static int isPaintRada=1;public static MyVector textTime=new MyVector();public bool isPointerDowning;public bool isPaintPopup()=>false;}
-public class Char {public static Char player=new Char();public static Char ExistingLocalPlayer=>player;public static bool ischangingMap;public object currentMovePoint;public static MyVector vItemTime=new MyVector();public static Char myCharz()=>player;}
+public class Mob {public int mobId;public bool isMobMe;}
+public class Char {public int charID;public Char charFocus;public Mob mobFocus;public static Char player=new Char();public static Char ExistingLocalPlayer=>player;public static bool ischangingMap;public object currentMovePoint;public static MyVector vItemTime=new MyVector();public static Char myCharz()=>player;}
 public class Panel{public bool isShow;}public class Menu{public bool showMenu;}
 public static class GameCanvas {public static Image loadImage(string s)=>new Image();public static object currentScreen=GameScr.instance,currentDialog;public static bool isLoading,isPointerJustDown,isPointerDown,isPointerJustRelease,isPointerClick;public static int w=640,h=360,px,py,pxMouse,pyMouse,pXYScrollMouse,gameTick;public static Panel panel=new Panel();public static Menu menu=new Menu();public static void clearAllPointerEvent(){isPointerJustDown=isPointerDown=isPointerJustRelease=isPointerClick=false;} }
 public static class TileMap{public static int mapID=1,zoneID=1;}public static class InfoDlg{public static bool isLock;}
@@ -56,7 +57,7 @@ public class ChatTextField {static ChatTextField c=new ChatTextField();public bo
 public static class ChatPopup{public static object currChatPopup,serverChatPopUp;}
 namespace Notifications{public static class NotificationProtocol{public const byte Version=2;}public static class NotificationCenter{public static bool IsOpen;}}
 namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP;}}
-public class Service{static Service s=new Service();public static Service gI()=>s;public int requests;public void requestBuffIconSnapshot(){requests++;}}
+public class Service{static Service s=new Service();public static Service gI()=>s;public int requests,lastKind,lastTarget;public void requestBuffIconSnapshot(int kind=0,int target=0){requests++;lastKind=kind;lastTarget=target;}}
 namespace Hud {
  public static class HudButtonSkin {
   public static Texture2D CopyNativeTexture(Texture source,Action<Color32[],int,int> edit){
@@ -191,6 +192,11 @@ class BuffTests {
   int retainedCount=visible.Count;var retainedGem=BuffIconStore.Gem;
   reader=new myReader(mSystem.convertToSbyte(raw.Take(raw.Length-1).ToArray()));reader.readByte();reader.readByte();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==retainedCount&&BuffIconStore.Gem==retainedGem,"truncated packet cleared icons");
   BuffIconProtocol.BeginSession();Check(!BuffIconStore.Ready,"account switch leaked old buffs");BuffIconProtocol.Update();Check(Service.gI().requests==1,"login snapshot request");BuffIconProtocol.Update();Check(Service.gI().requests==1,"request spam");TileMap.mapID++;BuffIconProtocol.Update();Check(Service.gI().requests==2,"map resync");BuffIconProtocol.RequestResync();BuffIconProtocol.Update();Check(Service.gI().requests==3,"resume resync");
+  int priorRequests=Service.gI().requests;
+  Char.player.charFocus=new Char{charID=42};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+1&&Service.gI().lastKind==1&&Service.gI().lastTarget==42,"current character focus must be sent without attacking");
+  Char.player.charFocus=new Char{charID=99};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+2&&Service.gI().lastTarget==99,"switching current focus must not retain old target");
+  Char.player.charFocus=null;Char.player.mobFocus=new Mob{mobId=7};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+3&&Service.gI().lastKind==2&&Service.gI().lastTarget==7,"current mob focus must be sent");
+  Char.player.mobFocus=null;BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+4&&Service.gI().lastKind==0,"clearing focus must notify server");BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+4,"unchanged focus must not spam requests");
   HudLayout.Register("top-info.avatar",()=>new Rect(6,3,28,28),0,null,false);HudLayout.Register("top-info.bounds",()=>new Rect(6,3,150,28),0,null,false);HudLayout.Register("top-info.hp",()=>new Rect(40,3,125,8),0,null,false);HudLayout.Register("target-info.bounds",()=>new Rect(230,0,100,80),0,null,false);HudLayout.Register("hub",()=>new Rect(520,2,34,34),40);
   mGraphics.zoomLevel=2;BuffIconsHud.Register();Apply(20,700000);Rect first=HudLayout.GetRect("buff-icons.slot.0");Check(HudLayout.GetRect("buff-icons.slot.6").width>0,"seventh slot missing");
   Click((int)first.center.x,(int)first.center.y);Check(HudLayout.GetRect("buff-icons.tooltip").width>0&&BuffIconsHud.ConsumesInput,"icon click did not open/consume");Click(600,300);Check(HudLayout.GetRect("buff-icons.tooltip").width==0&&BuffIconsHud.ConsumesInput,"outside click did not close/consume");

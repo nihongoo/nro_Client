@@ -2184,12 +2184,14 @@ public class Service
         finally { message.cleanup(); }
     }
 
-    public void requestBuffIconSnapshot()
+    public void requestBuffIconSnapshot(int targetKind = 0, int targetId = 0)
     {
         Message message = new Message(Notifications.NotificationProtocol.Command);
         try {
             message.writer().writeByte(Notifications.NotificationProtocol.Version);
             message.writer().writeByte(Hud.BuffIconProtocol.Snapshot);
+            message.writer().writeByte(targetKind);
+            message.writer().writeInt(targetId);
             session.sendMessage(message);
         } finally { message.cleanup(); }
     }
