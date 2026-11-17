@@ -3964,6 +3964,7 @@ public class Controller : IMessageHandler
 				mob9.hp = msg.reader().readInt();
 				mob9.maxHp = mob9.hp;
 				mob9.updateHp_bar();
+                Char.ExistingLocalPlayer?.RestoreRespawnFocus();
 				ServerEffect.addServerEffect(60, mob9.x, mob9.y, 1);
 				break;
 			}
@@ -5982,10 +5983,9 @@ public class Controller : IMessageHandler
 		Char.myCharz().vSkill.addElement(skill);
 		if ((skill.template.type == 1 || skill.template.type == 4 || skill.template.type == 2 || skill.template.type == 3) && (skill.template.maxPoint == 0 || (skill.template.maxPoint > 0 && skill.point > 0)))
 		{
-			if (skill.template.id == Char.myCharz().skillTemplateId)
-			{
-				Service.gI().selectSkill(Char.myCharz().skillTemplateId);
-			}
+            // The initial local choice comes from learned skills, not the remote-animation template id.
+            if (Char.myCharz().myskill == skill)
+                Service.gI().selectSkill(skill.template.id);
 			Char.myCharz().vSkillFight.addElement(skill);
 		}
 	}

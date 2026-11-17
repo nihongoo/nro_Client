@@ -103,8 +103,6 @@ internal static class AttackSync
     private static int queuedType, queuedMap, queuedZone;
     private static long nextRequest, pending, sentAt;
     private static Skill skill;
-    private static Mob sentMob;
-    private static Char sentPlayer;
     private static int sentMap, sentZone;
     private static SkillPaint stagedPaint, paint;
     private static int stagedType, paintType;
@@ -114,8 +112,8 @@ internal static class AttackSync
     {
         pending = 0; skill = queuedSkill = null;
         stagedPaint = paint = queuedPaint = null;
-        queuedOwner = queuedPlayer = sentPlayer = null;
-        queuedMob = sentMob = null;
+        queuedOwner = queuedPlayer = null;
+        queuedMob = null;
     }
     private static bool Ready(Skill value)
     {
@@ -178,7 +176,6 @@ internal static class AttackSync
         if (owner.mobFocus == null && owner.charFocus == null || !Ready(owner.myskill)) return -1;
         skill = owner.myskill; sentAt = mSystem.currentTimeMillis();
         pending = ++nextRequest; skill.lastTimeUseThisSkill = sentAt;
-        sentMob = owner.mobFocus; sentPlayer = owner.charFocus;
         sentMap = TileMap.mapID; sentZone = TileMap.zoneID;
         paint = stagedPaint ?? GameScr.sks[skill.skillId];
         paintType = stagedPaint != null ? stagedType : (TileMap.tileTypeAtPixel(owner.cx, owner.cy) & 2) != 0 ? 0 : 1;
@@ -203,8 +200,10 @@ internal static class AttackSync
                 // The ACK describes server time at send, not at receipt. Adding receive time
                 // here adds network delay on every attack. Keep the original send timestamp.
                 Char owner = Char.myCharz();
+                // Injury/death arrives before this ACK. A dead target invalidates future input,
+                // but must not suppress the animation of the hit the server just accepted.
                 if (owner.myskill == confirmedSkill && TileMap.mapID == sentMap && TileMap.zoneID == sentZone
-                    && owner.mobFocus == sentMob && owner.charFocus == sentPlayer && !owner.ClearInvalidAttackFocus())
+                    && owner.cHP > 0 && owner.statusMe != 5 && owner.statusMe != 14)
                     owner.ConfirmAttack(confirmedPaint, confirmedType);
             }
             else {

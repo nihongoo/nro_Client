@@ -7041,6 +7041,7 @@ public class Char : IMapObject
         {
             return;
         }
+        ClearRespawnFocus();
         focus.removeAllElements();
         int num = 0;
         int num2 = GameScr.cmx + 10;
@@ -7320,6 +7321,7 @@ public class Char : IMapObject
 
     public void startDie(short toX, short toY)
     {
+        if (me) ClearRespawnFocus();
         isMonkey = 0;
         isWaitMonkey = false;
         if (me && isDie)
@@ -7476,6 +7478,7 @@ public class Char : IMapObject
     {
         if (objectz is Mob && !MucTieu.deselectMob)
         {
+            ClearRespawnFocus();
             mobFocus = (Mob)objectz;
             deFocusNPC();
             charFocus = null;
@@ -7485,6 +7488,7 @@ public class Char : IMapObject
         {
             if (objectz is Char && !MucTieu.deselectChar)
             {
+                ClearRespawnFocus();
                 myCharz().mobFocus = null;
                 myCharz().deFocusNPC();
                 myCharz().charFocus = (Char)objectz;
@@ -7492,6 +7496,7 @@ public class Char : IMapObject
             }
             else if (objectz is ItemMap)
             {
+                ClearRespawnFocus();
                 myCharz().mobFocus = null;
                 myCharz().deFocusNPC();
                 myCharz().charFocus = null;
@@ -7500,6 +7505,7 @@ public class Char : IMapObject
         }
         else if (!MucTieu.deselectNpc)
         {
+            ClearRespawnFocus();
             myCharz().mobFocus = null;
             myCharz().deFocusNPC();
             myCharz().npcFocus = (Npc)objectz;
@@ -7522,6 +7528,9 @@ public class Char : IMapObject
         return false;
     }
 
+    private Mob rememberedRespawnMob;
+    private int rememberedRespawnIndex = -1, rememberedRespawnId, rememberedRespawnMap, rememberedRespawnZone;
+
     private void CancelAttackApproach()
     {
         if (endMovePointCommand != null && endMovePointCommand.idAction == 8002)
@@ -7535,12 +7544,45 @@ public class Char : IMapObject
     internal void ForgetAttackMob(Mob target)
     {
         if (mobFocus != target) return;
+        ClearRespawnFocus();
+        if (cHP > 0 && statusMe != 5 && statusMe != 14 && !target.isMobMe
+            && (target.hp <= 0 || target.status == 0 || target.status == 1)) {
+            for (int i = 0; i < GameScr.vMob.size(); i++) if (GameScr.vMob.elementAt(i) == target) {
+                rememberedRespawnMob = target; rememberedRespawnIndex = i; rememberedRespawnId = target.mobId;
+                rememberedRespawnMap = TileMap.mapID; rememberedRespawnZone = TileMap.zoneID;
+                break;
+            }
+        }
         mobFocus = null;
         CancelAttackApproach();
     }
 
+    internal void ClearRespawnFocus()
+    {
+        rememberedRespawnMob = null;
+        rememberedRespawnIndex = -1;
+    }
+
+    internal void RestoreRespawnFocus()
+    {
+        if (rememberedRespawnMob == null) return;
+        if (cHP <= 0 || statusMe == 5 || statusMe == 14 || mobFocus != null || charFocus != null
+            || npcFocus != null || itemFocus != null || TileMap.mapID != rememberedRespawnMap
+            || TileMap.zoneID != rememberedRespawnZone || rememberedRespawnIndex < 0
+            || rememberedRespawnIndex >= GameScr.vMob.size()
+            || GameScr.vMob.elementAt(rememberedRespawnIndex) != rememberedRespawnMob
+            || rememberedRespawnMob.mobId != rememberedRespawnId) {
+            ClearRespawnFocus();
+            return;
+        }
+        if (!GameScr.IsLiveMobTarget(rememberedRespawnMob)) return;
+        mobFocus = rememberedRespawnMob;
+        ClearRespawnFocus();
+    }
+
     internal bool ClearInvalidAttackFocus()
     {
+        RestoreRespawnFocus();
         bool cleared = false;
         if (mobFocus != null && !GameScr.IsLiveMobTarget(mobFocus))
         {

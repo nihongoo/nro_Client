@@ -1209,6 +1209,7 @@ public class GameScr : mScreen, IChatable
 
     public static void resetAllvector()
     {
+        Char.ExistingLocalPlayer?.ClearRespawnFocus();
         vCharInMap.removeAllElements();
         Teleport.vTeleport.removeAllElements();
         vItemMap.removeAllElements();
