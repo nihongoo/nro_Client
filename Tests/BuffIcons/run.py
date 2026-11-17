@@ -1,6 +1,7 @@
 """Exercise real buff store, protocol, grid and pointer handlers with rendering-only fixtures."""
 from pathlib import Path
 import subprocess
+import os
 import sys
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/"Build/buff-icons-tests";OUT.mkdir(parents=True,exist_ok=True)
@@ -136,6 +137,24 @@ class BuffTests {
  static List<BuffIconEntry> Entries(int count,long expiry){var list=new List<BuffIconEntry>();for(int i=count;i>=1;i--)list.Add(new BuffIconEntry{Id=i,Icon=433,ExpiresAt=expiry,Name="BÃ¹a "+i,Effect="Hiá»‡u á»©ng"});return list;}
  static void Apply(int count,long expiry){BuffIconStore.Reset();BuffIconStore.Apply(Entries(count,expiry),1,100000,BuffIconStore.Now);}
  public static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
+ static void SteadfastCycleChecks(string encoded){
+  foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4}){
+   HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconProtocol.BeginSession();
+   string[] packets=encoded.Split(',');Check(packets.Length==3,"steadfast cycle must include detached/fused/split snapshots");
+   for(int i=0;i<packets.Length;i++){
+    byte[] raw=Convert.FromBase64String(packets[i]);
+    Check(BuffIconProtocol.TryRead(new Message(raw)),"real steadfast snapshot must pass protocol decoder");
+    var gem=BuffIconStore.Gem;bool active=i==1;
+    Check(gem!=null&&gem.Icon==16006&&gem.Inactive==!active,"steadfast wire state must follow real fusion cycle");
+    Check(gem.TooltipCountdown(BuffIconStore.Now)==(active?"Đang có tác dụng":"Chưa có tác dụng"),"steadfast tooltip inverted");
+    Check(gem.Effect.Contains("Chỉ khi hợp thể"),"steadfast tooltip must include fusion-only description");
+    Rect rect=HudLayout.GetRect(BuffIconsHud.GemSlot);Check(rect.width>0,"steadfast gem slot missing");
+    int red=GUI.RedSlashes;BuffIconsHud.Paint(new mGraphics());
+    Check(GUI.RedSlashes==red+(active?0:1),"real fusion cycle draws inverted steadfast slash");
+   }
+  }
+  HudLayout.IsMobileLayout=false;
+ }
  static void GemHudChecks(){
   foreach(int itemId in Enumerable.Range(1987,8))foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4})foreach(long deadline in new long[]{0,-1,-115000}){
    HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconStore.Reset();BuffIconsHud.Reset();
@@ -212,6 +231,7 @@ class BuffTests {
   HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=3;BuffIconsHud.Paint(new mGraphics());Check(ReferenceEquals(Font.LastRequested,mFont.tahoma_7b_white.myFont),"mobile countdown must keep the native bold game font");HudLayout.IsMobileLayout=false;
   GemHudChecks();
   StackLists.Run();
+  SteadfastCycleChecks(args[1]);
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }
 }
@@ -221,4 +241,9 @@ exe=OUT/"BuffTests.exe"
 scripts=ROOT/"Assets/Scripts"
 sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffCountdownText","BuffIconsHud","TopLeftHudStack"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
 subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe","/nologo","/target:exe",f"/out:{exe}",*map(str,sources)],check=True)
-subprocess.run([str(exe),str(packet)],check=True)
+# Feed snapshots from real Pet fusion/unfusion and real NPoint, rather than handwritten flags.
+server_root=packet.resolve().parents[2]
+server_cp=os.environ.get("STEADFAST_SERVER_CLASSPATH",str(packet.parent)+os.pathsep+str(server_root/"lib/*"))
+cycle_result=subprocess.run(["java","-cp",server_cp,str(server_root/"tests/disciple/SteadfastFusionTest.java"),"--export"],check=True,text=True,encoding="utf-8",stdout=subprocess.PIPE)
+cycle=next(line.partition("=")[2] for line in cycle_result.stdout.splitlines() if line.startswith("STEADFAST_CYCLE="))
+subprocess.run([str(exe),str(packet),cycle],check=True)
