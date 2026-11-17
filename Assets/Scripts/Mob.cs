@@ -1341,9 +1341,8 @@ public class Mob : IMapObject
         cTimeDie = mSystem.currentTimeMillis();
         hp = 0L;
         injureThenDie = true;
-        hp = 0L;
         status = 1;
-        Res.outz("MOB DIEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEe");
+        Char.ExistingLocalPlayer?.ForgetAttackMob(this);
         p1 = -3;
         p2 = -dir;
         p3 = 0;

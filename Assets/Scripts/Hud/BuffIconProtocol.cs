@@ -7,10 +7,10 @@ namespace Hud
     {
         internal const byte Snapshot = 8;
         private static long nextRequest;
-        private static int map = -1, zone = -1;
+        private static int map = -1, zone = -1, targetKind = -1, targetId;
         internal static void BeginSession()
         {
-            BuffIconStore.Reset(); BuffIconsHud.Reset(); nextRequest = 0; map = zone = -1;
+            BuffIconStore.Reset(); BuffIconsHud.Reset(); nextRequest = 0; map = zone = targetKind = -1; targetId = 0;
         }
         internal static void RequestResync()
         {
@@ -25,9 +25,13 @@ namespace Hud
                 map = TileMap.mapID; zone = TileMap.zoneID; nextRequest = 0;
                 BuffIconsHud.Reset();
             }
+            Char player = Char.ExistingLocalPlayer;
+            int kind = player.charFocus != null ? 1 : player.mobFocus != null ? (player.mobFocus.isMobMe ? 3 : 2) : 0;
+            int id = kind == 1 ? player.charFocus.charID : kind != 0 ? player.mobFocus.mobId : 0;
+            if (kind != targetKind || id != targetId) { targetKind = kind; targetId = id; nextRequest = 0; }
             if (now < nextRequest) return;
             nextRequest = now + (BuffIconStore.Ready ? 10000 : 3000);
-            Service.gI().requestBuffIconSnapshot();
+            Service.gI().requestBuffIconSnapshot(targetKind, targetId);
         }
         internal static bool TryRead(Message message)
         {

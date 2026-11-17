@@ -868,6 +868,7 @@ public class Service
         WorldChat.WorldChatHud.BeginSession();
         UltiCastClient.Reset();
         Hud.BuffIconProtocol.BeginSession();
+        AttackSync.Reset();
 		try
 		{
 			Message message = messageNotLogin(0);
@@ -1589,6 +1590,7 @@ public class Service
 	public void sendPlayerAttack(MyVector vMob, MyVector vChar, int type)
 	{
         if (UltiCastClient.InterceptAttack()) return;
+        long request = 0;
 		try
 		{
 			Res.outz(">>SEND ATTACT  vMob=" + vMob.size() + "  vChar=" + vChar.size());
@@ -1597,6 +1599,8 @@ public class Service
 			{
 				return;
 			}
+            request = AttackSync.BeforeSend();
+            if (request < 0) return;
 			if (vMob.size() > 0 && vChar.size() > 0)
 			{
 				switch (type)
@@ -1652,6 +1656,7 @@ public class Service
 				}
 			}
 			message.writer().writeSByte((sbyte)Char.myCharz().cdir);
+            if (request > 0) message.writer().writeLong(request);
 			if (message != null)
 			{
 				session.sendMessage(message);
@@ -1659,6 +1664,7 @@ public class Service
 		}
 		catch (Exception)
 		{
+            AttackSync.SendFailed(request);
 			Res.err(">>err ATTACT  vMob=" + vMob.size() + "  vChar=" + vChar.size());
 		}
 	}
@@ -2184,12 +2190,14 @@ public class Service
         finally { message.cleanup(); }
     }
 
-    public void requestBuffIconSnapshot()
+    public void requestBuffIconSnapshot(int targetKind = 0, int targetId = 0)
     {
         Message message = new Message(Notifications.NotificationProtocol.Command);
         try {
             message.writer().writeByte(Notifications.NotificationProtocol.Version);
             message.writer().writeByte(Hud.BuffIconProtocol.Snapshot);
+            message.writer().writeByte(targetKind);
+            message.writer().writeInt(targetId);
             session.sendMessage(message);
         } finally { message.cleanup(); }
     }

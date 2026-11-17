@@ -105,10 +105,9 @@ namespace Mod.CuongLe
                     if (Char.myCharz().mobFocus != null && IsValidMob(Char.myCharz().mobFocus) &&
                         Math.abs(Res.distance(Char.myCharz().cx, Char.myCharz().cy, Char.myCharz().mobFocus.x, Char.myCharz().mobFocus.y)) < 100)
                     {
-                        if (mSystem.currentTimeMillis() - myskill.lastTimeUseThisSkill > (long)myskill.coolDown + 100L)
+                        if (mSystem.currentTimeMillis() - myskill.lastTimeUseThisSkill > (long)myskill.EffectiveCooldown + 100L)
                         {
-                            myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
-                            Char.myCharz().mobFocus = Char.myCharz().mobFocus;
+                            if (!AttackSync.IsBasicAttack(myskill)) myskill.lastTimeUseThisSkill = mSystem.currentTimeMillis();
                             MyVector myVector = new MyVector();
                             myVector.addElement(Char.myCharz().mobFocus);
                             Service.gI().sendPlayerAttack(myVector, new MyVector(), -1);

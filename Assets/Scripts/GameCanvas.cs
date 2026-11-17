@@ -6,6 +6,8 @@ using UnityEngine;
 
 public class GameCanvas : IActionListener
 {
+    internal static bool AttackHeld;
+
 	public static long timeNow = 0L;
 
 	public static bool open3Hour;
@@ -1894,6 +1896,7 @@ public class GameCanvas : IActionListener
 				clearKeyPressed();
 				break;
 			}
+			AttackHeld = true;
 			keyHold[25] = true;
 			keyPressed[25] = true;
 			keyHold[15] = true;
@@ -1974,6 +1977,7 @@ public class GameCanvas : IActionListener
 		case 53:
 			if (currentScreen == CrackBallScr.instance || (currentScreen == GameScr.instance && isMoveNumberPad && !ChatTextField.gI().isShow))
 			{
+				AttackHeld = true;
 				keyHold[5] = true;
 				keyPressed[5] = true;
 			}
@@ -2019,6 +2023,7 @@ public class GameCanvas : IActionListener
 			break;
 		case -5:
 		case 10:
+			AttackHeld = false;
 			keyHold[25] = false;
 			keyReleased[25] = true;
 			keyHold[15] = true;
@@ -2099,6 +2104,7 @@ public class GameCanvas : IActionListener
 		case 53:
 			if (currentScreen == CrackBallScr.instance || (currentScreen == GameScr.instance && isMoveNumberPad && !ChatTextField.gI().isShow))
 			{
+				AttackHeld = false;
 				keyHold[5] = false;
 				keyReleased[5] = true;
 			}

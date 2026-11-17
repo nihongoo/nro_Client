@@ -4902,7 +4902,6 @@ public class Char : IMapObject
 
     public void setSkillPaint(SkillPaint skillPaint, int sType)
     {
-        hasSendAttack = false;
         if (stone || (me && myskill.template.id == 9 && cHP <= cHPFull / 10))
         {
             return;
@@ -4926,7 +4925,6 @@ public class Char : IMapObject
                 return;
             }
         }
-        Res.outz("skill id= " + skillPaint.id);
         if ((me && dart != null) || TileMap.isOfflineMap())
         {
             return;
@@ -4938,11 +4936,13 @@ public class Char : IMapObject
             {
                 return;
             }
-            if (num - myskill.lastTimeUseThisSkill < myskill.coolDown)
+            if (AttackSync.Start(this, skillPaint, sType)) return;
+            if (num - myskill.lastTimeUseThisSkill < myskill.EffectiveCooldown)
             {
                 myskill.paintCanNotUseSkill = true;
                 return;
             }
+            hasSendAttack = false;
             myskill.lastTimeUseThisSkill = num;
             if (myskill.template.manaUseType != 2)
             {
@@ -5078,6 +5078,14 @@ public class Char : IMapObject
         setAutoSkillPaint(skillPaint, sType);
     }
 
+    internal void ConfirmAttack(SkillPaint confirmed, int type)
+    {
+        if (confirmed == null) return;
+        if (isMonkey == 1 && confirmed.id >= 35 && confirmed.id <= 41) confirmed = GameScr.sks[106];
+        hasSendAttack = true; // This cast already has a server result; its hit frame must not resend.
+        setAutoSkillPaint(confirmed, type);
+    }
+
     private void finishTuSatCharge(int sType)
     {
         if (!me || myskill == null || myskill.template.id != 14 || !isStandAndCharge)
@@ -5111,7 +5119,7 @@ public class Char : IMapObject
             return;
         }
         long num = mSystem.currentTimeMillis();
-        if (me && num - myskill.lastTimeUseThisSkill < myskill.coolDown)
+        if (me && num - myskill.lastTimeUseThisSkill < myskill.EffectiveCooldown)
         {
             myskill.paintCanNotUseSkill = true;
             return;
@@ -7033,6 +7041,7 @@ public class Char : IMapObject
         {
             return;
         }
+        ClearRespawnFocus();
         focus.removeAllElements();
         int num = 0;
         int num2 = GameScr.cmx + 10;
@@ -7312,6 +7321,7 @@ public class Char : IMapObject
 
     public void startDie(short toX, short toY)
     {
+        if (me) ClearRespawnFocus();
         isMonkey = 0;
         isWaitMonkey = false;
         if (me && isDie)
@@ -7468,6 +7478,7 @@ public class Char : IMapObject
     {
         if (objectz is Mob && !MucTieu.deselectMob)
         {
+            ClearRespawnFocus();
             mobFocus = (Mob)objectz;
             deFocusNPC();
             charFocus = null;
@@ -7477,6 +7488,7 @@ public class Char : IMapObject
         {
             if (objectz is Char && !MucTieu.deselectChar)
             {
+                ClearRespawnFocus();
                 myCharz().mobFocus = null;
                 myCharz().deFocusNPC();
                 myCharz().charFocus = (Char)objectz;
@@ -7484,6 +7496,7 @@ public class Char : IMapObject
             }
             else if (objectz is ItemMap)
             {
+                ClearRespawnFocus();
                 myCharz().mobFocus = null;
                 myCharz().deFocusNPC();
                 myCharz().charFocus = null;
@@ -7492,6 +7505,7 @@ public class Char : IMapObject
         }
         else if (!MucTieu.deselectNpc)
         {
+            ClearRespawnFocus();
             myCharz().mobFocus = null;
             myCharz().deFocusNPC();
             myCharz().npcFocus = (Npc)objectz;
@@ -7512,6 +7526,78 @@ public class Char : IMapObject
     public bool isInvisible()
     {
         return false;
+    }
+
+    private Mob rememberedRespawnMob;
+    private int rememberedRespawnIndex = -1, rememberedRespawnId, rememberedRespawnMap, rememberedRespawnZone;
+
+    private void CancelAttackApproach()
+    {
+        if (endMovePointCommand != null && endMovePointCommand.idAction == 8002)
+        {
+            currentMovePoint = null;
+            endMovePointCommand = null;
+            cvx = cvy = 0;
+        }
+    }
+
+    internal void ForgetAttackMob(Mob target)
+    {
+        if (mobFocus != target) return;
+        ClearRespawnFocus();
+        if (cHP > 0 && statusMe != 5 && statusMe != 14 && !target.isMobMe
+            && (target.hp <= 0 || target.status == 0 || target.status == 1)) {
+            for (int i = 0; i < GameScr.vMob.size(); i++) if (GameScr.vMob.elementAt(i) == target) {
+                rememberedRespawnMob = target; rememberedRespawnIndex = i; rememberedRespawnId = target.mobId;
+                rememberedRespawnMap = TileMap.mapID; rememberedRespawnZone = TileMap.zoneID;
+                break;
+            }
+        }
+        mobFocus = null;
+        CancelAttackApproach();
+    }
+
+    internal void ClearRespawnFocus()
+    {
+        rememberedRespawnMob = null;
+        rememberedRespawnIndex = -1;
+    }
+
+    internal void RestoreRespawnFocus()
+    {
+        if (rememberedRespawnMob == null) return;
+        if (cHP <= 0 || statusMe == 5 || statusMe == 14 || mobFocus != null || charFocus != null
+            || npcFocus != null || itemFocus != null || TileMap.mapID != rememberedRespawnMap
+            || TileMap.zoneID != rememberedRespawnZone || rememberedRespawnIndex < 0
+            || rememberedRespawnIndex >= GameScr.vMob.size()
+            || GameScr.vMob.elementAt(rememberedRespawnIndex) != rememberedRespawnMob
+            || rememberedRespawnMob.mobId != rememberedRespawnId) {
+            ClearRespawnFocus();
+            return;
+        }
+        if (!GameScr.IsLiveMobTarget(rememberedRespawnMob)) return;
+        mobFocus = rememberedRespawnMob;
+        ClearRespawnFocus();
+    }
+
+    internal bool ClearInvalidAttackFocus()
+    {
+        RestoreRespawnFocus();
+        bool cleared = false;
+        if (mobFocus != null && !GameScr.IsLiveMobTarget(mobFocus))
+        {
+            ForgetAttackMob(mobFocus);
+            cleared = true;
+        }
+        // Healing/revival skills may intentionally target a dead player.
+        if (charFocus != null && myskill != null && myskill.template.type == 1
+            && !GameScr.IsLivePlayerTarget(charFocus))
+        {
+            charFocus = null;
+            CancelAttackApproach();
+            cleared = true;
+        }
+        return cleared;
     }
 
     public bool focusToAttack()
@@ -7614,6 +7700,18 @@ public class Char : IMapObject
     public void removeBlindEff()
     {
         blindEff = false;
+        // TDHS also freezes through the skill animation packet, independently of blindEff.
+        if (!isFreez) return;
+        isFreez = false;
+        freezSeconds = seconds = 0;
+        lastFreez = currFreez = 0;
+        if (me)
+        {
+            if (!stone && !sleepEff && holdEffID == 0 && !isUsePlane && !isFlyAndCharge && !isStandAndCharge)
+                isLockMove = false;
+            GameScr.gI().dem = 0;
+            GameScr.gI().isFreez = false;
+        }
     }
 
     public void removeEffect()
