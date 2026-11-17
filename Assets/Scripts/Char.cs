@@ -7614,6 +7614,18 @@ public class Char : IMapObject
     public void removeBlindEff()
     {
         blindEff = false;
+        // TDHS also freezes through the skill animation packet, independently of blindEff.
+        if (!isFreez) return;
+        isFreez = false;
+        freezSeconds = seconds = 0;
+        lastFreez = currFreez = 0;
+        if (me)
+        {
+            if (!stone && !sleepEff && holdEffID == 0 && !isUsePlane && !isFlyAndCharge && !isStandAndCharge)
+                isLockMove = false;
+            GameScr.gI().dem = 0;
+            GameScr.gI().isFreez = false;
+        }
     }
 
     public void removeEffect()
