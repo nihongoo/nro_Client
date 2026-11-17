@@ -24,7 +24,7 @@ using System;using System.Collections.Generic;using System.IO;using System.Linq;
 using Hud;using UnityEngine;
 namespace UnityEngine {
  public struct Vector2 { public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;} }
- public struct Rect {public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public float xMin=>x;public float yMin=>y;public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>width>0&&height>0&&p.x>=x&&p.y>=y&&p.x<xMax&&p.y<yMax;}
+ public struct Rect {public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public static Rect MinMaxRect(float x,float y,float x2,float y2)=>new Rect(x,y,x2-x,y2-y);public float xMin=>x;public float yMin=>y;public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>width>0&&height>0&&p.x>=x&&p.y>=y&&p.x<xMax&&p.y<yMax;}
  public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public static int Min(int a,int b)=>Math.Min(a,b);public static float Min(params float[] a)=>a.Min();public static float Abs(float n)=>Math.Abs(n);public static int RoundToInt(float n)=>(int)Math.Round(n);public static int CeilToInt(float n)=>(int)Math.Ceiling(n);public static int FloorToInt(float n)=>(int)Math.Floor(n);public static float Ceil(float n)=>(float)Math.Ceiling(n);public static float Round(float n)=>(float)Math.Round(n);public static int Clamp(int n,int a,int b)=>Math.Max(a,Math.Min(b,n));public static float Clamp(float n,float a,float b)=>Math.Max(a,Math.Min(b,n));}
  public struct Color {public float r,g,b,a;public Color(float r,float g,float b,float a){this.r=r;this.g=g;this.b=b;this.a=a;}public static Color white=>new Color(1,1,1,1);}
  public class Texture {public int width=512,height=512;public bool IsFont;}
@@ -32,8 +32,16 @@ namespace UnityEngine {
  public static class Object {public static void Destroy(Texture texture){}}
  public class Texture2D:Texture {public static readonly Texture2D whiteTexture=new Texture2D();public Color32[] GetPixels32(){var pixels=new Color32[width*height];for(int i=0;i<pixels.Length;i++)pixels[i].a=255;return pixels;}}
  public enum TextAnchor{UpperLeft} public class GUIContent{public string text;}public class GUIStyleState{public Color textColor;}public class GUIStyle{public GUIStyle(){}public GUIStyle(GUIStyle source){}public TextAnchor alignment;public Font font;public GUIStyleState normal=new GUIStyleState();}public class GUISkin{public GUIStyle label=new GUIStyle();}
- public struct Matrix4x4{}public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){}}
- public static class GUI {public static Color color;public static Matrix4x4 matrix;public static readonly GUISkin skin=new GUISkin();public static bool Capture;public static int RedSlashes;public static readonly List<Rect> Ink=new List<Rect>(100);public static void Label(Rect r,GUIContent content,GUIStyle style){}public static void DrawTexture(Rect r,Texture t){if(color.r==1&&color.g==0&&color.b==0)RedSlashes++;}public static void DrawTextureWithTexCoords(Rect r,Texture t,Rect uv){if(Capture&&t.IsFont&&color.r==1&&color.g==1&&color.b==1)Ink.Add(r);} }
+ public struct Vector3{public float x,y,z;public Vector3(float x,float y,float z){this.x=x;this.y=y;this.z=z;}}
+ public struct Matrix4x4{
+  public float a,b,c,d,tx,ty;
+  public static Matrix4x4 identity=>new Matrix4x4{a=1,d=1};
+  public static Matrix4x4 Safe(float scale,float x,float y)=>new Matrix4x4{a=scale,d=scale,tx=x,ty=y};
+  public Vector3 MultiplyPoint3x4(Vector3 p)=>new Vector3(a*p.x+b*p.y+tx,c*p.x+d*p.y+ty,p.z);
+  public static Matrix4x4 operator*(Matrix4x4 l,Matrix4x4 r)=>new Matrix4x4{a=l.a*r.a+l.b*r.c,b=l.a*r.b+l.b*r.d,c=l.c*r.a+l.d*r.c,d=l.c*r.b+l.d*r.d,tx=l.a*r.tx+l.b*r.ty+l.tx,ty=l.c*r.tx+l.d*r.ty+l.ty};
+ }
+ public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){float c=(float)Math.Cos(angle*Math.PI/180),s=(float)Math.Sin(angle*Math.PI/180);GUI.matrix=new Matrix4x4{a=c,b=-s,c=s,d=c,tx=p.x-c*p.x+s*p.y,ty=p.y-s*p.x-c*p.y}*GUI.matrix;}}
+ public static class GUI {public static Color color;public static Matrix4x4 matrix=Matrix4x4.identity;public static Vector3 LastRedCenter;public static readonly GUISkin skin=new GUISkin();public static bool Capture;public static int RedSlashes;public static readonly List<Rect> Ink=new List<Rect>(100);public static void Label(Rect r,GUIContent content,GUIStyle style){}public static void DrawTexture(Rect r,Texture t){if(color.r==1&&color.g==0&&color.b==0){RedSlashes++;LastRedCenter=matrix.MultiplyPoint3x4(new Vector3(r.center.x,r.center.y,0));}}public static void DrawTextureWithTexCoords(Rect r,Texture t,Rect uv){if(Capture&&t.IsFont&&color.r==1&&color.g==1&&color.b==1)Ink.Add(r);} }
  public enum FontStyle{Normal}public class Material{public Texture mainTexture=new Texture2D{IsFont=true};}
  public struct CharacterInfo{public int minX,maxX,minY,maxY,advance;public Vector2 uvBottomLeft,uvBottomRight,uvTopLeft,uvTopRight;}
  public class Font {public int fontSize=24;public bool dynamic=true;public Material material=new Material();public static Font LastRequested;public static int GlyphRequests;public static event Action<Font> textureRebuilt;public static void Rebuild(Font f){textureRebuilt?.Invoke(f);}public void RequestCharactersInTexture(string s,int size,FontStyle style){LastRequested=this;}public bool GetCharacterInfo(char c,out CharacterInfo info,int size,FontStyle style){GlyphRequests++;int width=c=='1'?9:c=='p'||c=='s'?12:14;info=new CharacterInfo{minX=1,maxX=width,minY=c=='p'?-5:0,maxY=c=='p'||c=='s'?14:18,advance=width+1,uvBottomLeft=new Vector2(0,0),uvBottomRight=new Vector2(.1f,0),uvTopLeft=new Vector2(0,.1f),uvTopRight=new Vector2(.1f,.1f)};return true;}}
@@ -61,6 +69,14 @@ namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP
 public class Service{static Service s=new Service();public static Service gI()=>s;public int requests,lastKind,lastTarget;public void requestBuffIconSnapshot(int kind=0,int target=0){requests++;lastKind=kind;lastTarget=target;}}
 namespace Hud {
  public static class HudButtonSkin {
+        internal static Rect ScreenPixels(Rect rect)
+        {
+            Vector3 min = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.x * mGraphics.zoomLevel, rect.y * mGraphics.zoomLevel, 0));
+            Vector3 max = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.xMax * mGraphics.zoomLevel, rect.yMax * mGraphics.zoomLevel, 0));
+            return Rect.MinMaxRect(Mathf.Round(min.x), Mathf.Round(min.y), Mathf.Round(max.x), Mathf.Round(max.y));
+        }
+
+
   public static Texture2D CopyNativeTexture(Texture source,Action<Color32[],int,int> edit){
    var pixels=new[]{new Color32(0,0,0,127),new Color32(0,0,0,0)};edit(pixels,2,1);
    if(pixels.Any(p=>p.r!=255||p.g!=255||p.b!=255)||pixels[0].a!=127||pixels[1].a!=0)
@@ -137,6 +153,21 @@ class BuffTests {
  static List<BuffIconEntry> Entries(int count,long expiry){var list=new List<BuffIconEntry>();for(int i=count;i>=1;i--)list.Add(new BuffIconEntry{Id=i,Icon=433,ExpiresAt=expiry,Name="BÃ¹a "+i,Effect="Hiá»‡u á»©ng"});return list;}
  static void Apply(int count,long expiry){BuffIconStore.Reset();BuffIconStore.Apply(Entries(count,expiry),1,100000,BuffIconStore.Now);}
  public static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
+ static void MobileSlashChecks(string encoded){
+  foreach(var resolution in new[]{new[]{2340,1080},new[]{2400,1080},new[]{1600,720},new[]{3088,1440}})
+  foreach(int zoom in new[]{1,2,3,4})foreach(float scale in new[]{.75f,1f,1.2f}){
+   HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=zoom;GameCanvas.w=(int)(resolution[0]/zoom/scale);GameCanvas.h=(int)(resolution[1]/zoom/scale);
+   BuffIconProtocol.BeginSession();BuffIconProtocol.TryRead(new Message(Convert.FromBase64String(encoded.Split(',')[0])));
+   GUI.matrix=Matrix4x4.Safe(scale,48,16);Matrix4x4 original=GUI.matrix;
+   Rect slot=HudLayout.GetRect(BuffIconsHud.GemSlot),pixels=HudButtonSkin.ScreenPixels(slot);int red=GUI.RedSlashes;
+   BuffIconsHud.Paint(new mGraphics());
+   Check(GUI.RedSlashes==red+1,"inactive mobile gem slash missing");
+   Check(Math.Abs(GUI.LastRedCenter.x-pixels.center.x)<.02&&Math.Abs(GUI.LastRedCenter.y-pixels.center.y)<.02,"mobile slash pivot escaped actual safe-area gem pixels");
+   Rect after=HudLayout.GetRect(BuffIconsHud.GemSlot);Check(after.x==slot.x&&after.y==slot.y&&after.width==slot.width&&after.height==slot.height,"slash changed gem layout");
+   Check(GUI.matrix.a==original.a&&GUI.matrix.tx==original.tx&&GUI.matrix.ty==original.ty,"slash leaked its GUI transform");
+  }
+  GUI.matrix=Matrix4x4.identity;HudLayout.IsMobileLayout=false;GameCanvas.w=640;GameCanvas.h=360;mGraphics.zoomLevel=2;
+ }
  static void SteadfastCycleChecks(string encoded){
   foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4}){
    HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconProtocol.BeginSession();
@@ -232,6 +263,7 @@ class BuffTests {
   GemHudChecks();
   StackLists.Run();
   SteadfastCycleChecks(args[1]);
+  MobileSlashChecks(args[1]);
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }
 }

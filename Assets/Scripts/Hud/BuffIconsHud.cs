@@ -274,13 +274,14 @@ namespace Hud
         }
         private static void PaintInactive(Rect cell)
         {
-            int zoom = Mathf.Max(1, mGraphics.zoomLevel);
+            Rect pixels = HudButtonSkin.ScreenPixels(cell);
+            float thickness = 2f * pixels.width / (cell.width * Mathf.Max(1, mGraphics.zoomLevel));
             Matrix4x4 matrix = GUI.matrix; Color color = GUI.color;
             try {
+                GUI.matrix = Matrix4x4.identity;
                 GUI.color = new Color(1, 0, 0, 1);
-                Rect pixels = new Rect(cell.x * zoom, cell.y * zoom, cell.width * zoom, cell.height * zoom);
                 GUIUtility.RotateAroundPivot(-45, pixels.center);
-                GUI.DrawTexture(new Rect(pixels.center.x - pixels.width / 2, pixels.center.y - 1, pixels.width, 2), Texture2D.whiteTexture);
+                GUI.DrawTexture(new Rect(pixels.center.x - pixels.width / 2, pixels.center.y - thickness / 2, pixels.width, thickness), Texture2D.whiteTexture);
             } finally { GUI.matrix = matrix; GUI.color = color; }
         }
         // Tooltips overlay neighboring list rows; paint/hit order both stay above those rows.
