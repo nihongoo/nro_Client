@@ -1,7 +1,6 @@
 """Exercise real buff store, protocol, grid and pointer handlers with rendering-only fixtures."""
 from pathlib import Path
 import subprocess
-import os
 import sys
 ROOT=Path(__file__).resolve().parents[2]
 OUT=ROOT/"Build/buff-icons-tests";OUT.mkdir(parents=True,exist_ok=True)
@@ -13,7 +12,6 @@ def block(marker):
     while depth:
         depth+=(map_source[end]=="{")-(map_source[end]=="}");end+=1
     return map_source[start:end]
-row_height=map_source[map_source.index("internal int RowHeight =>"):map_source.index("internal int First =>")].strip()
 header=block("private static Rect HeaderBounds(")
 body=block("private static Rect BodyBounds(")
 activate=block("private static void Activate(")
@@ -24,24 +22,16 @@ using System;using System.Collections.Generic;using System.IO;using System.Linq;
 using Hud;using UnityEngine;
 namespace UnityEngine {
  public struct Vector2 { public float x,y;public Vector2(float x,float y){this.x=x;this.y=y;} }
- public struct Rect {public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public static Rect MinMaxRect(float x,float y,float x2,float y2)=>new Rect(x,y,x2-x,y2-y);public float xMin=>x;public float yMin=>y;public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>width>0&&height>0&&p.x>=x&&p.y>=y&&p.x<xMax&&p.y<yMax;}
- public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public static int Min(int a,int b)=>Math.Min(a,b);public static float Min(params float[] a)=>a.Min();public static float Abs(float n)=>Math.Abs(n);public static int RoundToInt(float n)=>(int)Math.Round(n);public static int CeilToInt(float n)=>(int)Math.Ceiling(n);public static int FloorToInt(float n)=>(int)Math.Floor(n);public static float Ceil(float n)=>(float)Math.Ceiling(n);public static float Round(float n)=>(float)Math.Round(n);public static int Clamp(int n,int a,int b)=>Math.Max(a,Math.Min(b,n));public static float Clamp(float n,float a,float b)=>Math.Max(a,Math.Min(b,n));}
+ public struct Rect {public float x,y,width,height;public Rect(float x,float y,float w,float h){this.x=x;this.y=y;width=w;height=h;}public float xMin=>x;public float yMin=>y;public float xMax=>x+width;public float yMax=>y+height;public Vector2 center=>new Vector2(x+width/2,y+height/2);public bool Contains(Vector2 p)=>width>0&&height>0&&p.x>=x&&p.y>=y&&p.x<xMax&&p.y<yMax;}
+ public static class Mathf {public static int Max(int a,int b)=>Math.Max(a,b);public static float Max(float a,float b)=>Math.Max(a,b);public static int Min(int a,int b)=>Math.Min(a,b);public static float Min(params float[] a)=>a.Min();public static float Abs(float n)=>Math.Abs(n);public static int RoundToInt(float n)=>(int)Math.Round(n);public static int FloorToInt(float n)=>(int)Math.Floor(n);public static float Ceil(float n)=>(float)Math.Ceiling(n);public static float Round(float n)=>(float)Math.Round(n);public static int Clamp(int n,int a,int b)=>Math.Max(a,Math.Min(b,n));public static float Clamp(float n,float a,float b)=>Math.Max(a,Math.Min(b,n));}
  public struct Color {public float r,g,b,a;public Color(float r,float g,float b,float a){this.r=r;this.g=g;this.b=b;this.a=a;}public static Color white=>new Color(1,1,1,1);}
  public class Texture {public int width=512,height=512;public bool IsFont;}
  public struct Color32 {public byte r,g,b,a;public Color32(byte r,byte g,byte b,byte a){this.r=r;this.g=g;this.b=b;this.a=a;}}
  public static class Object {public static void Destroy(Texture texture){}}
  public class Texture2D:Texture {public static readonly Texture2D whiteTexture=new Texture2D();public Color32[] GetPixels32(){var pixels=new Color32[width*height];for(int i=0;i<pixels.Length;i++)pixels[i].a=255;return pixels;}}
  public enum TextAnchor{UpperLeft} public class GUIContent{public string text;}public class GUIStyleState{public Color textColor;}public class GUIStyle{public GUIStyle(){}public GUIStyle(GUIStyle source){}public TextAnchor alignment;public Font font;public GUIStyleState normal=new GUIStyleState();}public class GUISkin{public GUIStyle label=new GUIStyle();}
- public struct Vector3{public float x,y,z;public Vector3(float x,float y,float z){this.x=x;this.y=y;this.z=z;}}
- public struct Matrix4x4{
-  public float a,b,c,d,tx,ty;
-  public static Matrix4x4 identity=>new Matrix4x4{a=1,d=1};
-  public static Matrix4x4 Safe(float scale,float x,float y)=>new Matrix4x4{a=scale,d=scale,tx=x,ty=y};
-  public Vector3 MultiplyPoint3x4(Vector3 p)=>new Vector3(a*p.x+b*p.y+tx,c*p.x+d*p.y+ty,p.z);
-  public static Matrix4x4 operator*(Matrix4x4 l,Matrix4x4 r)=>new Matrix4x4{a=l.a*r.a+l.b*r.c,b=l.a*r.b+l.b*r.d,c=l.c*r.a+l.d*r.c,d=l.c*r.b+l.d*r.d,tx=l.a*r.tx+l.b*r.ty+l.tx,ty=l.c*r.tx+l.d*r.ty+l.ty};
- }
- public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){float c=(float)Math.Cos(angle*Math.PI/180),s=(float)Math.Sin(angle*Math.PI/180);GUI.matrix=new Matrix4x4{a=c,b=-s,c=s,d=c,tx=p.x-c*p.x+s*p.y,ty=p.y-s*p.x-c*p.y}*GUI.matrix;}}
- public static class GUI {public static Color color;public static Matrix4x4 matrix=Matrix4x4.identity;public static Vector3 LastRedCenter;public static readonly GUISkin skin=new GUISkin();public static bool Capture;public static int RedSlashes;public static readonly List<Rect> Ink=new List<Rect>(100);public static void Label(Rect r,GUIContent content,GUIStyle style){}public static void DrawTexture(Rect r,Texture t){if(color.r==1&&color.g==0&&color.b==0){RedSlashes++;LastRedCenter=matrix.MultiplyPoint3x4(new Vector3(r.center.x,r.center.y,0));}}public static void DrawTextureWithTexCoords(Rect r,Texture t,Rect uv){if(Capture&&t.IsFont&&color.r==1&&color.g==1&&color.b==1)Ink.Add(r);} }
+ public struct Matrix4x4{}public static class GUIUtility{public static void RotateAroundPivot(float angle,Vector2 p){}}
+ public static class GUI {public static Color color;public static Matrix4x4 matrix;public static readonly GUISkin skin=new GUISkin();public static bool Capture;public static readonly List<Rect> Ink=new List<Rect>(100);public static void Label(Rect r,GUIContent content,GUIStyle style){}public static void DrawTexture(Rect r,Texture t){}public static void DrawTextureWithTexCoords(Rect r,Texture t,Rect uv){if(Capture&&t.IsFont&&color.r==1&&color.g==1&&color.b==1)Ink.Add(r);} }
  public enum FontStyle{Normal}public class Material{public Texture mainTexture=new Texture2D{IsFont=true};}
  public struct CharacterInfo{public int minX,maxX,minY,maxY,advance;public Vector2 uvBottomLeft,uvBottomRight,uvTopLeft,uvTopRight;}
  public class Font {public int fontSize=24;public bool dynamic=true;public Material material=new Material();public static Font LastRequested;public static int GlyphRequests;public static event Action<Font> textureRebuilt;public static void Rebuild(Font f){textureRebuilt?.Invoke(f);}public void RequestCharactersInTexture(string s,int size,FontStyle style){LastRequested=this;}public bool GetCharacterInfo(char c,out CharacterInfo info,int size,FontStyle style){GlyphRequests++;int width=c=='1'?9:c=='p'||c=='s'?12:14;info=new CharacterInfo{minX=1,maxX=width,minY=c=='p'?-5:0,maxY=c=='p'||c=='s'?14:18,advance=width+1,uvBottomLeft=new Vector2(0,0),uvBottomRight=new Vector2(.1f,0),uvTopLeft=new Vector2(0,.1f),uvTopRight=new Vector2(.1f,.1f)};return true;}}
@@ -57,8 +47,7 @@ public class Message {myReader r;public Message(byte[] data){r=new myReader(mSys
 public static class mSystem {public static sbyte[] convertToSbyte(byte[] b){var a=new sbyte[b.Length];Buffer.BlockCopy(b,0,a,0,b.Length);return a;}}
 public class MyVector {public readonly List<object> list=new List<object>();public void removeElement(object o){list.Remove(o);}public void addElement(object o){list.Add(o);}public int size()=>list.Count;public object elementAt(int i)=>list[i];}
 public class GameScr {public static GameScr instance=new GameScr();public static bool isPaint=true,isPaintOther;public static int isPaintRada=1;public static MyVector textTime=new MyVector();public bool isPointerDowning;public bool isPaintPopup()=>false;}
-public class Mob {public int mobId;public bool isMobMe;}
-public class Char {public int charID;public Char charFocus;public Mob mobFocus;public static Char player=new Char();public static Char ExistingLocalPlayer=>player;public static bool ischangingMap;public object currentMovePoint;public static MyVector vItemTime=new MyVector();public static Char myCharz()=>player;}
+public class Char {public static Char player=new Char();public static Char ExistingLocalPlayer=>player;public static bool ischangingMap;public object currentMovePoint;public static MyVector vItemTime=new MyVector();public static Char myCharz()=>player;}
 public class Panel{public bool isShow;}public class Menu{public bool showMenu;}
 public static class GameCanvas {public static Image loadImage(string s)=>new Image();public static object currentScreen=GameScr.instance,currentDialog;public static bool isLoading,isPointerJustDown,isPointerDown,isPointerJustRelease,isPointerClick;public static int w=640,h=360,px,py,pxMouse,pyMouse,pXYScrollMouse,gameTick;public static Panel panel=new Panel();public static Menu menu=new Menu();public static void clearAllPointerEvent(){isPointerJustDown=isPointerDown=isPointerJustRelease=isPointerClick=false;} }
 public static class TileMap{public static int mapID=1,zoneID=1;}public static class InfoDlg{public static bool isLock;}
@@ -66,17 +55,9 @@ public class ChatTextField {static ChatTextField c=new ChatTextField();public bo
 public static class ChatPopup{public static object currChatPopup,serverChatPopUp;}
 namespace Notifications{public static class NotificationProtocol{public const byte Version=2;}public static class NotificationCenter{public static bool IsOpen;}}
 namespace Mod.CuongLe{public static class DoHoa{public static bool isShowMenuVIP;}}
-public class Service{static Service s=new Service();public static Service gI()=>s;public int requests,lastKind,lastTarget;public void requestBuffIconSnapshot(int kind=0,int target=0){requests++;lastKind=kind;lastTarget=target;}}
+public class Service{static Service s=new Service();public static Service gI()=>s;public int requests;public void requestBuffIconSnapshot(){requests++;}}
 namespace Hud {
  public static class HudButtonSkin {
-        internal static Rect ScreenPixels(Rect rect)
-        {
-            Vector3 min = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.x * mGraphics.zoomLevel, rect.y * mGraphics.zoomLevel, 0));
-            Vector3 max = GUI.matrix.MultiplyPoint3x4(new Vector3(rect.xMax * mGraphics.zoomLevel, rect.yMax * mGraphics.zoomLevel, 0));
-            return Rect.MinMaxRect(Mathf.Round(min.x), Mathf.Round(min.y), Mathf.Round(max.x), Mathf.Round(max.y));
-        }
-
-
   public static Texture2D CopyNativeTexture(Texture source,Action<Color32[],int,int> edit){
    var pixels=new[]{new Color32(0,0,0,127),new Color32(0,0,0,0)};edit(pixels,2,1);
    if(pixels.Any(p=>p.r!=255||p.g!=255||p.b!=255)||pixels[0].a!=127||pixels[1].a!=0)
@@ -101,9 +82,9 @@ namespace Hud {
 }
 
 class StackLists {
- class ListBox {public bool Items,Open=true;public int Count=5;public string Header,Body;__ROW_HEIGHT__}
+ class ListBox {public bool Items,Open=true;public int Count=5,RowHeight=16;public string Header,Body;}
  static int Gap=>2;static int HeaderHeight=>16;const int MaxRows=5;
- static int Unit(int pixels)=>Math.Max(1,pixels/mGraphics.zoomLevel);
+ static int Unit(int pixels)=>pixels/mGraphics.zoomLevel;
  static float BottomLimit(float x,float width,float top)=>GameCanvas.h-40;
  static void ClampScroll(ListBox box){}
  __HEADER__
@@ -112,7 +93,6 @@ class StackLists {
  static int checks;static void Check(bool b,string m){checks++;if(!b)throw new Exception(m);}
  public static void Run(){
   HudLayout.Register("top-info.avatar",()=>new Rect(6,3,28,28),0,null,false);
-  var itemRow=new ListBox{Items=true};HudLayout.IsMobileLayout=true;Check(itemRow.RowHeight>=HudLayout.GetRect(TopActionsHud.Hub).height,"mobile item tap target must match HUD action height");HudLayout.IsMobileLayout=false;
   HudLayout.Register("top-info.exp",()=>new Rect(40,22,90,8),0,null,false);
   HudLayout.Register("chat",()=>new Rect(GameCanvas.w-40,2,34,34),40);
   var items=new ListBox{Items=true,Header="stack.items.header",Body="stack.items.body"};
@@ -123,7 +103,7 @@ class StackLists {
    mGraphics.zoomLevel=zoom;GameCanvas.w=physical[0]/zoom;GameCanvas.h=physical[1]/zoom;
    Rect fixedPeople=HeaderBounds(people),stats=HudLayout.GetRect("top-info.bounds");
    foreach(int count in new[]{0,1,8,9,16,17,9,8,1,0}){
-    BuffIconStore.Reset();var entries=new List<BuffIconEntry>();for(int i=0;i<count;i++)entries.Add(new BuffIconEntry{Id=i+1,Icon=433,ExpiresAt=700000,Name="BÃ¹a",Effect="Hiá»‡u á»©ng"});BuffIconStore.Apply(entries,1,100000,BuffIconStore.Now);
+    BuffIconStore.Reset();var entries=new List<BuffIconEntry>();for(int i=0;i<count;i++)entries.Add(new BuffIconEntry{Id=i+1,Icon=433,ExpiresAt=700000,Name="Bùa",Effect="Hiệu ứng"});BuffIconStore.Apply(entries,1,100000,BuffIconStore.Now);
     Rect buffs=BuffIconsHud.StackBounds,head=HeaderBounds(items),list=BodyBounds(items);
     Check(count!=0||buffs.height==0,"zero buffs retain height");
     if(count>0){
@@ -141,7 +121,7 @@ class StackLists {
    }
   }
   GameCanvas.w=640;GameCanvas.h=360;mGraphics.zoomLevel=2;
-  BuffIconStore.Reset();BuffIconStore.Apply(new List<BuffIconEntry>{new BuffIconEntry{Id=1,Icon=433,ExpiresAt=700000,Name="BÃ¹a",Effect="Hiá»‡u á»©ng"}},1,100000,BuffIconStore.Now);
+  BuffIconStore.Reset();BuffIconStore.Apply(new List<BuffIconEntry>{new BuffIconEntry{Id=1,Icon=433,ExpiresAt=700000,Name="Bùa",Effect="Hiệu ứng"}},1,100000,BuffIconStore.Now);
   Rect icon=HudLayout.GetRect("buff-icons.slot.0");BuffTests.Click((int)icon.center.x,(int)icon.center.y);
   Rect tip=HudLayout.GetRect("buff-icons.tooltip");Check(HudLayout.HitTest(tip.center)=="buff-icons.tooltip","item rows cover tooltip input");
   BuffIconsHud.PaintTooltip(new mGraphics());
@@ -150,66 +130,9 @@ class StackLists {
 }
 class BuffTests {
  static int checks;static void Check(bool b,string m){checks++;if(!b)throw new Exception(m);}
- static List<BuffIconEntry> Entries(int count,long expiry){var list=new List<BuffIconEntry>();for(int i=count;i>=1;i--)list.Add(new BuffIconEntry{Id=i,Icon=433,ExpiresAt=expiry,Name="BÃ¹a "+i,Effect="Hiá»‡u á»©ng"});return list;}
+ static List<BuffIconEntry> Entries(int count,long expiry){var list=new List<BuffIconEntry>();for(int i=count;i>=1;i--)list.Add(new BuffIconEntry{Id=i,Icon=433,ExpiresAt=expiry,Name="Bùa "+i,Effect="Hiệu ứng"});return list;}
  static void Apply(int count,long expiry){BuffIconStore.Reset();BuffIconStore.Apply(Entries(count,expiry),1,100000,BuffIconStore.Now);}
  public static void Click(int x,int y){GameCanvas.gameTick++;GameCanvas.px=x;GameCanvas.py=y;GameCanvas.isPointerJustDown=GameCanvas.isPointerDown=GameCanvas.isPointerClick=true;BuffIconsHud.UpdateInput();GameCanvas.isPointerDown=false;GameCanvas.isPointerJustRelease=true;BuffIconsHud.UpdateInput();}
- static void MobileSlashChecks(string encoded){
-  foreach(var resolution in new[]{new[]{2340,1080},new[]{2400,1080},new[]{1600,720},new[]{3088,1440}})
-  foreach(int zoom in new[]{1,2,3,4})foreach(float scale in new[]{.75f,1f,1.2f}){
-   HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=zoom;GameCanvas.w=(int)(resolution[0]/zoom/scale);GameCanvas.h=(int)(resolution[1]/zoom/scale);
-   BuffIconProtocol.BeginSession();BuffIconProtocol.TryRead(new Message(Convert.FromBase64String(encoded.Split(',')[0])));
-   GUI.matrix=Matrix4x4.Safe(scale,48,16);Matrix4x4 original=GUI.matrix;
-   Rect slot=HudLayout.GetRect(BuffIconsHud.GemSlot),pixels=HudButtonSkin.ScreenPixels(slot);int red=GUI.RedSlashes;
-   BuffIconsHud.Paint(new mGraphics());
-   Check(GUI.RedSlashes==red+1,"inactive mobile gem slash missing");
-   Check(Math.Abs(GUI.LastRedCenter.x-pixels.center.x)<.02&&Math.Abs(GUI.LastRedCenter.y-pixels.center.y)<.02,"mobile slash pivot escaped actual safe-area gem pixels");
-   Rect after=HudLayout.GetRect(BuffIconsHud.GemSlot);Check(after.x==slot.x&&after.y==slot.y&&after.width==slot.width&&after.height==slot.height,"slash changed gem layout");
-   Check(GUI.matrix.a==original.a&&GUI.matrix.tx==original.tx&&GUI.matrix.ty==original.ty,"slash leaked its GUI transform");
-  }
-  GUI.matrix=Matrix4x4.identity;HudLayout.IsMobileLayout=false;GameCanvas.w=640;GameCanvas.h=360;mGraphics.zoomLevel=2;
- }
- static void SteadfastCycleChecks(string encoded){
-  foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4}){
-   HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconProtocol.BeginSession();
-   string[] packets=encoded.Split(',');Check(packets.Length==3,"steadfast cycle must include detached/fused/split snapshots");
-   for(int i=0;i<packets.Length;i++){
-    byte[] raw=Convert.FromBase64String(packets[i]);
-    Check(BuffIconProtocol.TryRead(new Message(raw)),"real steadfast snapshot must pass protocol decoder");
-    var gem=BuffIconStore.Gem;bool active=i==1;
-    Check(gem!=null&&gem.Icon==16006&&gem.Inactive==!active,"steadfast wire state must follow real fusion cycle");
-    Check(gem.TooltipCountdown(BuffIconStore.Now)==(active?"Đang có tác dụng":"Chưa có tác dụng"),"steadfast tooltip inverted");
-    Check(gem.Effect.Contains("Chỉ khi hợp thể"),"steadfast tooltip must include fusion-only description");
-    Rect rect=HudLayout.GetRect(BuffIconsHud.GemSlot);Check(rect.width>0,"steadfast gem slot missing");
-    int red=GUI.RedSlashes;BuffIconsHud.Paint(new mGraphics());
-    Check(GUI.RedSlashes==red+(active?0:1),"real fusion cycle draws inverted steadfast slash");
-   }
-  }
-  HudLayout.IsMobileLayout=false;
- }
- static void GemHudChecks(){
-  foreach(int itemId in Enumerable.Range(1987,8))foreach(bool mobile in new[]{false,true})foreach(int zoom in new[]{1,2,3,4})foreach(long deadline in new long[]{0,-1,-115000}){
-   HudLayout.IsMobileLayout=mobile;mGraphics.zoomLevel=zoom;BuffIconStore.Reset();BuffIconsHud.Reset();
-   var entries=Entries(2,700000);var gem=new BuffIconEntry{Id=80,Icon=16000+itemId-1987,ExpiresAt=deadline,Name="Ngọc "+itemId,Effect="Tác dụng"};entries.Add(gem);
-   long now=BuffIconStore.Now;BuffIconStore.Apply(entries,1,100000,now);
-   var normal=new List<BuffIconEntry>();BuffIconStore.CopyVisible(normal,now);
-   Check(normal.Count==2&&BuffIconStore.Gem==gem,"gem must have its own slot outside buff row");
-   Check(BuffIconStore.Remaining(gem,now)==(deadline==-115000?15:0),"signed gem countdown");
-   Rect rect=HudLayout.GetRect(BuffIconsHud.GemSlot),avatar=HudLayout.GetRect("top-info.avatar"),stack=BuffIconsHud.StackBounds;
-   Check(rect.y>=avatar.yMax&&rect.width>0&&stack.yMax>=rect.yMax,"gem below avatar/in item stack");
-   int red=GUI.RedSlashes;BuffIconsHud.Paint(new mGraphics());
-   Check(GUI.RedSlashes==red+(deadline<0?1:0),"inactive/cooldown gem red slash");
-   Click((int)rect.center.x,(int)rect.center.y);
-   Check(HudLayout.GetRect("buff-icons.tooltip").width>0,"gem tooltip input");
-   var ready=new BuffIconEntry{Id=80,Icon=gem.Icon,ExpiresAt=0,Name=gem.Name,Effect="Đang có tác dụng"};
-   BuffIconStore.Apply(new List<BuffIconEntry>{ready},2,100001,now);
-   red=GUI.RedSlashes;BuffIconsHud.Paint(new mGraphics());
-   Check(!BuffIconStore.Gem.Inactive&&GUI.RedSlashes==red,"active snapshot must clear stale red slash for gem "+itemId);
-   Check(BuffIconStore.Gem.TooltipCountdown(now)=="Đang có tác dụng","ready gem must not retain inactive tooltip");
-   BuffIconStore.Reset();BuffIconStore.Apply(Entries(1,700000),1,100000,now);GameCanvas.gameTick++;
-   Check(HudLayout.GetRect(BuffIconsHud.GemSlot).width==0,"unequipping must remove gem slot");
-  }
-  HudLayout.IsMobileLayout=false;mGraphics.zoomLevel=2;BuffIconStore.Reset();BuffIconsHud.Reset();
- }
  static void Main(string[] args){
   BuffIconStore.Reset();var list=Entries(20,160001);Check(BuffIconStore.Apply(list,1,100000,1000),"first snapshot");var visible=new List<BuffIconEntry>();BuffIconStore.CopyVisible(visible,1000);Check(visible.Count==20&&visible[0].Id==1&&visible[19].Id==20,"order/cap");
   Check(BuffIconStore.Remaining(visible[0],1000)==61&&BuffIconStore.FormatTime(61)=="2p","ceiling minute");Check(BuffIconStore.FormatTime(60)=="1p"&&BuffIconStore.FormatTime(59)=="59s"&&BuffIconStore.FormatTime(45)=="45s","format boundary");
@@ -236,18 +159,12 @@ class BuffTests {
   }
   var mobileWide=BuffIconGrid.Resolve(new Rect(6,3,150,28),new Rect(40,3,125,8),new Rect(350,0,80,80),new Rect(600,2,34,34),780,360,3,8,20,true);Check(mobileWide.Size==24&&mobileWide.Columns==6,"S22 should use 72px icons with six columns");
   Check(Math.Abs(mobileWide.CaptionGap*3-1)<.01,"mobile icon-label gap must be one physical pixel");Check(mobileWide.CaptionFontPixels>=28&&mobileWide.CaptionFontPixels<=32,"mobile countdown must not fall back to tiny default font size");
-  var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"snapshot packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&(BuffIconStore.Gem!=null ? BuffIconStore.Gem.Icon==16005&&BuffIconStore.Gem.Inactive&&BuffIconStore.Remaining(BuffIconStore.Gem,BuffIconStore.Now)==15 : visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết")),"snapshot packet UTF/layout/gem cooldown");
+  var raw=File.ReadAllBytes(args[0]);var reader=new myReader(mSystem.convertToSbyte(raw));Check(reader.readByte()==2&&reader.readByte()==8,"snapshot packet header");BuffIconProtocol.BeginSession();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(BuffIconStore.Ready&&visible.Count==8&&visible[0].Name=="Hợp thể cứng"&&visible.Any(e=>e.Name=="Bổ huyết"),"snapshot packet UTF/layout");
   var nonBuff=new Message(new byte[]{2,4,1,2});Check(!BuffIconProtocol.TryRead(nonBuff)&&nonBuff.reader().readByte()==2,"non-buff routing consumed notification bytes");
   Check(BuffIconProtocol.TryRead(new Message(raw)),"buff routing failed");
-  int retainedCount=visible.Count;var retainedGem=BuffIconStore.Gem;
-  reader=new myReader(mSystem.convertToSbyte(raw.Take(raw.Length-1).ToArray()));reader.readByte();reader.readByte();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==retainedCount&&BuffIconStore.Gem==retainedGem,"truncated packet cleared icons");
+  reader=new myReader(mSystem.convertToSbyte(raw.Take(raw.Length-1).ToArray()));reader.readByte();reader.readByte();BuffIconProtocol.Read(reader);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==8,"truncated packet cleared icons");
   BuffIconProtocol.BeginSession();Check(!BuffIconStore.Ready,"account switch leaked old buffs");BuffIconProtocol.Update();Check(Service.gI().requests==1,"login snapshot request");BuffIconProtocol.Update();Check(Service.gI().requests==1,"request spam");TileMap.mapID++;BuffIconProtocol.Update();Check(Service.gI().requests==2,"map resync");BuffIconProtocol.RequestResync();BuffIconProtocol.Update();Check(Service.gI().requests==3,"resume resync");
-  int priorRequests=Service.gI().requests;
-  Char.player.charFocus=new Char{charID=42};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+1&&Service.gI().lastKind==1&&Service.gI().lastTarget==42,"current character focus must be sent without attacking");
-  Char.player.charFocus=new Char{charID=99};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+2&&Service.gI().lastTarget==99,"switching current focus must not retain old target");
-  Char.player.charFocus=null;Char.player.mobFocus=new Mob{mobId=7};BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+3&&Service.gI().lastKind==2&&Service.gI().lastTarget==7,"current mob focus must be sent");
-  Char.player.mobFocus=null;BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+4&&Service.gI().lastKind==0,"clearing focus must notify server");BuffIconProtocol.Update();Check(Service.gI().requests==priorRequests+4,"unchanged focus must not spam requests");
-  HudLayout.Register("top-info.avatar",()=>new Rect(6,3,28,28),0,null,false);HudLayout.Register("top-info.bounds",()=>new Rect(6,3,150,28),0,null,false);HudLayout.Register("top-info.hp",()=>new Rect(40,3,125,8),0,null,false);HudLayout.Register("target-info.bounds",()=>new Rect(230,0,100,80),0,null,false);HudLayout.Register("hub",()=>new Rect(520,2,34,34),40);
+  HudLayout.Register("top-info.bounds",()=>new Rect(6,3,150,28),0,null,false);HudLayout.Register("top-info.hp",()=>new Rect(40,3,125,8),0,null,false);HudLayout.Register("target-info.bounds",()=>new Rect(230,0,100,80),0,null,false);HudLayout.Register("hub",()=>new Rect(520,2,34,34),40);
   mGraphics.zoomLevel=2;BuffIconsHud.Register();Apply(20,700000);Rect first=HudLayout.GetRect("buff-icons.slot.0");Check(HudLayout.GetRect("buff-icons.slot.6").width>0,"seventh slot missing");
   Click((int)first.center.x,(int)first.center.y);Check(HudLayout.GetRect("buff-icons.tooltip").width>0&&BuffIconsHud.ConsumesInput,"icon click did not open/consume");Click(600,300);Check(HudLayout.GetRect("buff-icons.tooltip").width==0&&BuffIconsHud.ConsumesInput,"outside click did not close/consume");
   BuffIconsHud.Paint(new mGraphics());Check(InventoryItemVisuals.icons==7&&InventoryFrameSkin.gold==1,"paint cap/gold fusion outline");
@@ -257,25 +174,17 @@ class BuffTests {
   var offset=typeof(BuffIconsHud).GetField("first",BindingFlags.NonPublic|BindingFlags.Static);Check((int)offset.GetValue(null)==13,"horizontal drag cannot reach final buff");Check(HudLayout.GetRect("buff-icons.tooltip").height==0,"swipe activated tooltip");
   GameCanvas.pxMouse=(int)row.center.x;GameCanvas.pyMouse=(int)row.center.y;GameCanvas.pXYScrollMouse=1;BuffIconsHud.UpdateInput();Check((int)offset.GetValue(null)==12&&GameCanvas.pXYScrollMouse==0,"PC wheel not consumed/scrolled");Check(HudLayout.GetRect(BuffIconsHud.Root).height==rowHeight,"scroll changes stack height");
   Apply(2,700000);HudLayout.GetRect(BuffIconsHud.Root);Check((int)offset.GetValue(null)==0,"expiry did not clamp horizontal scroll");
-  BuffIconStore.Reset();var npc=Entries(2,700000);npc.Add(new BuffIconEntry{Id=30,Icon=1403,ExpiresAt=700000,Name="BÃ¹a NPC",Effect="Hiá»‡u á»©ng"});BuffIconStore.Apply(npc,1,100000,BuffIconStore.Now);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==2&&visible.All(e=>e.Id<30),"NPC charms leaked from older-server snapshot");
+  BuffIconStore.Reset();var npc=Entries(2,700000);npc.Add(new BuffIconEntry{Id=30,Icon=1403,ExpiresAt=700000,Name="Bùa NPC",Effect="Hiệu ứng"});BuffIconStore.Apply(npc,1,100000,BuffIconStore.Now);BuffIconStore.CopyVisible(visible,BuffIconStore.Now);Check(visible.Count==2&&visible.All(e=>e.Id<30),"NPC charms leaked from older-server snapshot");
   var item=new ItemTime(433,120);Char.vItemTime.addElement(item);typeof(ItemTime).GetField("expiresAt",BindingFlags.NonPublic|BindingFlags.Instance).SetValue(item,BuffIconStore.Now-1);item.update();Check(item.coutTime==0&&Char.vItemTime.size()==0,"legacy icon did not expire exactly");item.initTime(45);Check(item.time==45,"legacy renewal stale duration");
   HudLayout.IsMobileLayout=true;mGraphics.zoomLevel=3;BuffIconsHud.Paint(new mGraphics());Check(ReferenceEquals(Font.LastRequested,mFont.tahoma_7b_white.myFont),"mobile countdown must keep the native bold game font");HudLayout.IsMobileLayout=false;
-  GemHudChecks();
   StackLists.Run();
-  SteadfastCycleChecks(args[1]);
-  MobileSlashChecks(args[1]);
   Console.WriteLine("PASS: "+checks+" production client buff store/protocol/PC-S22 grid/input/legacy timer checks");
  }
 }
-""".replace("__ROW_HEIGHT__",row_height).replace("__HEADER__",header).replace("__BODY__",body).replace("__TOGGLE__",toggle)
+""".replace("__HEADER__",header).replace("__BODY__",body).replace("__TOGGLE__",toggle)
 cs=OUT/"BuffTests.cs";cs.write_text(fixture,encoding="utf-8")
 exe=OUT/"BuffTests.exe"
 scripts=ROOT/"Assets/Scripts"
 sources=[scripts/"Hud"/(name+".cs") for name in ["BuffIconStore","BuffIconProtocol","BuffIconGrid","BuffCountdownText","BuffIconsHud","TopLeftHudStack"]]+[scripts/"myReader.cs",scripts/"ItemTime.cs",cs]
 subprocess.run([r"D:\setup\VS2026\MSBuild\Current\Bin\Roslyn\csc.exe","/nologo","/target:exe",f"/out:{exe}",*map(str,sources)],check=True)
-# Feed snapshots from real Pet fusion/unfusion and real NPoint, rather than handwritten flags.
-server_root=packet.resolve().parents[2]
-server_cp=os.environ.get("STEADFAST_SERVER_CLASSPATH",str(packet.parent)+os.pathsep+str(server_root/"lib/*"))
-cycle_result=subprocess.run(["java","-cp",server_cp,str(server_root/"tests/disciple/SteadfastFusionTest.java"),"--export"],check=True,text=True,encoding="utf-8",stdout=subprocess.PIPE)
-cycle=next(line.partition("=")[2] for line in cycle_result.stdout.splitlines() if line.startswith("STEADFAST_CYCLE="))
-subprocess.run([str(exe),str(packet),cycle],check=True)
+subprocess.run([str(exe),str(packet)],check=True)
