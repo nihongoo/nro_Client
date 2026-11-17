@@ -35,13 +35,17 @@ methods+="\npublic void setAttack(){"+block(attack,"if (me)")+"}"
 fixture=fixture.replace("__COMPLETION__","").replace("__METHODS__",methods)
 service=(ROOT/"Assets/Scripts/Service.cs").read_text(encoding="utf-8-sig")
 fixture=fixture.replace("public List<int> packets=new List<int>();",block(service,"public void sendPlayerAttack(")+"public Session session=new Session();public List<int> packets=new List<int>();")
+fixture=fixture.replace("public static Char myCharz()=>current;", "public static Char myCharz()=>current;public static Char ExistingLocalPlayer=>current;public bool ClearInvalidAttackFocus()=>false;")
+fixture=fixture.replace("public static int mapID;", "public static int mapID,zoneID;")
+fixture=fixture.replace("public int auto;", "public void FireAttackInput(){Char.myCharz().setSkillPaint(sks[Char.myCharz().myskill.skillId],0);}public int auto;")
 fixture+=block(skill_source,"internal static class AttackSync")
 auto=(ROOT/"Assets/Scripts/Mod.CuongLe/AutoSkill.cs").read_text(encoding="utf-8-sig")
 fixture+="\nstatic class AutoDriver {static long[] lastTimeSendAttack=new long[10];static int GetMySkillIndex()=>0;static bool isMeCanAttackChar(Char c)=>c!=null;"+"\n".join(block(auto,m) for m in ("public static void AutoSendAttack(","public static void SendAttackToCharFocus(","public static void SendAttackToMobFocus(","private static long GetCoolDown("))+"}"
 
 fixture+=r'''
+namespace Hud {static class CombatPcHud{public static bool CanInput=true;public const string Attack="pc";}static class CombatMobileHud{public static bool CanInput=true;public const string Attack="mobile";}static class CombatPcPointer{public static bool Held(string s)=>false;}static class MobileCombatPointers{public static bool Held(string s)=>false;}}
 static class Math {public static int abs(int n)=>System.Math.Abs(n);}
-class Panel {public bool isShow;}static class GameCanvas{public static Panel panel=new Panel();}
+class Panel {public bool isShow;}static class GameCanvas{public static bool AttackHeld;public static Panel panel=new Panel();}
 class Info {public void addInfo(string value,int type){}}
 class Dart {public SkillPaint skillPaint;}
 class EffectPaint {public object effCharPaint;public Mob eMob;public Char eChar;}

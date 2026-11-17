@@ -2016,6 +2016,7 @@ public class GameScr : mScreen, IChatable
 
     public bool isAttack()
     {
+        if (Char.myCharz().ClearInvalidAttackFocus()) return false;
         if (checkClickToBotton(Char.myCharz().charFocus))
         {
             return false;
@@ -2399,9 +2400,32 @@ public class GameScr : mScreen, IChatable
         return true;
     }
 
+    internal static bool IsLiveMobTarget(Mob target)
+    {
+        return target != null && target.hp > 0 && target.status != 0 && target.status != 1
+            && vMob.contains(target) && target.x >= 0 && target.x < TileMap.pxw
+            && target.y >= 0 && target.y < TileMap.pxh;
+    }
+
+    internal static bool IsLivePlayerTarget(Char target)
+    {
+        return target != null && target.cHP > 0 && target.statusMe != 5 && target.statusMe != 14
+            && vCharInMap.contains(target) && target.cx >= 0 && target.cx < TileMap.pxw
+            && target.cy >= 0 && target.cy < TileMap.pxh;
+    }
+
+    internal void FireAttackInput()
+    {
+        Char owner = Char.myCharz();
+        owner.ClearInvalidAttackFocus();
+        if (owner.myskill != null && owner.myskill.template.type == 1
+            && owner.mobFocus == null && owner.charFocus == null) return;
+        doFire(isFireByShortCut: false);
+    }
+
     public bool isMeCanAttackMob(Mob m)
     {
-        if (m == null)
+        if (!IsLiveMobTarget(m))
         {
             return false;
         }
@@ -2775,7 +2799,7 @@ public class GameScr : mScreen, IChatable
                     if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                     {
                         GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                        doFire(isFireByShortCut: false, skipWaypoint: false);
+                        FireAttackInput();
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 2 : 21])
                     {
@@ -2797,14 +2821,7 @@ public class GameScr : mScreen, IChatable
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 5 : 25] && mobCapcha == null)
                     {
-                        if (!Main.isPC)
-                        {
-                            Char.myCharz().cdir = 1;
-                            if (!Char.myCharz().isLockMove)
-                            {
-                                setCharJump(4);
-                            }
-                        }
+                        FireAttackInput();
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 4 : 23])
                     {
@@ -2852,7 +2869,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false, skipWaypoint: true);
+                    doFire(isFireByShortCut: false);
                 }
                 else if (GameCanvas.keyHold[(!Main.isPC) ? 2 : 21])
                 {
@@ -2926,7 +2943,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false, skipWaypoint: true);
+                    doFire(isFireByShortCut: false);
                 }
                 if (GameCanvas.keyHold[(!Main.isPC) ? 4 : 23] || (GameCanvas.keyHold[1] && mobCapcha == null))
                 {
@@ -2962,7 +2979,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false, skipWaypoint: true);
+                    doFire(isFireByShortCut: false);
                 }
                 if (GameCanvas.keyHold[(!Main.isPC) ? 2 : 21] && Char.myCharz().cMP > 0 && Char.myCharz().canFly)
                 {
@@ -3020,7 +3037,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false, skipWaypoint: true);
+                    doFire(isFireByShortCut: false);
                 }
                 if (Char.myCharz().canFly && Char.myCharz().cMP > 0)
                 {
@@ -3482,7 +3499,7 @@ public class GameScr : mScreen, IChatable
             Char.myCharz().cvx = (Char.myCharz().cvy = 0);
             obj.stopMoving();
             auto = 10;
-            doFire(isFireByShortCut: false, skipWaypoint: true);
+            doFire(isFireByShortCut: false);
             clickToX = obj.getX();
             clickToY = obj.getY();
             clickOnTileTop = false;
@@ -3655,7 +3672,7 @@ public class GameScr : mScreen, IChatable
                 {
                     return;
                 }
-                doFire(isFireByShortCut: false, skipWaypoint: true);
+                doFire(isFireByShortCut: false);
             }
         }
         if (auto > 1)
@@ -3751,67 +3768,58 @@ public class GameScr : mScreen, IChatable
     {
     }
 
-    private void doFire(bool isFireByShortCut, bool skipWaypoint)
+    private void doFire(bool isFireByShortCut)
     {
         if (AutoMap.isXmaping)
         {
             return;
         }
+        Char owner = Char.myCharz();
+        if (owner.myskill != null && owner.myskill.template.type == 1
+            && (owner.ClearInvalidAttackFocus() || owner.mobFocus == null && owner.charFocus == null)) return;
         tam++;
-        Waypoint waypoint = Char.myCharz().isInEnterOfflinePoint();
-        Waypoint waypoint2 = Char.myCharz().isInEnterOnlinePoint();
-        if (!skipWaypoint && waypoint != null && (Char.myCharz().mobFocus == null || (Char.myCharz().mobFocus != null && Char.myCharz().mobFocus.templateId == 0)))
+
+        if ((TileMap.mapID == 51 && Char.myCharz().npcFocus != null) || Char.myCharz().statusMe == 14)
         {
-            waypoint.popup.command.performAction();
+            return;
         }
-        else if (!skipWaypoint && waypoint2 != null && (Char.myCharz().mobFocus == null || (Char.myCharz().mobFocus != null && Char.myCharz().mobFocus.templateId == 0)))
+        Char.myCharz().cvx = (Char.myCharz().cvy = 0);
+        if (Char.myCharz().isSelectingSkillUseAlone() && Char.myCharz().focusToAttack())
         {
-            waypoint2.popup.command.performAction();
-        }
-        else
-        {
-            if ((TileMap.mapID == 51 && Char.myCharz().npcFocus != null) || Char.myCharz().statusMe == 14)
+            if (checkSkillValid())
             {
-                return;
+                Char.myCharz().currentFireByShortcut = isFireByShortCut;
+                Char.myCharz().useSkillNotFocus();
             }
-            Char.myCharz().cvx = (Char.myCharz().cvy = 0);
-            if (Char.myCharz().isSelectingSkillUseAlone() && Char.myCharz().focusToAttack())
+        }
+        else if (isAttack())
+        {
+            if (Char.myCharz().isUseChargeSkill() && Char.myCharz().focusToAttack())
             {
                 if (checkSkillValid())
                 {
                     Char.myCharz().currentFireByShortcut = isFireByShortCut;
-                    Char.myCharz().useSkillNotFocus();
-                }
-            }
-            else if (isAttack())
-            {
-                if (Char.myCharz().isUseChargeSkill() && Char.myCharz().focusToAttack())
-                {
-                    if (checkSkillValid())
-                    {
-                        Char.myCharz().currentFireByShortcut = isFireByShortCut;
-                        Char.myCharz().sendUseChargeSkill();
-                    }
-                    else
-                    {
-                        Char.myCharz().stopUseChargeSkill();
-                    }
+                    Char.myCharz().sendUseChargeSkill();
                 }
                 else
                 {
-                    bool flag = TileMap.tileTypeAt(Char.myCharz().cx, Char.myCharz().cy, 2);
-                    Char.myCharz().setSkillPaint(sks[Char.myCharz().myskill.skillId], (!flag) ? 1 : 0);
-                    if (flag)
-                    {
-                        Char.myCharz().delayFall = 20;
-                    }
-                    Char.myCharz().currentFireByShortcut = isFireByShortCut;
+                    Char.myCharz().stopUseChargeSkill();
                 }
             }
-            if (Char.myCharz().isSelectingSkillBuffToPlayer())
+            else
             {
-                auto = 0;
+                bool flag = TileMap.tileTypeAt(Char.myCharz().cx, Char.myCharz().cy, 2);
+                Char.myCharz().setSkillPaint(sks[Char.myCharz().myskill.skillId], (!flag) ? 1 : 0);
+                if (flag)
+                {
+                    Char.myCharz().delayFall = 20;
+                }
+                Char.myCharz().currentFireByShortcut = isFireByShortCut;
             }
+        }
+        if (Char.myCharz().isSelectingSkillBuffToPlayer())
+        {
+            auto = 0;
         }
     }
 
@@ -3941,7 +3949,7 @@ public class GameScr : mScreen, IChatable
         {
             if (Char.myCharz().isSelectingSkillBuffToPlayer() || Char.myCharz().focusToAttack())
             {
-                doFire(isShortcut, skipWaypoint: true);
+                doFire(isShortcut);
                 doSeleckSkillFlag = true;
             }
             lastSkill = skill;
@@ -3967,7 +3975,7 @@ public class GameScr : mScreen, IChatable
             saveRMSCurrentSkill(skill.template.id);
             resetButton();
             Char.myCharz().myskill = skill;
-            doFire(isShortcut, skipWaypoint: true);
+            doFire(isShortcut);
         }
     }
 
@@ -4244,6 +4252,8 @@ public class GameScr : mScreen, IChatable
 
     public override void update()
     {
+        Char.ExistingLocalPlayer?.ClearInvalidAttackFocus();
+        AttackSync.Update();
         MainMod.Update();
         Hud.SkillTabState.Update();
         UltiCastClient.Update();
@@ -6034,7 +6044,7 @@ public class GameScr : mScreen, IChatable
                 GameMidlet.instance.exit();
                 break;
             case 8002:
-                doFire(isFireByShortCut: false, skipWaypoint: true);
+                doFire(isFireByShortCut: false);
                 GameCanvas.clearKeyHold();
                 GameCanvas.clearKeyPressed();
                 break;

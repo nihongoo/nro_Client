@@ -4925,7 +4925,6 @@ public class Char : IMapObject
                 return;
             }
         }
-        Res.outz("skill id= " + skillPaint.id);
         if ((me && dart != null) || TileMap.isOfflineMap())
         {
             return;
@@ -4937,12 +4936,12 @@ public class Char : IMapObject
             {
                 return;
             }
+            if (AttackSync.Start(this, skillPaint, sType)) return;
             if (num - myskill.lastTimeUseThisSkill < myskill.EffectiveCooldown)
             {
                 myskill.paintCanNotUseSkill = true;
                 return;
             }
-            if (AttackSync.Start(this, skillPaint, sType)) return;
             hasSendAttack = false;
             myskill.lastTimeUseThisSkill = num;
             if (myskill.template.manaUseType != 2)
@@ -7521,6 +7520,42 @@ public class Char : IMapObject
     public bool isInvisible()
     {
         return false;
+    }
+
+    private void CancelAttackApproach()
+    {
+        if (endMovePointCommand != null && endMovePointCommand.idAction == 8002)
+        {
+            currentMovePoint = null;
+            endMovePointCommand = null;
+            cvx = cvy = 0;
+        }
+    }
+
+    internal void ForgetAttackMob(Mob target)
+    {
+        if (mobFocus != target) return;
+        mobFocus = null;
+        CancelAttackApproach();
+    }
+
+    internal bool ClearInvalidAttackFocus()
+    {
+        bool cleared = false;
+        if (mobFocus != null && !GameScr.IsLiveMobTarget(mobFocus))
+        {
+            ForgetAttackMob(mobFocus);
+            cleared = true;
+        }
+        // Healing/revival skills may intentionally target a dead player.
+        if (charFocus != null && myskill != null && myskill.template.type == 1
+            && !GameScr.IsLivePlayerTarget(charFocus))
+        {
+            charFocus = null;
+            CancelAttackApproach();
+            cleared = true;
+        }
+        return cleared;
     }
 
     public bool focusToAttack()
