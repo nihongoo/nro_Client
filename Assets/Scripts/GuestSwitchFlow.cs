@@ -10,14 +10,15 @@ internal sealed class GuestSwitchFlow : IActionListener
     private static long deadline;
     private static bool NeedsGuestDeletion => GuestCredentials.IsGuest||GuestCredentials.DeletePending
         ||(!GuestCredentials.IsPermanent&&GuestCredentials.Preferred&&GuestCredentials.HasToken);
-    internal static void Open() {
-        if(waiting){GameCanvas.startOKDlg("Đang xử lý đổi tài khoản, vui lòng chờ.");return;}
-        bool guest=NeedsGuestDeletion;
-        if(!GuestCredentials.StatusKnown&&!guest&&GameScr.instance!=null&&GameCanvas.currentScreen==GameScr.instance){GameCanvas.startOKDlg("Chưa đồng bộ tài khoản. Vui lòng thử lại.");return;}
-        GameCanvas.startYesNoDlg(guest
-            ?"Đổi tài khoản sẽ XÓA VĨNH VIỄN khách chưa liên kết và nhân vật hiện tại. Không thể khôi phục. Bạn xác nhận xóa khách và đổi tài khoản?"
-            :"Bạn muốn đổi tài khoản và quay về màn hình đăng nhập?",
-            new Command(guest?"Xóa khách và đổi":"Đổi tài khoản",instance,1,null),new Command("Hủy",instance,0,null));
+    internal static void Open()
+    {
+        if (waiting) { GameCanvas.startOKDlg("Đang xử lý đổi tài khoản, vui lòng chờ."); return; }
+        bool guest = NeedsGuestDeletion;
+        if (!GuestCredentials.StatusKnown && !guest && GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance) { GameCanvas.startOKDlg("Chưa đồng bộ tài khoản. Vui lòng thử lại."); return; }
+        // Tài khoản đã liên kết: đổi luôn, không hỏi. Chỉ khách (bị xóa vĩnh viễn) mới cần xác nhận.
+        if (!guest) { GameCanvas.instance.completeAccountSwitch(); return; }
+        GameCanvas.startYesNoDlg("Đổi tài khoản sẽ XÓA VĨNH VIỄN khách chưa liên kết và nhân vật hiện tại. Không thể khôi phục. Bạn xác nhận xóa khách và đổi tài khoản?",
+            new Command("Xóa khách và đổi", instance, 1, null), new Command("Hủy", instance, 0, null));
     }
     public void perform(int action,object unused) {
         GameCanvas.endDlg();if(action!=1)return;

@@ -410,6 +410,8 @@ public partial class Panel : IActionListener, IChatable
 
     private bool isDownWhenRunning;
 
+    private int dragAnchorY, dragAnchorScroll;
+
     private bool wantUpdateList;
 
     private int waitToPerform;
@@ -2641,6 +2643,8 @@ public partial class Panel : IActionListener, IChatable
                 }
                 pointerDownFirstX = GameCanvas.py;
                 pointerIsDowning = true;
+                dragAnchorY = GameCanvas.py;
+                dragAnchorScroll = cmy;
                 isDownWhenRunning = cmRun != 0;
                 cmRun = 0;
             }
@@ -2672,20 +2676,28 @@ public partial class Panel : IActionListener, IChatable
                     pointerDownLastX[num2] = pointerDownLastX[num2 - 1];
                 }
                 pointerDownLastX[0] = GameCanvas.py;
-                cmtoY -= num;
-                if (cmtoY < 0)
+                if (InventoryFrameActive && currentTabIndex == 6)
                 {
-                    cmtoY = 0;
+                    cmtoY = System.Math.Max(0, System.Math.Min(cmyLim, dragAnchorScroll - (GameCanvas.py - dragAnchorY)));
+                    cmy = cmtoY;
                 }
-                if (cmtoY > cmyLim)
+                else
                 {
-                    cmtoY = cmyLim;
+                    cmtoY -= num;
+                    if (cmtoY < 0)
+                    {
+                        cmtoY = 0;
+                    }
+                    if (cmtoY > cmyLim)
+                    {
+                        cmtoY = cmyLim;
+                    }
+                    if (cmy < 0 || cmy > cmyLim)
+                    {
+                        num /= 2;
+                    }
+                    cmy -= num;
                 }
-                if (cmy < 0 || cmy > cmyLim)
-                {
-                    num /= 2;
-                }
-                cmy -= num;
                 if (cmy < -(GameCanvas.h / 3))
                 {
                     wantUpdateList = true;
