@@ -948,15 +948,15 @@ namespace Assets.src.g
 			GameMidlet.OpenAccountWebPage(GameMidlet.RegistrationUrl);
 		}
 
-		public void backToRegister()
-		{
-			if (GameCanvas.loginScr.isLogin2)
-			{
-				GameCanvas.startYesNoDlg(mResources.note, new Command(mResources.YES, GameCanvas.panel, 10019, null), new Command(mResources.NO, GameCanvas.panel, 10020, null));
-				return;
-			}
-			GameCanvas.instance.doResetToLoginScr(GameCanvas.loginScr);
-			Session_ME.gI().close();
-		}
-	}
+        public void backToRegister()
+        {
+            if (GameCanvas.loginScr.isLogin2)
+            {
+                GameCanvas.instance.switchAccount();
+                return;
+            }
+            GameCanvas.instance.doResetToLoginScr(GameCanvas.loginScr);
+            Session_ME.gI().close();
+        }
+    }
 }
