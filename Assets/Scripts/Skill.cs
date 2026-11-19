@@ -107,7 +107,7 @@ internal static class AttackSync
     private static SkillPaint stagedPaint, paint;
     private static int stagedType, paintType;
     internal static bool IsBasicAttack(Skill value) => value != null && value.template != null
-        && value.template.type == 1 && value.template.id >= 0 && value.template.id <= 5;
+        && value.template.type == 1 && ((value.template.id >= 0 && value.template.id <= 5) || value.template.id == 17);
     internal static void Reset()
     {
         pending = 0; skill = queuedSkill = null;
