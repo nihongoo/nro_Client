@@ -87,7 +87,9 @@ public static class UltiCastClient
                 if (skill != null && skill.template.id == p.Skill)
                     skill.lastTimeUseThisSkill = mSystem.currentTimeMillis() - (p.Action == Cancel ? skill.coolDown - p.Lock : 0);
             }
-            c.stopUseChargeSkill(); Reset();
+            if (p.Action == Cancel) c.cancelUseChargeSkill();
+            else c.stopUseChargeSkill();
+            Reset();
         }
     }
     public static void Update()
@@ -103,11 +105,11 @@ public static class UltiCastClient
         }
         if (lost) {
             if (legacy) {
-                if (current.Skill == 11) { Send(Cancel); c?.stopUseChargeSkill(); }
+                if (current.Skill == 11) { Send(Cancel); c?.cancelUseChargeSkill(); }
                 Reset(); return;
             }
             if (current.Cast != 0) Send(Cancel);
-            if (c != null) c.stopUseChargeSkill();
+            if (c != null) c.cancelUseChargeSkill();
             // Keep the pending identity until the response: a late READY must be cancelled too.
             if (current.Cast != 0 || Hud.BuffIconStore.Now - began > 15000) Reset();
             return;
@@ -120,7 +122,7 @@ public static class UltiCastClient
         }
         if (now - began > 15000) {
             if (current.Cast != 0) Send(Cancel);
-            c.stopUseChargeSkill(); Reset();
+            c.cancelUseChargeSkill(); Reset();
         }
     }
 }
