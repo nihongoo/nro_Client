@@ -5070,18 +5070,22 @@ public class Char : IMapObject
             ServerEffect.addServerEffect(60, cx, cy, 1);
             telePortSkill = true;
         }
-        if (skillPaint.id >= 107 && skillPaint.id <= 113)
-        {
-            skillPaint = GameScr.sks[skillPaint.id - 44];
-            EffecMn.addEff(new Effect(23, cx, cy + ch / 2, 3, 2, 1));
-        }
+        skillPaint = prepareLienHoanPaint(skillPaint);
         setAutoSkillPaint(skillPaint, sType);
+    }
+
+    private SkillPaint prepareLienHoanPaint(SkillPaint requested)
+    {
+        if (requested.id < 107 || requested.id > 113) return requested;
+        EffecMn.addEff(new Effect(23, cx, cy + ch / 2, 3, 2, 1));
+        return GameScr.sks[requested.id - 44];
     }
 
     internal void ConfirmAttack(SkillPaint confirmed, int type)
     {
         if (confirmed == null) return;
         if (isMonkey == 1 && confirmed.id >= 35 && confirmed.id <= 41) confirmed = GameScr.sks[106];
+        confirmed = prepareLienHoanPaint(confirmed);
         hasSendAttack = true; // This cast already has a server result; its hit frame must not resend.
         setAutoSkillPaint(confirmed, type);
     }
