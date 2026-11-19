@@ -374,17 +374,41 @@ public partial class Panel
             if(i==potentialExpanded)PaintPotentialEditor(g,viewport);
         }
     }
-    private sealed class SkillLine {internal string Text;internal mFont Font;}
-    private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width)
+    private sealed class SkillLine {internal string Text;internal mFont Font;internal int Height=12;internal int? Color;}
+    private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width,int? color=null,int lineHeight=12)
     {
         if(string.IsNullOrWhiteSpace(text))return;
-        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4))){lines.Add(new SkillLine{Text=line,Font=font});}
+        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4))){lines.Add(new SkillLine{Text=line,Font=font,Color=color,Height=lineHeight});}
+    }
+    private static int SkillLinesHeight(List<SkillLine> lines)
+    {
+        int height=0;foreach(SkillLine line in lines)height+=line.Height;return height;
+    }
+    private static void AddLaserDescription(List<SkillLine> lines,Skill skill,float width)
+    {
+        if(skill==null)return;
+        // Use the displayed level's percentage, including the first level before learning.
+        string percent=skill.damage+"%";
+        AddSkillLines(lines,"DẠNG THƯỜNG",mFont.tahoma_7b_green2,width,0x00552D,16);
+        AddSkillLines(lines,"Gây sát thương bằng "+percent+" KI hiện tại.\n"
+            +"Tiêu hao toàn bộ KI.\n"
+            +"Có thể phá khiên nhưng vẫn bị giảm sát thương.\n"
+            +"Thời gian vận 1,5s.",mFont.tahoma_7,width,0x49453E,14);
+        lines.Add(new SkillLine{Height=7});
+        AddSkillLines(lines,"DẠNG MẠNH",mFont.tahoma_7b_green2,width,0x00552D,16);
+        AddSkillLines(lines,"Gây sát thương bằng "+percent+" KI tối đa khi mục tiêu bị socola do bản thân gây hoặc bị người chơi khống chế cứng (trói, thôi miên,...).\n"
+            +"Tiêu hao 50% KI tối đa.\n"
+            +"Không bị chặn hoặc giảm sát thương bởi khiên.\n"
+            +"Thời gian vận 3,5s.",mFont.tahoma_7,width,0x49453E,14);
     }
     private static int PaintSkillLines(mGraphics g,List<SkillLine> lines,Rect viewport,int scroll,int initial=0)
     {
         InventoryFrame.Clip(g,viewport);int y=(int)viewport.y+initial-scroll;
-        foreach(SkillLine line in lines){InventoryItemVisuals.PaintCompactText(g,line.Font,line.Text,new Rect(viewport.x,y,viewport.width,12),viewport,line.Font==mFont.tahoma_7_green2?0x00552D:InventoryFrame.Border);y+=12;}
-        return initial+lines.Count*12;
+        foreach(SkillLine line in lines){
+            if(!string.IsNullOrEmpty(line.Text))InventoryItemVisuals.PaintCompactText(g,line.Font,line.Text,new Rect(viewport.x,y,viewport.width,line.Height),viewport,line.Color??(line.Font==mFont.tahoma_7_green2?0x00552D:InventoryFrame.Border));
+            y+=line.Height;
+        }
+        return initial+SkillLinesHeight(lines);
     }
     private void PaintSkillDetail(mGraphics g)
     {
@@ -403,7 +427,10 @@ public partial class Panel
         int headingHeight=Mathf.Max(39,nameLines.Length*12+17);
         Skill display=current!=null&&current.point>0?current:(t.skills.Length>0?t.skills[0]:null);
         var top=new List<SkillLine>();
-        if(display!=null)AddSkillLines(top,mResources.KI_consume+display.manaUse+(t.manaUseType==1?"%":"")+" · "+mResources.cooldown+": "+display.strTimeReplay()+"s",mFont.tahoma_7,upper.width);
+        if(display!=null) {
+            string mana=t.id==11?"KI theo dạng":mResources.KI_consume+display.manaUse+(t.manaUseType==1?"%":"");
+            AddSkillLines(top,mana+" · "+mResources.cooldown+": "+display.strTimeReplay()+"s",mFont.tahoma_7,upper.width);
+        }
         AddSkillDamage(top,t,level,level==t.maxPoint?" (hiện tại, tối đa)":" (hiện tại)",mFont.tahoma_7b_dark,upper.width);
         if(level<t.maxPoint)AddSkillDamage(top,t,level+1,level+1==t.maxPoint?" (kế tiếp, tối đa)":" (kế tiếp)",mFont.tahoma_7_green2,upper.width);
         if(level+1<t.maxPoint)AddSkillDamage(top,t,t.maxPoint," (tối đa)",mFont.tahoma_7,upper.width);
@@ -411,7 +438,8 @@ public partial class Panel
         InventoryFrame.Clip(g,upper);g.setColor(InventoryFrame.Border);
         g.fillRect((int)upper.x,(int)upper.y+tableEnd-skillTopScroll+3,(int)upper.width,1);
         var bottom=new List<SkillLine>();
-        AddSkillLines(bottom,SkillDescription(t,current),mFont.tahoma_7,lower.width);
+        if(t.id==11)AddLaserDescription(bottom,display,lower.width);
+        else AddSkillLines(bottom,SkillDescription(t,current),mFont.tahoma_7,lower.width);
         bool studying=SkillTabState.Studying(t.id);
         if(studying)AddSkillLines(bottom,"Đang học cấp "+SkillTabState.LearningLevel+" · còn "+SkillTabState.Clock(SkillTabState.Remaining),mFont.tahoma_7b_dark,lower.width);
         else if(level<t.maxPoint&&level<t.skills.Length) {
@@ -422,7 +450,7 @@ public partial class Panel
         skillUpperHeight=PaintSkillLines(g,bottom,upper,skillTopScroll,tableEnd+9)+(studying?10:0);
         skillTopScroll=Mathf.Clamp(skillTopScroll,0,Mathf.Max(0,skillUpperHeight-(int)upper.height));
         if(studying) {
-            int y=(int)upper.y+tableEnd+9+bottom.Count*12-skillTopScroll+3;
+            int y=(int)upper.y+tableEnd+9+SkillLinesHeight(bottom)-skillTopScroll+3;
             InventoryFrame.Clip(g,lower);g.setColor(InventoryFrame.SlotBackground);g.fillRect((int)lower.x,y,(int)lower.width,5);
             long elapsed=System.Math.Max(0,SkillTabState.Duration-SkillTabState.Remaining);
             int width=SkillTabState.Duration<=0?0:(int)(lower.width*System.Math.Min(1d,elapsed/(double)SkillTabState.Duration));

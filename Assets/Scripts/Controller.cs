@@ -2131,9 +2131,11 @@ public class Controller : IMessageHandler
 				{
 					if (num119 == Char.myCharz().charID)
 					{
-						Char.myCharz().seconds = msg.reader().readShort() - 1000;
+						Skill chargingSkill = Skills.get(num120);
+						int duration = msg.reader().readShort();
+						Char.myCharz().seconds = chargingSkill != null && chargingSkill.template.id == 11
+							? duration : duration - 1000;
 						Char.myCharz().last = mSystem.currentTimeMillis();
-						Res.outz("second= " + Char.myCharz().seconds + " last= " + Char.myCharz().last);
 					}
 					else if (GameScr.findCharInMap(num119) != null)
 					{

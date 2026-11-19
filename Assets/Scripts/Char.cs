@@ -2758,7 +2758,11 @@ public class Char : IMapObject
                     Res.outz("<*> 11 Hoàn thành skill not focus -  STAND");
                 }
                 chargeCount++;
-                if (chargeCount == 500)
+                // Laze finishes using the server duration above. Two increments per tick can
+                // reach 500 before a 3.5s cast finishes, silently stopping it without FINISH.
+                bool namekLaser = me ? myskill != null && myskill.template.id == 11
+                    : skillTemplateId >= 77 && skillTemplateId <= 83;
+                if (chargeCount == 500 && !namekLaser)
                 {
                     stopUseChargeSkill();
                 }

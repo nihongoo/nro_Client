@@ -2420,6 +2420,7 @@ public class GameScr : mScreen, IChatable
         Char owner = Char.myCharz();
         owner.ClearInvalidAttackFocus();
         if (owner.myskill != null && owner.myskill.template.type == 1
+            && owner.npcFocus == null
             && owner.mobFocus == null && owner.charFocus == null) return;
         doFire(isFireByShortCut: false);
     }
@@ -3777,6 +3778,7 @@ public class GameScr : mScreen, IChatable
         }
         Char owner = Char.myCharz();
         if (owner.myskill != null && owner.myskill.template.type == 1
+            && owner.npcFocus == null
             && (owner.ClearInvalidAttackFocus() || owner.mobFocus == null && owner.charFocus == null)) return;
         tam++;
 

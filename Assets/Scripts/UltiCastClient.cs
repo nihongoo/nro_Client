@@ -102,7 +102,10 @@ public static class UltiCastClient
                 : c.mobFocus != mobTarget || mobTarget == null || mobTarget.status == 0 || mobTarget.status == 1;
         }
         if (lost) {
-            if (legacy) { Reset(); return; }
+            if (legacy) {
+                if (current.Skill == 11) { Send(Cancel); c?.stopUseChargeSkill(); }
+                Reset(); return;
+            }
             if (current.Cast != 0) Send(Cancel);
             if (c != null) c.stopUseChargeSkill();
             // Keep the pending identity until the response: a late READY must be cancelled too.
