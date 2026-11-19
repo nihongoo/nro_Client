@@ -1836,6 +1836,13 @@ public class GameCanvas : IActionListener
 			return;
 		}
 		currentScreen.keyPress(keyCode);
+
+        // PC number-row keys select HUD slots; 5 must not also hold the current attack.
+        if (Main.isPC && currentScreen == GameScr.instance && TField.isQwerty
+            && !ChatTextField.gI().isShow && keyCode >= 49 && keyCode <= 56) {
+            keyPressed[keyCode - 48] = true;
+            return;
+        }
 		switch (keyCode)
 		{
 		case -38:
@@ -2005,6 +2012,12 @@ public class GameCanvas : IActionListener
 
 	public void mapKeyRelease(int keyCode)
 	{
+        if (Main.isPC && currentScreen == GameScr.instance && TField.isQwerty
+            && keyCode >= 49 && keyCode <= 56) {
+            keyHold[keyCode - 48] = false;
+            keyReleased[keyCode - 48] = true;
+            return;
+        }
 		switch (keyCode)
 		{
 		case -38:

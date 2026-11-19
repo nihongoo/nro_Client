@@ -2665,6 +2665,20 @@ public class GameScr : mScreen, IChatable
             {
                 Char.myCharz().cmdMenu.performAction();
             }
+            // Select before the old attack animation can block keyboard input.
+            // Clicks already select here through the HUD; PC digits must use that same path.
+            if (Main.isPC && TField.isQwerty && mobCapcha == null)
+            {
+                for (int slot = 0; slot < 8; slot++)
+                {
+                    if (!GameCanvas.keyPressed[slot + 1]) continue;
+                    GameCanvas.keyAsciiPress = 0;
+                    GameCanvas.keyPressed[slot + 1] = false;
+                    if (slot < keySkill.Length && keySkill[slot] != null)
+                        SelectMobileHudSkill(slot, keySkill[slot]);
+                    return;
+                }
+            }
             if (Char.myCharz().skillPaint != null)
             {
                 return;
@@ -3899,6 +3913,27 @@ public class GameScr : mScreen, IChatable
         return Char.myCharz().isFlyAndCharge || Char.myCharz().isUseSkillAfterCharge || Char.myCharz().isStandAndCharge || Char.myCharz().isWaitMonkey || isSuperPower || Char.myCharz().isFreez;
     }
 
+    private void selectActiveSkill(Skill skill)
+    {
+        Char owner = Char.myCharz();
+        if (owner.myskill != skill)
+        {
+            // An old ACK, buffered attack or animation must not execute under the new selection.
+            AttackSync.Reset();
+            owner.skillPaint = owner.skillPaintRandomPaint = null;
+            owner.indexSkill = 0;
+            owner.effPaints = null;
+            owner.currentMovePoint = null;
+            owner.endMovePointCommand = null;
+            owner.vMovePoints.removeAllElements();
+            owner.telePortSkill = false;
+            auto = 0;
+        }
+        owner.myskill = skill;
+        // lastSkill is UI history, not proof of the server's current selection.
+        Service.gI().selectSkill(skill.template.id);
+    }
+
     public void doSelectSkill(Skill skill, bool isShortcut)
     {
         if (skill == null || Skill.isDisabled(skill.template.id) || Char.myCharz().cHP <= 0
@@ -3907,10 +3942,9 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
-        Char.myCharz().myskill = skill;
+        selectActiveSkill(skill);
         if (lastSkill != skill && lastSkill != null)
         {
-            Service.gI().selectSkill(skill.template.id);
             saveRMSCurrentSkill(skill.template.id);
             resetButton();
             lastSkill = skill;
@@ -3944,7 +3978,6 @@ public class GameScr : mScreen, IChatable
         Res.outz("only select skill");
         if (lastSkill != skill)
         {
-            Service.gI().selectSkill(skill.template.id);
             saveRMSCurrentSkill(skill.template.id);
             resetButton();
         }
@@ -3961,42 +3994,37 @@ public class GameScr : mScreen, IChatable
 
     public void doUseSkill(Skill skill, bool isShortcut)
     {
+        if (skill == null || skill.template == null || Skill.isDisabled(skill.template.id)) return;
         if ((TileMap.mapID == 112 || TileMap.mapID == 113) && Char.myCharz().cTypePk == 0)
         {
             return;
         }
-        if (Char.myCharz().isSelectingSkillUseAlone())
+        if (skill.template.isUseAlone())
         {
             Res.outz("HERE");
             doUseSkillNotFocus(skill);
             return;
         }
+        selectActiveSkill(skill);
         selectedIndexSkill = -1;
-        if (skill != null)
-        {
-            Service.gI().selectSkill(skill.template.id);
-            saveRMSCurrentSkill(skill.template.id);
-            resetButton();
-            Char.myCharz().myskill = skill;
-            doFire(isShortcut);
-        }
+        saveRMSCurrentSkill(skill.template.id);
+        resetButton();
+        doFire(isShortcut);
     }
 
     public void doUseSkillNotFocus(Skill skill)
     {
-        if (((TileMap.mapID != 112 && TileMap.mapID != 113) || Char.myCharz().cTypePk != 0) && checkSkillValid())
+        if (skill == null || skill.template == null || Skill.isDisabled(skill.template.id)) return;
+        if ((TileMap.mapID == 112 || TileMap.mapID == 113) && Char.myCharz().cTypePk == 0) return;
+        selectActiveSkill(skill);
+        if (checkSkillValid())
         {
             selectedIndexSkill = -1;
-            if (skill != null)
-            {
-                Service.gI().selectSkill(skill.template.id);
-                saveRMSCurrentSkill(skill.template.id);
-                resetButton();
-                Char.myCharz().myskill = skill;
-                Char.myCharz().useSkillNotFocus();
-                Char.myCharz().currentFireByShortcut = true;
-                auto = 0;
-            }
+            saveRMSCurrentSkill(skill.template.id);
+            resetButton();
+            Char.myCharz().useSkillNotFocus();
+            Char.myCharz().currentFireByShortcut = true;
+            auto = 0;
         }
     }
 
