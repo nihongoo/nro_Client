@@ -2158,11 +2158,11 @@ public class Controller : IMessageHandler
 				{
 					if (num119 == Char.myCharz().charID)
 					{
-						Char.myCharz().stopUseChargeSkill();
+						Char.myCharz().cancelUseChargeSkill();
 					}
 					else if (GameScr.findCharInMap(num119) != null)
 					{
-						GameScr.findCharInMap(num119).stopUseChargeSkill();
+						GameScr.findCharInMap(num119).cancelUseChargeSkill();
 					}
 				}
 				if (b49 == 6)

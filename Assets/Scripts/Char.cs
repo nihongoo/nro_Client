@@ -2690,10 +2690,8 @@ public class Char : IMapObject
                     }
                 }
                 cur = mSystem.currentTimeMillis();
-                Res.outz("  7.5 gong namekLazer " + cName + "_" + cgender);
                 if (cur - last > seconds || cur - last > 10000)
                 {
-                    Res.outz("<*> 8  namekLazer gong xong " + cName);
                     bool isTuSatCharge = me && myskill != null && myskill.template.id == 14;
                     if (isTuSatCharge)
                     {
@@ -4948,20 +4946,23 @@ public class Char : IMapObject
             }
             hasSendAttack = false;
             myskill.lastTimeUseThisSkill = num;
-            if (myskill.template.manaUseType != 2)
+            if (myskill.template.id != 10 && myskill.template.id != 11)
             {
-                if (myskill.template.manaUseType == 1)
+                if (myskill.template.manaUseType != 2)
                 {
-                    cMP -= myskill.manaUse * cMPFull / 100;
+                    if (myskill.template.manaUseType == 1)
+                    {
+                        cMP -= myskill.manaUse * cMPFull / 100;
+                    }
+                    else
+                    {
+                        cMP -= myskill.manaUse;
+                    }
                 }
                 else
                 {
-                    cMP -= myskill.manaUse;
+                    cMP = 1L;
                 }
-            }
-            else
-            {
-                cMP = 1L;
             }
             myCharz().cStamina--;
             GameScr.gI().isInjureMp = true;
@@ -5140,6 +5141,37 @@ public class Char : IMapObject
         {
             useChargeSkill(isGround: true);
         }
+    }
+
+    public void cancelUseChargeSkill()
+    {
+        bool wasCharging = isFlyAndCharge || isStandAndCharge || isUseSkillAfterCharge || isCreateDark;
+        stopUseChargeSkill();
+        // Subtype 5 and U0 CANCEL can both stop the same cast. Do not reset a later state twice.
+        // Death interpolation and a new map/teleport own their coordinates and movement counters.
+        if (!wasCharging || cHP <= 0 || statusMe == 5 || statusMe == 14
+            || isLoadingMap || ischangingMap || isTeleport || isSetPos || isUsePlane) return;
+
+        skillPaint = skillPaintRandomPaint = null;
+        indexSkill = 0;
+        eff0 = eff1 = eff2 = null;
+        i0 = i1 = i2 = 0;
+        effPaints = null;
+        currentMovePoint = null;
+        endMovePointCommand = null;
+        vMovePoints.removeAllElements();
+        cvx = cvy = 0;
+        cp1 = cp2 = cp3 = 0;
+        cyStartFall = delayFall = 0;
+        posDisY = chargeCount = 0;
+        fy = ty = 0;
+        isAttFly = false;
+        // Charge lift is not a normal jump. Resume falling directly instead of entering
+        // setCharFallFromJump(), which snaps cy to a tile midpoint (+12), possibly inside ground.
+        bool grounded = TileMap.tileTypeAt(cx, cy + 1, 2);
+        if (grounded) cy = TileMap.tileYofPixel(cy + 1);
+        statusMe = grounded ? 1 : 4;
+        cf = grounded ? 0 : 12;
     }
 
     public void stopUseChargeSkill()
