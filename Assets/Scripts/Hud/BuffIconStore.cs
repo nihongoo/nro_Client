@@ -6,7 +6,8 @@ namespace Hud
 {
     internal sealed class BuffIconEntry
     {
-        internal const int GemId = 80;
+        internal const int GemId = 80, ComboId = 83;
+        internal bool IsCombo => Id == ComboId;
         internal bool IsGem => Id == GemId;
         internal bool Inactive => IsGem && ExpiresAt < 0;
         internal long Deadline => IsGem ? (ExpiresAt == -1 ? 0 : System.Math.Abs(ExpiresAt)) : ExpiresAt;
@@ -18,6 +19,11 @@ namespace Hud
 
         internal string Countdown(long now)
         {
+            if (IsCombo) {
+                int rage = ComboOverload.Remaining;
+                if (countdownValue != rage) { countdownValue = rage; countdown = rage.ToString(); }
+                return countdown;
+            }
             int seconds = BuffIconStore.Remaining(this, now);
             int value = seconds >= 60 ? (int)((seconds + 59L) / 60) : -seconds;
             if (value != countdownValue) {
@@ -28,6 +34,7 @@ namespace Hud
         internal string TooltipCountdown(long now)
         {
             Countdown(now);
+            if (IsCombo) return (ComboOverload.Locked ? "Quá tải · Nộ " : "Nộ ") + countdown + "/100";
             if (IsGem && BuffIconStore.Remaining(this, now) == 0) return Inactive ? "Chưa có tác dụng" : "Đang có tác dụng";
             return tooltipCountdown ?? (tooltipCountdown = "Còn " + countdown);
         }
@@ -85,9 +92,14 @@ namespace Hud
             long nextExpiry = long.MaxValue;
             foreach (BuffIconEntry entry in entries) {
                 // IDs 30-46 are the NPC charm family, including snapshots from older servers.
-                if (entry.IsGem || entry.Id >= 30 && entry.Id <= 46 || Remaining(entry, now) <= 0) continue;
-                output.Add(entry);
-                nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
+                if (entry.IsGem || entry.Id >= 30 && entry.Id <= 46 || !entry.IsCombo && Remaining(entry, now) <= 0) continue;
+                if (entry.IsCombo) {
+                    if (Char.ExistingLocalPlayer?.myskill?.template?.id == 17) output.Insert(0, entry);
+                }
+                else {
+                    output.Add(entry);
+                    nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
+                }
             }
             return nextExpiry;
         }

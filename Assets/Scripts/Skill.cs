@@ -90,7 +90,7 @@ public class Skill
     }
 }
 
-// Confirm only real attacks; anchor cadence to send time, never ACK arrival time.
+// Confirm basic attacks and support casts; anchor basic cadence to send time.
 internal static class AttackSync
 {
     internal const byte Result = 9;
@@ -109,6 +109,7 @@ internal static class AttackSync
     internal static bool IsBasicAttack(Skill value) => value != null && value.template != null
         && value.template.type == 1 && ((value.template.id >= 0 && value.template.id <= 5)
             || value.template.id == 9 || value.template.id == 17);
+    private static bool IsAcknowledged(Skill value) => IsBasicAttack(value) || value?.template?.id == 7;
     internal static void Reset()
     {
         pending = 0; skill = queuedSkill = null;
@@ -127,9 +128,11 @@ internal static class AttackSync
     }
     internal static bool Start(Char owner, SkillPaint requested, int type)
     {
-        if (!IsBasicAttack(owner.myskill) || owner.charFocus == null && owner.mobFocus != null && owner.mobFocus.isMobMe) return false;
+        if (!IsAcknowledged(owner.myskill)) return false;
+        if (ComboOverload.Block(owner.myskill)) return true;
         owner.ClearInvalidAttackFocus();
-        if (owner.mobFocus == null && owner.charFocus == null) return true;
+        if (owner.mobFocus == null && owner.charFocus == null || owner.charFocus != null && owner.myskill.template.id != 7 && !GameScr.IsLivePlayerTarget(owner.charFocus)) return true;
+        if (owner.mobFocus != null && !GameScr.gI().isMeCanAttackMob(owner.mobFocus)) return true;
         if (!Ready(owner.myskill)) {
             long remaining = owner.myskill.EffectiveCooldown - (mSystem.currentTimeMillis() - owner.myskill.lastTimeUseThisSkill);
             if (remaining > 0 && remaining <= InputBufferMs && queuedSkill == null) {
@@ -172,11 +175,14 @@ internal static class AttackSync
     internal static long BeforeSend()
     {
         Char owner = Char.myCharz();
-        if (!IsBasicAttack(owner.myskill) || owner.charFocus == null && owner.mobFocus != null && owner.mobFocus.isMobMe) return 0;
+        if (ComboOverload.Block(owner.myskill)) return -1;
+        if (!IsAcknowledged(owner.myskill)) return 0;
         owner.ClearInvalidAttackFocus();
-        if (owner.mobFocus == null && owner.charFocus == null || !Ready(owner.myskill)) return -1;
+        if (owner.mobFocus == null && owner.charFocus == null || owner.charFocus != null && owner.myskill.template.id != 7 && !GameScr.IsLivePlayerTarget(owner.charFocus) || !Ready(owner.myskill)) return -1;
+        if (owner.mobFocus != null && !GameScr.gI().isMeCanAttackMob(owner.mobFocus)) return -1;
         skill = owner.myskill; sentAt = mSystem.currentTimeMillis();
-        pending = ++nextRequest; skill.lastTimeUseThisSkill = sentAt;
+        pending = ++nextRequest;
+        if (skill.template.id != 7) skill.lastTimeUseThisSkill = sentAt;
         sentMap = TileMap.mapID; sentZone = TileMap.zoneID;
         paint = stagedPaint ?? GameScr.sks[skill.skillId];
         paintType = stagedPaint != null ? stagedType : (TileMap.tileTypeAtPixel(owner.cx, owner.cy) & 2) != 0 ? 0 : 1;
@@ -198,6 +204,8 @@ internal static class AttackSync
             confirmedSkill.SynchronizeCooldown(cooldown);
             pending = 0; skill = null; paint = null;
             if (accepted) {
+                if (confirmedSkill.template.id == 7)
+                    confirmedSkill.lastTimeUseThisSkill = mSystem.currentTimeMillis() - cooldown + System.Math.Max(0, remaining);
                 // The ACK describes server time at send, not at receipt. Adding receive time
                 // here adds network delay on every attack. Keep the original send timestamp.
                 Char owner = Char.myCharz();
@@ -210,9 +218,78 @@ internal static class AttackSync
             else {
                 confirmedSkill.lastTimeUseThisSkill = mSystem.currentTimeMillis() - cooldown + System.Math.Max(0, remaining);
                 confirmedSkill.paintCanNotUseSkill = remaining > 0;
-                if (remaining == 0) GameScr.info1.addInfo("Không thể tấn công mục tiêu này.", 0);
+                if (remaining == 0 && confirmedSkill.template.id != 7) GameScr.info1.addInfo("Không thể tấn công mục tiêu này.", 0);
             }
         } catch (System.Exception) { Reset(); }
         return true;
+    }
+}
+
+// Server snapshot on -45/subtype 31. Extrapolation is visual only; the server gates every hit.
+internal static class ComboOverload
+{
+    internal const int Subtype = 31;
+    private const int Version = 1;
+    private static long sequence, received, lastNotice;
+    private static double heat, gain, decay, growSeconds, decayAfterSeconds;
+    private static bool locked;
+    internal static int KaiokenHpPercent { get; private set; }
+    internal static void Reset()
+    {
+        sequence = received = lastNotice = 0;
+        heat = gain = decay = growSeconds = decayAfterSeconds = 0;
+        locked = false; KaiokenHpPercent = 0;
+    }
+    internal static void Read(myReader reader)
+    {
+        if (reader.readUnsignedByte() != Version) throw new System.InvalidOperationException("Skill balance version");
+        int hpPercent = reader.readUnsignedByte();
+        long next = reader.readLong();
+        int value = reader.readShort(); bool blocked = reader.readBoolean();
+        int rise = reader.readShort(), fall = reader.readShort();
+        int grow = reader.readInt(), grace = reader.readInt();
+        if (reader.available() != 0 || value < 0 || value > 1000 || rise < 0 || fall < 0 || grow < 0 || grace < 0)
+            throw new System.InvalidOperationException("Skill balance packet");
+        if (next <= sequence) return;
+        sequence = next; received = Hud.BuffIconStore.Now;
+        heat = value; locked = blocked; gain = rise; decay = fall;
+        growSeconds = grow / 1000.0; decayAfterSeconds = grace / 1000.0;
+        KaiokenHpPercent = hpPercent;
+    }
+    private static double Heat
+    {
+        get {
+            if (sequence == 0 || Char.ExistingLocalPlayer == null || Char.ExistingLocalPlayer.cHP <= 0) return 0;
+            double seconds = System.Math.Max(0, Hud.BuffIconStore.Now - received) / 1000.0;
+            double value = locked ? heat - decay * seconds
+                : heat + gain * System.Math.Min(seconds, growSeconds) - decay * System.Math.Max(0, seconds - decayAfterSeconds);
+            return System.Math.Max(0, System.Math.Min(1000, value));
+        }
+    }
+    internal static bool Block(Skill skill)
+    {
+        if (skill == null) return false;
+        string reason = null;
+        Char owner = Char.ExistingLocalPlayer;
+        if (skill.template.id == 17 && locked) reason = "Liên hoàn quá tải, chờ thanh về 0.";
+        else if (skill.template.id == 9 && owner != null) {
+            if (KaiokenHpPercent > 0 && owner.cHP <= owner.cHPFull * KaiokenHpPercent / 100)
+                reason = "Không đủ HP để dùng Kaioken.";
+            else if (skill.template.manaUseType == 1 && owner.cMP < owner.cMPFull * skill.manaUse / 100)
+                reason = mResources.NOT_ENOUGH_MP;
+        }
+        if (reason == null) return false;
+        long now = Hud.BuffIconStore.Now;
+        if (now - lastNotice >= 1500) {
+            lastNotice = now;
+            GameScr.info1.addInfo(reason, 0);
+        }
+        return true;
+    }
+    internal static int Remaining => (int)System.Math.Floor(System.Math.Max(0, 100 - Heat / 10));
+    internal static bool Locked => locked;
+    internal static void Paint(mGraphics g, UnityEngine.Rect rect, Skill skill)
+    {
+        if (skill != null && skill.template.id == 17 && locked) Hud.BuffIconsHud.PaintInactive(rect, true);
     }
 }

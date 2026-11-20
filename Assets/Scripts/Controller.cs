@@ -284,42 +284,21 @@ public class Controller : IMessageHandler
 			{
 				sbyte b60 = msg.reader().readByte();
 				Res.outz("type= " + b60);
-				if (b60 == 0)
-				{
-					int num141 = msg.reader().readInt();
-					short templateId = msg.reader().readShort();
-					int num142 = msg.readInt3Byte();
-					SoundMn.gI().explode_1();
-					if (num141 == Char.myCharz().charID)
-					{
-						Char.myCharz().mobMe = new Mob(num141, false, false, false, false, false, templateId, 1, num142, 0, num142, (short)(Char.myCharz().cx + ((Char.myCharz().cdir != 1) ? (-40) : 40)), (short)Char.myCharz().cy, 4, 0);
-						Char.myCharz().mobMe.isMobMe = true;
-						EffecMn.addEff(new Effect(18, Char.myCharz().mobMe.x, Char.myCharz().mobMe.y, 2, 10, -1));
-						Char.myCharz().tMobMeBorn = 30;
-						GameScr.vMob.addElement(Char.myCharz().mobMe);
-					}
-					else
-					{
-						@char = GameScr.findCharInMap(num141);
-						if (@char != null)
-						{
-							Mob mob6 = new Mob(num141, false, false, false, false, false, templateId, 1, num142, 0, num142, (short)@char.cx, (short)@char.cy, 4, 0);
-							mob6.isMobMe = true;
-							@char.mobMe = mob6;
-							GameScr.vMob.addElement(@char.mobMe);
-						}
-						else
-						{
-							Mob mob7 = GameScr.findMobInMap(num141);
-							if (mob7 == null)
-							{
-								mob7 = new Mob(num141, false, false, false, false, false, templateId, 1, num142, 0, num142, -100, -100, 4, 0);
-								mob7.isMobMe = true;
-								GameScr.vMob.addElement(mob7);
-							}
-						}
-					}
-				}
+                if (b60 == 0)
+                {
+                    int ownerId = msg.reader().readInt();
+                    short templateId = msg.reader().readShort();
+                    int hp = msg.readInt3Byte();
+                    bool created;
+                    Mob summoned = GameScr.ApplySummonSnapshot(ownerId, templateId, hp, out created);
+                    if (created) {
+                        SoundMn.gI().explode_1();
+                        if (ownerId == Char.myCharz().charID) {
+                            EffecMn.addEff(new Effect(18, summoned.x, summoned.y, 2, 10, -1));
+                            Char.myCharz().tMobMeBorn = 30;
+                        }
+                    }
+                }
 				if (b60 == 1)
 				{
 					int num143 = msg.reader().readInt();
@@ -367,7 +346,7 @@ public class Controller : IMessageHandler
 					}
 					else
 					{
-						mob = GameScr.findMobInMap(num144);
+						mob = GameScr.findSummonedMob(num144);
 						if (mob != null)
 						{
 							if (num145 == Char.myCharz().charID)
@@ -438,93 +417,50 @@ public class Controller : IMessageHandler
 				if (b60 == 4)
 				{
 				}
-				if (b60 == 5)
-				{
-					int num149 = msg.reader().readInt();
-					sbyte b61 = msg.reader().readByte();
-					int mobId3 = msg.reader().readInt();
-					int num150 = msg.readInt3Byte();
-					int hp2 = msg.readInt3Byte();
-					@char = null;
-					@char = ((num149 != Char.myCharz().charID) ? GameScr.findCharInMap(num149) : Char.myCharz());
-					if (@char == null)
-					{
-						return;
-					}
-					if ((TileMap.tileTypeAtPixel(@char.cx, @char.cy) & 2) == 2)
-					{
-						@char.setSkillPaint(GameScr.sks[b61], 0);
-					}
-					else
-					{
-						@char.setSkillPaint(GameScr.sks[b61], 1);
-					}
-					Mob mob8 = GameScr.findMobInMap(mobId3);
-					if (@char.cx <= mob8.x)
-					{
-						@char.cdir = 1;
-					}
-					else
-					{
-						@char.cdir = -1;
-					}
-					@char.mobFocus = mob8;
-					mob8.hp = hp2;
-					mob8.updateHp_bar();
-					GameCanvas.debug("SA83v2", 2);
-					if (num150 == 0)
-					{
-						mob8.x = mob8.xFirst;
-						mob8.y = mob8.yFirst;
-						GameScr.startFlyText(mResources.miss, mob8.x, mob8.y - mob8.h, 0, -2, mFont.MISS);
-					}
-					else
-					{
-						GameScr.startFlyText("-" + num150, mob8.x, mob8.y - mob8.h, 0, -2, mFont.ORANGE);
-					}
-				}
-				if (b60 == 6)
-				{
-					int num151 = msg.reader().readInt();
-					if (num151 == Char.myCharz().charID)
-					{
-						Char.myCharz().mobMe.startDie();
-					}
-					else
-					{
-						GameScr.findCharInMap(num151)?.mobMe.startDie();
-					}
-				}
+                if (b60 == 5)
+                {
+                    int attackerId = msg.reader().readInt();
+                    int paintId = msg.reader().readUnsignedByte();
+                    int ownerId = msg.reader().readInt();
+                    int damage = msg.readInt3Byte();
+                    int remainingHp = msg.readInt3Byte();
+                    Mob summoned = GameScr.findSummonedMob(ownerId);
+                    if (summoned != null) {
+                        summoned.hp = remainingHp;
+                        summoned.updateHp_bar();
+                        Char attacker = attackerId == Char.myCharz().charID ? Char.myCharz() : GameScr.findCharInMap(attackerId);
+                        if (attacker != null && attacker != Char.myCharz()) {
+                            attacker.mobFocus = summoned;
+                            attacker.cdir = attacker.cx <= summoned.x ? 1 : -1;
+                            if (paintId < GameScr.sks.Length)
+                                attacker.setSkillPaint(GameScr.sks[paintId], (TileMap.tileTypeAtPixel(attacker.cx, attacker.cy) & 2) == 2 ? 0 : 1);
+                        }
+                        GameScr.startFlyText(damage == 0 ? mResources.miss : "-" + damage,
+                            summoned.x, summoned.y - summoned.h, 0, -2, damage == 0 ? mFont.MISS : mFont.ORANGE);
+                    }
+                }
+                if (b60 == 6)
+                {
+                    int ownerId = msg.reader().readInt();
+                    GameScr.findSummonedMob(ownerId)?.startDie();
+                }
+                if (b60 == 8)
+                {
+                    bool chocolate = msg.reader().readByte() != 0;
+                    int ownerId = msg.reader().readInt();
+                    short image = chocolate ? msg.reader().readShort() : (short)0;
+                    Mob summoned = GameScr.findSummonedMob(ownerId);
+                    if (summoned != null) {
+                        if (chocolate) summoned.setBody(image);
+                        else summoned.clearBody();
+                    }
+                }
 				if (b60 != 7)
 				{
 					break;
 				}
-				int num152 = msg.reader().readInt();
-				if (num152 == Char.myCharz().charID)
-				{
-					Char.myCharz().mobMe = null;
-					for (int num153 = 0; num153 < GameScr.vMob.size(); num153++)
-					{
-						if (((Mob)GameScr.vMob.elementAt(num153)).mobId == num152)
-						{
-							GameScr.vMob.removeElementAt(num153);
-						}
-					}
-					break;
-				}
-				@char = GameScr.findCharInMap(num152);
-				for (int num154 = 0; num154 < GameScr.vMob.size(); num154++)
-				{
-					if (((Mob)GameScr.vMob.elementAt(num154)).mobId == num152)
-					{
-						GameScr.vMob.removeElementAt(num154);
-					}
-				}
-				if (@char != null)
-				{
-					@char.mobMe = null;
-				}
-				break;
+                GameScr.RemoveSummonedMob(msg.reader().readInt());
+                break;
 			}
 			case -92:
 				Main.typeClient = msg.reader().readByte();
@@ -1976,6 +1912,7 @@ public class Controller : IMessageHandler
 			{
 				sbyte b49 = msg.reader().readByte();
                 if (b49 == UltiCastClient.Subtype) { UltiCastClient.Receive(UltiCastClient.Read(msg.reader())); break; }
+                if (b49 == ComboOverload.Subtype) { ComboOverload.Read(msg.reader()); break; }
 				int num119 = msg.reader().readInt();
 				short num120 = msg.reader().readShort();
 				Res.outz(">.SKILL_NOT_FOCUS      skillNotFocusID: " + num120 + " skill type= " + b49 + "   player use= " + num119);
@@ -3207,7 +3144,6 @@ public class Controller : IMessageHandler
 				Char.myCharz().npcFocus = null;
 				Char.myCharz().charFocus = null;
 				Char.myCharz().itemFocus = null;
-				Char.myCharz().focus.removeAllElements();
 				Char.myCharz().testCharId = -9999;
 				Char.myCharz().killCharId = -9999;
 				GameCanvas.resetBg();
@@ -3544,6 +3480,8 @@ public class Controller : IMessageHandler
 				GameCanvas.debug("SA7666", 2);
 				int num2 = msg.reader().readInt();
 				int num3 = -1;
+                bool healing = false;
+                Char healer = null;
 				if (num2 != Char.myCharz().charID)
 				{
 					Char char2 = GameScr.findCharInMap(num2);
@@ -3551,13 +3489,15 @@ public class Controller : IMessageHandler
 					{
 						return;
 					}
-					if (char2.currentMovePoint != null)
+                    int num4 = msg.reader().readUnsignedByte();
+                    healing = Char.IsHealingPaint(num4);
+                    healer = char2;
+					if (!healing && char2.currentMovePoint != null)
 					{
 						char2.createShadow(char2.cx, char2.cy, 10);
 						char2.cx = char2.currentMovePoint.xEnd;
 						char2.cy = char2.currentMovePoint.yEnd;
 					}
-					int num4 = msg.reader().readUnsignedByte();
 					if ((TileMap.tileTypeAtPixel(char2.cx, char2.cy) & 2) == 2)
 					{
 						char2.setSkillPaint(GameScr.sks[num4], 0);
@@ -3612,6 +3552,8 @@ public class Controller : IMessageHandler
 				else
 				{
 					sbyte b2 = msg.reader().readByte();
+                    healing = Char.IsHealingPaint((byte)b2);
+                    healer = Char.myCharz();
 					sbyte b3 = msg.reader().readByte();
 					num3 = msg.reader().readInt();
 				}
@@ -3619,10 +3561,16 @@ public class Controller : IMessageHandler
 				{
 					sbyte b4 = msg.reader().readByte();
 					Res.outz("isRead continue = " + b4);
-					if (b4 != 1)
-					{
-						break;
-					}
+                    if (b4 != 1)
+                    {
+                        if (healing && msg.reader().available() >= 4) {
+                            short casterX = msg.reader().readShort(), casterY = msg.reader().readShort();
+                            if (healer != null && !healer.me) {
+                                healer.cx = casterX; healer.cy = casterY;
+                            }
+                        }
+                        break;
+                    }
 					sbyte b5 = msg.reader().readByte();
 					Res.outz("type skill = " + b5);
 					if (num3 == Char.myCharz().charID)
@@ -3926,6 +3874,7 @@ public class Controller : IMessageHandler
 			{
 				GameCanvas.debug("SA81", 2);
 				int num179 = msg.reader().readInt();
+                GameScr.RemoveSummonedMob(num179);
 				for (int num180 = 0; num180 < GameScr.vCharInMap.size(); num180++)
 				{
 					Char char13 = (Char)GameScr.vCharInMap.elementAt(num180);
@@ -4758,7 +4707,7 @@ public class Controller : IMessageHandler
 					GameScr.vMob.addElement(mob);
 				}
 			}
-			if (Char.myCharz().mobMe != null && GameScr.findMobInMap(Char.myCharz().mobMe.mobId) == null)
+			if (Char.myCharz().mobMe != null && GameScr.findSummonedMob(Char.myCharz().mobMe.mobId) == null)
 			{
 				Char.myCharz().mobMe.getData();
 				Char.myCharz().mobMe.x = Char.myCharz().cx;

@@ -100,6 +100,7 @@ namespace Hud
                         PaintSelectedSkill(rect);
                     long remaining = skill.coolDown-mSystem.currentTimeMillis()+skill.lastTimeUseThisSkill;
                     if (remaining > 0) Timer(g,rect,remaining/1000);
+                    ComboOverload.Paint(g,rect,skill);
                 }
                 KeyLabel(g,rect,SkillKeyLabel(i));
             }

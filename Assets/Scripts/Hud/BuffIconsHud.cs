@@ -17,7 +17,7 @@ namespace Hud
         private static long checkedFrame = -1, checkedState = -1, storeRevision = -1, nextExpiry, layoutVersion;
         private static Rect infoRect, hpRect, targetRect, actionsRect;
         private static int layoutWidth, layoutHeight, layoutZoom, layoutCount = -1;
-        private static bool layoutMobile;
+        private static bool layoutMobile, layoutComboSelected;
         private static mFont layoutFont;
         private static Font nativeFont;
         private static int nativeSize, countdownDigits = 2;
@@ -98,13 +98,15 @@ namespace Hud
             bool fontChanged = layoutFont != font || nativeFont != font.myFont || nativeSize != size || countdown.Dirty;
             bool viewportChanged = layoutWidth != GameCanvas.w || layoutHeight != GameCanvas.h
                 || layoutZoom != mGraphics.zoomLevel || layoutMobile != mobile;
-            bool entriesChanged = storeRevision != BuffIconStore.Revision || now >= nextExpiry;
+            bool comboSelected = Char.ExistingLocalPlayer?.myskill?.template?.id == 17;
+            bool entriesChanged = storeRevision != BuffIconStore.Revision || now >= nextExpiry || comboSelected != layoutComboSelected;
             if (!entriesChanged && !fontChanged && !viewportChanged && checkedFrame == frame && checkedState == state) return;
             checkedFrame = frame; checkedState = state;
             if (entriesChanged) {
+                layoutComboSelected = comboSelected;
                 nextExpiry = BuffIconStore.CopyVisible(visible, now); gem = BuffIconStore.Gem; storeRevision = BuffIconStore.Revision;
                 countdownDigits = 2;
-                for (int i = 0; i < visible.Count; i++) countdownDigits = Mathf.Max(countdownDigits, visible[i].Countdown(now).Length - 1);
+                for (int i = 0; i < visible.Count; i++) countdownDigits = Mathf.Max(countdownDigits, visible[i].IsCombo ? 3 : visible[i].Countdown(now).Length - 1);
             }
             HudLayout.TryGetRect("target-info.bounds", out Rect target);
             Rect info = HudLayout.GetRect("top-info.bounds"), hp = HudLayout.GetRect("top-info.hp"), actions = HudLayout.GetRect(TopActionsHud.Hub);
@@ -266,19 +268,24 @@ namespace Hud
                     // Kilis has no x1 asset in the existing pack; use the available Chibi icon there.
                     int icon = entry.Icon == 15359 && mGraphics.zoomLevel == 1 ? 433 : entry.Icon;
                     InventoryItemVisuals.PaintCompactIcon(g, icon, InventoryFrame.Inset(cell, 1), cell);
+                    if (entry.IsCombo && ComboOverload.Locked) PaintInactive(cell, true);
                     countdown.Paint(cell, entry.Countdown(now), grid.CaptionGap);
                 }
             } finally {
                 g.setClip(0, 0, GameCanvas.w, GameCanvas.h); g.translate(tx, ty);
             }
         }
-        private static void PaintInactive(Rect cell)
+        internal static void PaintInactive(Rect cell, bool dim = false)
         {
             Rect pixels = HudButtonSkin.ScreenPixels(cell);
             float thickness = 2f * pixels.width / (cell.width * Mathf.Max(1, mGraphics.zoomLevel));
             Matrix4x4 matrix = GUI.matrix; Color color = GUI.color;
             try {
                 GUI.matrix = Matrix4x4.identity;
+                if (dim) {
+                    GUI.color = new Color(.5f, .5f, .5f, .45f);
+                    GUI.DrawTexture(pixels, Texture2D.whiteTexture);
+                }
                 GUI.color = new Color(1, 0, 0, 1);
                 GUIUtility.RotateAroundPivot(-45, pixels.center);
                 GUI.DrawTexture(new Rect(pixels.center.x - pixels.width / 2, pixels.center.y - thickness / 2, pixels.width, thickness), Texture2D.whiteTexture);

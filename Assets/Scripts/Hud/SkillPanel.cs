@@ -332,7 +332,33 @@ public partial class Panel
             return mFont.tahoma_7_green2.splitFontArray(text,Mathf.Max(1,(int)SkillPanelLayout.IntrinsicTextWidth));
         }
     }
-    private static string CleanSkillText(string text) => string.IsNullOrWhiteSpace(text)||string.Equals(text.Trim(),"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text.Trim();
+    private static string encodedSkillText,decodedSkillText;
+    private static string CleanSkillText(string text)
+    {
+        if(string.IsNullOrWhiteSpace(text))return string.Empty;
+        text=text.Trim();
+        // MySQL serializes a binary JSON string as base64:type251:... .
+        // Decode before wrapping, including descriptions retained in the client's old cache.
+        const string prefix="base64:type";
+        if(text.StartsWith(prefix,StringComparison.Ordinal)) {
+            if(text==encodedSkillText)return decodedSkillText;
+            string original=text;
+            for(int layer=0;layer<4&&text.StartsWith(prefix,StringComparison.Ordinal);layer++) {
+                int separator=text.IndexOf(':',prefix.Length),type;
+                if(separator<0||!int.TryParse(text.Substring(prefix.Length,separator-prefix.Length),out type)
+                    ||type<0||type>255)break;
+                try {
+                    byte[] bytes=Convert.FromBase64String(text.Substring(separator+1));
+                    text=new System.Text.UTF8Encoding(false,true).GetString(bytes).Trim();
+                } catch(FormatException) {break;}
+                  catch(System.Text.DecoderFallbackException) {break;}
+            }
+            encodedSkillText=original;
+            decodedSkillText=string.Equals(text,"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text;
+            return decodedSkillText;
+        }
+        return string.Equals(text,"null",StringComparison.OrdinalIgnoreCase)?string.Empty:text;
+    }
     private static void PaintSkillFade(mGraphics g,Rect viewport,bool more)
     {
         if(!more)return;
@@ -374,38 +400,87 @@ public partial class Panel
             if(i==potentialExpanded)PaintPotentialEditor(g,viewport);
         }
     }
-    private sealed class SkillLine {internal string Text;internal mFont Font;internal int Height=12;internal int? Color;}
-    private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width,int? color=null,int lineHeight=12)
+    private sealed class SkillLine {internal string Text;internal mFont Font;internal int Height=12;internal int? Color;internal bool ViewportClip;}
+    private static void AddSkillLines(List<SkillLine> lines,string text,mFont font,float width,int? color=null,int lineHeight=12,bool viewportClip=false)
     {
         if(string.IsNullOrWhiteSpace(text))return;
-        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4))){lines.Add(new SkillLine{Text=line,Font=font,Color=color,Height=lineHeight});}
+        foreach(string line in font.splitFontArray(text,Mathf.Max(1,(int)width-4))){lines.Add(new SkillLine{Text=line,Font=font,Color=color,Height=lineHeight,ViewportClip=viewportClip});}
+    }
+    private static void AddSkillDescriptionLines(List<SkillLine> lines,string text,float width)
+    {
+        if(string.IsNullOrWhiteSpace(text))return;
+        const int paragraphLines=3,paragraphGap=6;
+        mFont font=mFont.tahoma_7;
+        int lineHeight=Mathf.Max(14,font.getHeight()+4);
+        int wrapWidth=Mathf.Max(1,(int)width-4);
+        foreach(string section in text.Replace("\r\n","\n").Replace('\r','\n').Split(new[]{'\n','\b'},StringSplitOptions.RemoveEmptyEntries)) {
+            string paragraph=string.Empty;
+            // Break between complete sentences; decimals such as 1.5 are kept intact.
+            foreach(string part in System.Text.RegularExpressions.Regex.Split(section.Trim(),@"(?<=[.!?])\s+")) {
+                string sentence=part.Trim();if(sentence.Length==0)continue;
+                string candidate=paragraph.Length==0?sentence:paragraph+" "+sentence;
+                if(paragraph.Length>0&&font.splitFontArray(candidate,wrapWidth).Length>paragraphLines) {
+                    if(lines.Count>0)lines.Add(new SkillLine{Height=paragraphGap});
+                    AddSkillLines(lines,paragraph,font,width,lineHeight:lineHeight,viewportClip:true);
+                    paragraph=sentence;
+                } else paragraph=candidate;
+            }
+            if(paragraph.Length>0) {
+                if(lines.Count>0)lines.Add(new SkillLine{Height=paragraphGap});
+                AddSkillLines(lines,paragraph,font,width,lineHeight:lineHeight,viewportClip:true);
+            }
+        }
     }
     private static int SkillLinesHeight(List<SkillLine> lines)
     {
         int height=0;foreach(SkillLine line in lines)height+=line.Height;return height;
     }
-    private static void AddLaserDescription(List<SkillLine> lines,Skill skill,float width)
+    private static void PrepareSkillDescriptionFonts(List<SkillLine> lines)
+    {
+        var characters=new Dictionary<Font,System.Text.StringBuilder>();
+        foreach(SkillLine line in lines) {
+            Font font=line.Font?.myFont;
+            if(!line.ViewportClip||string.IsNullOrEmpty(line.Text)||font==null||!font.dynamic)continue;
+            if(!characters.TryGetValue(font,out var text)) {
+                text=new System.Text.StringBuilder();characters.Add(font,text);
+            }
+            text.Append(line.Text);
+        }
+        // Include offscreen lines so scrolling never introduces new glyphs mid-draw.
+        foreach(var entry in characters)
+            entry.Key.RequestCharactersInTexture(entry.Value.ToString(),Mathf.Max(1,entry.Key.fontSize),FontStyle.Normal);
+    }
+    private static void AddLaserDescriptionLines(List<SkillLine> lines,Skill skill,float width)
     {
         if(skill==null)return;
-        // Use the displayed level's percentage, including the first level before learning.
         string percent=skill.damage+"%";
-        AddSkillLines(lines,"DẠNG THƯỜNG",mFont.tahoma_7b_green2,width,0x00552D,16);
-        AddSkillLines(lines,"Gây sát thương bằng "+percent+" KI hiện tại.\n"
+        AddSkillDescriptionLines(lines,"Nội tại: Mỗi ấn hồi sinh tăng thêm 10% sát thương của chiêu, tối đa 40%, cộng với sát thương tăng từ nội tại ấn hồi sinh.\n"
+            +"Sau khi dùng chiêu gây sát thương sẽ tiêu hao toàn bộ ấn.",width);
+        mFont heading=mFont.tahoma_7b_green2;
+        int headingHeight=Mathf.Max(16,heading.getHeight()+4);
+        lines.Add(new SkillLine{Height=7});
+        AddSkillLines(lines,"DẠNG THƯỜNG",heading,width,0x00552D,headingHeight,true);
+        AddSkillDescriptionLines(lines,"Gây sát thương bằng "+percent+" KI hiện tại.\n"
             +"Tiêu hao toàn bộ KI.\n"
             +"Có thể phá khiên nhưng vẫn bị giảm sát thương.\n"
-            +"Thời gian vận 1,5s.",mFont.tahoma_7,width,0x49453E,14);
+            +"Thời gian vận 1,5 giây.",width);
         lines.Add(new SkillLine{Height=7});
-        AddSkillLines(lines,"DẠNG MẠNH",mFont.tahoma_7b_green2,width,0x00552D,16);
-        AddSkillLines(lines,"Gây sát thương bằng "+percent+" KI tối đa khi mục tiêu bị socola do bản thân gây hoặc bị người chơi khống chế cứng (trói, thôi miên,...).\n"
+        AddSkillLines(lines,"DẠNG MẠNH",heading,width,0x00552D,headingHeight,true);
+        AddSkillDescriptionLines(lines,"Gây sát thương bằng "+percent+" KI tối đa khi mục tiêu bị socola do bản thân gây hoặc bị người chơi khống chế cứng (trói, thôi miên,...).\n"
             +"Tiêu hao 50% KI tối đa.\n"
             +"Không bị chặn hoặc giảm sát thương bởi khiên.\n"
-            +"Thời gian vận 3,5s.",mFont.tahoma_7,width,0x49453E,14);
+            +"Thời gian vận 3,5 giây.",width);
+        AddSkillDescriptionLines(lines,"Sát thương tăng thêm 50% đối với người chơi và boss.",width);
     }
     private static int PaintSkillLines(mGraphics g,List<SkillLine> lines,Rect viewport,int scroll,int initial=0)
     {
         InventoryFrame.Clip(g,viewport);int y=(int)viewport.y+initial-scroll;
         foreach(SkillLine line in lines){
-            if(!string.IsNullOrEmpty(line.Text))InventoryItemVisuals.PaintCompactText(g,line.Font,line.Text,new Rect(viewport.x,y,viewport.width,line.Height),viewport,line.Color??(line.Font==mFont.tahoma_7_green2?0x00552D:InventoryFrame.Border));
+            if(!string.IsNullOrEmpty(line.Text)) {
+                int ink=line.Color??(line.Font==mFont.tahoma_7_green2?0x00552D:InventoryFrame.Border);
+                InventoryItemVisuals.PaintCompactText(g,line.Font,line.Text,
+                    new Rect(viewport.x,y,viewport.width,line.Height),viewport,ink,clipToBounds:!line.ViewportClip);
+            }
             y+=line.Height;
         }
         return initial+SkillLinesHeight(lines);
@@ -428,18 +503,16 @@ public partial class Panel
         Skill display=current!=null&&current.point>0?current:(t.skills.Length>0?t.skills[0]:null);
         var top=new List<SkillLine>();
         if(display!=null) {
-            string mana=t.id==11?"KI theo dạng":mResources.KI_consume+display.manaUse+(t.manaUseType==1?"%":"");
-            AddSkillLines(top,mana+" · "+mResources.cooldown+": "+display.strTimeReplay()+"s",mFont.tahoma_7,upper.width);
+            string mana=t.id==11?"KI theo dạng":mResources.KI_consume
+                +(t.manaUseType==2?"Toàn bộ KI hiện tại":display.manaUse+(t.manaUseType==1?"% KI tối đa":" KI"));
+            AddSkillLines(top,mana+" · "+mResources.cooldown+": "+display.strTimeReplay()+" giây",mFont.tahoma_7,upper.width);
         }
         AddSkillDamage(top,t,level,level==t.maxPoint?" (hiện tại, tối đa)":" (hiện tại)",mFont.tahoma_7b_dark,upper.width);
         if(level<t.maxPoint)AddSkillDamage(top,t,level+1,level+1==t.maxPoint?" (kế tiếp, tối đa)":" (kế tiếp)",mFont.tahoma_7_green2,upper.width);
         if(level+1<t.maxPoint)AddSkillDamage(top,t,t.maxPoint," (tối đa)",mFont.tahoma_7,upper.width);
-        int tableEnd=PaintSkillLines(g,top,upper,skillTopScroll,headingHeight);
-        InventoryFrame.Clip(g,upper);g.setColor(InventoryFrame.Border);
-        g.fillRect((int)upper.x,(int)upper.y+tableEnd-skillTopScroll+3,(int)upper.width,1);
         var bottom=new List<SkillLine>();
-        if(t.id==11)AddLaserDescription(bottom,display,lower.width);
-        else AddSkillLines(bottom,SkillDescription(t,current),mFont.tahoma_7,lower.width);
+        if(t.id==11)AddLaserDescriptionLines(bottom,display,lower.width);
+        else AddSkillDescriptionLines(bottom,SkillDescription(t,current),lower.width);
         bool studying=SkillTabState.Studying(t.id);
         if(studying)AddSkillLines(bottom,"Đang học cấp "+SkillTabState.LearningLevel+" · còn "+SkillTabState.Clock(SkillTabState.Remaining),mFont.tahoma_7b_dark,lower.width);
         else if(level<t.maxPoint&&level<t.skills.Length) {
@@ -447,6 +520,10 @@ public partial class Panel
             AddSkillLines(bottom,"Thời gian học: "+SkillTabState.Clock(SkillTabState.StudyDuration(level+1)),mFont.tahoma_7,lower.width);
             AddSkillLines(bottom,"Học tại: "+SkillTabState.TeacherName,mFont.tahoma_7,lower.width);
         }
+        PrepareSkillDescriptionFonts(bottom);
+        int tableEnd=PaintSkillLines(g,top,upper,skillTopScroll,headingHeight);
+        InventoryFrame.Clip(g,upper);g.setColor(InventoryFrame.Border);
+        g.fillRect((int)upper.x,(int)upper.y+tableEnd-skillTopScroll+3,(int)upper.width,1);
         skillUpperHeight=PaintSkillLines(g,bottom,upper,skillTopScroll,tableEnd+9)+(studying?10:0);
         skillTopScroll=Mathf.Clamp(skillTopScroll,0,Mathf.Max(0,skillUpperHeight-(int)upper.height));
         if(studying) {
@@ -483,8 +560,27 @@ public partial class Panel
     private static void AddSkillDamage(List<SkillLine> rows,SkillTemplate t,int level,string suffix,mFont font,float width)
     {
         if(level<=0||level>t.skills.Length)return;
-        Skill s=t.skills[level-1];string value=s.damage+(t.damInfo!=null&&t.damInfo.Contains("%")?"%":"");
-        rows.Add(new SkillLine{Text="Cấp "+level+suffix+": "+value,Font=font});
+        Skill s=t.skills[level-1];string value;
+        switch(t.id) {
+            case 0:case 1:case 2:case 3:case 4:case 5:case 17:
+                value=s.damage+"% sức đánh";break;
+            case 6:case 20:
+                value=(s.damage/1000d).ToString("0.###",System.Globalization.CultureInfo.InvariantCulture).Replace('.',',')+" giây choáng";break;
+            case 7:value=s.damage+"% hồi phục";break;
+            case 8:value=s.damage+"% HP và KI mỗi giây";break;
+            case 9:value=s.damage+"% HP tiêu hao";break;
+            case 10:value="1000% sức đánh + 10% HP trong tầm";break;
+            case 11:value=s.damage+"% KI theo dạng";break;
+            case 14:value=s.damage+"% HP tối đa";break;
+            case 19:value=s.damage+" giây khiên";break;
+            case 21:value=s.damage+"% HP tối đa";break;
+            case 22:value=s.damage+" giây ngủ";break;
+            case 23:value=s.damage+" giây trói";break;
+            // These templates' damage fields are legacy values, not their current mechanics.
+            // Their level descriptions contain the actual summon, Monkey and Socola values.
+            default:return;
+        }
+        AddSkillLines(rows,"Cấp "+level+suffix+": "+value,font,width);
     }
     private static void PaintSkillButton(mGraphics g,Rect r,string text,bool enabled,bool selected)
     {

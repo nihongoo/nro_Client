@@ -869,6 +869,7 @@ public class Service
         UltiCastClient.Reset();
         Hud.BuffIconProtocol.BeginSession();
         AttackSync.Reset();
+        ComboOverload.Reset();
 		try
 		{
 			Message message = messageNotLogin(0);
