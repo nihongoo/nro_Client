@@ -173,19 +173,24 @@ namespace Hud
         }
         private static readonly Dictionary<mFont, GUIStyle> compactStyles = new Dictionary<mFont, GUIStyle>();
         private sealed class CompactFit {
-            internal GUIContent Content;internal float Width,Height;internal int BaseSize,FontSize,Zoom;internal Font Font;
+            internal GUIContent Content;internal float Width,Height;internal int BaseSize,FontSize,Zoom;internal Font Font;internal bool FitToBounds;
         }
         private static readonly Dictionary<mFont,Dictionary<string,CompactFit>> compactFits=new Dictionary<mFont,Dictionary<string,CompactFit>>();
         // Keep the game's font, fitting the complete value instead of dropping digits with ellipses.
-        internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false,float fontScale=1,bool topAligned=false)
+        internal static void PaintCompactText(mGraphics g,mFont font,string text,Rect bounds,Rect viewport,int color,bool center=false,float fontScale=1,bool topAligned=false,bool clipToBounds=true)
         {
-            Rect clip=InventoryFrame.Intersection(bounds,viewport);if(clip.width<=0||clip.height<=0)return;
+            if(bounds.yMax<=viewport.y||bounds.y>=viewport.yMax)return;
+            Rect clip=clipToBounds?InventoryFrame.Intersection(bounds,viewport):viewport;
+            if(clip.width<=0||clip.height<=0)return;
             if(!compactStyles.TryGetValue(font,out GUIStyle style)) {
                 style=new GUIStyle(GUI.skin.label){font=font.myFont,alignment=TextAnchor.MiddleLeft,
                     padding=new RectOffset(),margin=new RectOffset(),wordWrap=false,richText=false};
                 compactStyles.Add(font,style);
             }
             style.font=font.myFont;
+            // Description glyphs may extend beyond the font's reported line box.
+            // The viewport group still clips scrolling content at the panel edges.
+            style.clipping=clipToBounds?TextClipping.Clip:TextClipping.Overflow;
             style.alignment=center?(topAligned?TextAnchor.UpperCenter:TextAnchor.MiddleCenter):TextAnchor.MiddleLeft;
             int zoom=Mathf.Max(1,mGraphics.zoomLevel);
             if(!compactFits.TryGetValue(font,out Dictionary<string,CompactFit> fits)) {
@@ -197,14 +202,16 @@ namespace Hud
                 fit=new CompactFit{Content=new GUIContent(text)};fits.Add(text,fit);
             }
             int baseSize=Mathf.Max(1,Mathf.RoundToInt(font.myFont.fontSize*fontScale));
-            if(fit.Font!=font.myFont||fit.BaseSize!=baseSize||fit.Width!=bounds.width||fit.Height!=bounds.height||fit.Zoom!=zoom) {
+            if(fit.Font!=font.myFont||fit.BaseSize!=baseSize||fit.Width!=bounds.width||fit.Height!=bounds.height||fit.Zoom!=zoom||fit.FitToBounds!=clipToBounds) {
                 style.fontSize=baseSize;
-                while(style.fontSize>1) {
+                // Descriptions already wrap to width and reserve the font's full height.
+                // Keep one size across all lines instead of fitting each sentence separately.
+                while(clipToBounds&&style.fontSize>1) {
                     Vector2 measured=style.CalcSize(fit.Content);
                     if(measured.x<=(bounds.width-2)*zoom&&measured.y<=bounds.height*zoom)break;
                     style.fontSize--;
                 }
-                fit.Font=font.myFont;fit.BaseSize=baseSize;fit.Width=bounds.width;fit.Height=bounds.height;fit.Zoom=zoom;fit.FontSize=style.fontSize;
+                fit.Font=font.myFont;fit.BaseSize=baseSize;fit.Width=bounds.width;fit.Height=bounds.height;fit.Zoom=zoom;fit.FontSize=style.fontSize;fit.FitToBounds=clipToBounds;
             }
             style.fontSize=fit.FontSize;
             Color ink=new Color((color>>16&255)/255f,(color>>8&255)/255f,(color&255)/255f,1);

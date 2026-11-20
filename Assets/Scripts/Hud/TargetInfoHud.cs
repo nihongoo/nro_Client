@@ -102,7 +102,7 @@ namespace Hud
             if (player == null) return false;
             if (player.charFocus != null) {
                 Char target = player.charFocus;
-                if (target.cHP <= 0 || target.statusMe == 14 || target.statusMe == 5 || target.statusMe == 15 || target.isInvisiblez) return false;
+                if (target.statusMe == 15 || target.isInvisiblez) return false;
                 if (!ReferenceEquals(target,player) && !GameScr.vCharInMap.contains(target)) return false;
                 identity = target;
                 data = new Target { Name = target.cName, Hp = target.cHP, MaxHp = target.cHPFull,

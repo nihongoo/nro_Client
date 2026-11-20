@@ -2018,6 +2018,8 @@ public class GameScr : mScreen, IChatable
     public bool isAttack()
     {
         if (Char.myCharz().ClearInvalidAttackFocus()) return false;
+        if (Char.myCharz().charFocus != null && Char.myCharz().myskill != null
+            && Char.myCharz().myskill.template.type == 1 && !IsLivePlayerTarget(Char.myCharz().charFocus)) return false;
         if (checkClickToBotton(Char.myCharz().charFocus))
         {
             return false;
@@ -2431,20 +2433,24 @@ public class GameScr : mScreen, IChatable
         {
             return false;
         }
+        if (m.isMobMe)
+        {
+            Char self = Char.myCharz();
+            if (m.mobId == self.charID || m == self.mobMe) return false;
+            Char owner = findCharInMap(m.mobId);
+            if (owner == null || self.clan != null && owner.clanID == self.clan.ID
+                || self.cFlag != 0 && self.cFlag != 8 && self.cFlag == owner.cFlag) return false;
+            return owner.cHP > 0 && owner.statusMe != 5 && owner.statusMe != 14;
+        }
         if (Char.myCharz().cTypePk == 5)
         {
             return true;
         }
-        if (Char.myCharz().isAttacPlayerStatus() && !m.isMobMe)
+        if (Char.myCharz().isAttacPlayerStatus())
         {
             return false;
         }
-        if (Char.myCharz().mobMe != null && m.Equals(Char.myCharz().mobMe))
-        {
-            return false;
-        }
-        Char obj = findCharInMap(m.mobId);
-        return obj == null || obj.cTypePk == 5 || Char.myCharz().isMeCanAttackOtherPlayer(obj);
+        return true;
     }
 
     private bool checkSkillValid()
@@ -3288,102 +3294,46 @@ public class GameScr : mScreen, IChatable
             && findClickToItem((int)point.x + cmx, (int)point.y + cmy) != null;
     }
 
-    private IMapObject findClickToItem(int px, int py)
+    internal static int TargetPriority(IMapObject target)
     {
-        IMapObject mapObject = null;
-        int num = 0;
-        int num2 = 30;
-        MyVector[] array = new MyVector[4] { vMob, vNpc, vItemMap, vCharInMap };
-        for (int i = 0; i < array.Length; i++)
-        {
-            for (int j = 0; j < array[i].size(); j++)
-            {
-                IMapObject mapObject2 = (IMapObject)array[i].elementAt(j);
-                if (mapObject2.isInvisible())
-                {
-                    continue;
-                }
-                if (mapObject2 is Mob)
-                {
-                    Mob mob = (Mob)mapObject2;
-                    if (mob.isMobMe && mob.Equals(Char.myCharz().mobMe))
-                    {
-                        continue;
-                    }
-                }
-                int x = mapObject2.getX();
-                int y = mapObject2.getY();
-                int w = mapObject2.getW();
-                int h = mapObject2.getH();
-                if (!inRectangle(px, py, x - w / 2 - num2, y - h - num2, w + num2 * 2, h + num2 * 2))
-                {
-                    continue;
-                }
-                if (mapObject == null)
-                {
-                    mapObject = mapObject2;
-                    num = Res.abs(px - x) + Res.abs(py - y);
-                    if (i == 1)
-                    {
-                        return mapObject;
-                    }
-                }
-                else
-                {
-                    int num3 = Res.abs(px - x) + Res.abs(py - y);
-                    if (num3 < num)
-                    {
-                        mapObject = mapObject2;
-                        num = num3;
-                    }
-                }
-            }
-        }
-        return mapObject;
+        if (target is Mob mob) return mob.isBoss || mob.isBigBoss() ? 0 : 1;
+        if (target is Npc) return 2;
+        if (target is Char person) return person.charID < 0 && !person.isPet && !person.isMiniPet
+            && (person.cName == null || !person.cName.StartsWith("$")) ? 0 : 3;
+        return 4;
     }
 
-    private Mob findClickToMOB(int px, int py)
+    internal static bool CanSelectTarget(IMapObject target)
     {
-        int num = 30;
-        Mob mob = null;
-        int num2 = 0;
-        for (int i = 0; i < vMob.size(); i++)
-        {
-            Mob mob2 = (Mob)vMob.elementAt(i);
-            if (mob2.isInvisible())
-            {
-                continue;
-            }
-            if (mob2 != null)
-            {
-                Mob mob3 = mob2;
-                if (mob3.isMobMe && mob3.Equals(Char.myCharz().mobMe))
-                {
-                    continue;
-                }
-            }
-            int x = mob2.getX();
-            int y = mob2.getY();
-            int w = mob2.getW();
-            int h = mob2.getH();
-            if (!inRectangle(px, py, x - w / 2 - num, y - h - num, w + num * 2, h + num * 2))
-            {
-                continue;
-            }
-            if (mob == null)
-            {
-                mob = mob2;
-                num2 = Res.abs(px - x) + Res.abs(py - y);
-                continue;
-            }
-            int num3 = Res.abs(px - x) + Res.abs(py - y);
-            if (num3 < num2)
-            {
-                mob = mob2;
-                num2 = num3;
+        if (target == null || target.isInvisible()) return false;
+        // Focus and permission to attack are separate, including friendly summons.
+        if (target is Mob mob) return !Mod.CuongLe.MucTieu.deselectMob && IsLiveMobTarget(mob);
+        if (target is Npc npc) return !Mod.CuongLe.MucTieu.deselectNpc && npc.statusMe != 15;
+        if (target is Char person) return !Mod.CuongLe.MucTieu.deselectChar && person != Char.myCharz()
+            && person.statusMe != 15 && !person.isInvisiblez
+            && (person.cHP <= 0 || person.statusMe == 5 || person.statusMe == 14 || !person.IsHiddenFromHudList)
+            && vCharInMap.contains(person);
+        return target is ItemMap;
+    }
+
+    private IMapObject findClickToItem(int px, int py)
+    {
+        IMapObject best = null;
+        int distance = int.MaxValue;
+        MyVector[] groups = { vMob, vNpc, vCharInMap, vItemMap };
+        foreach (MyVector group in groups) for (int i = 0; i < group.size(); i++) {
+            IMapObject target = group.elementAt(i) as IMapObject;
+            if (!CanSelectTarget(target)) continue;
+            int x = target.getX(), y = target.getY();
+            if (!inRectangle(px, py, x - target.getW() / 2 - 30, y - target.getH() - 30,
+                    target.getW() + 60, target.getH() + 60)) continue;
+            int nextDistance = Res.abs(px - x) + Res.abs(py - y);
+            if (best == null || TargetPriority(target) < TargetPriority(best)
+                    || TargetPriority(target) == TargetPriority(best) && nextDistance < distance) {
+                best = target; distance = nextDistance;
             }
         }
-        return mob;
+        return best;
     }
 
     private bool inRectangle(int xClick, int yClick, int x, int y, int w, int h)
@@ -3942,6 +3892,7 @@ public class GameScr : mScreen, IChatable
         {
             return;
         }
+        if (ComboOverload.Block(skill)) return;
         selectActiveSkill(skill);
         if (lastSkill != skill && lastSkill != null)
         {
@@ -3995,6 +3946,7 @@ public class GameScr : mScreen, IChatable
     public void doUseSkill(Skill skill, bool isShortcut)
     {
         if (skill == null || skill.template == null || Skill.isDisabled(skill.template.id)) return;
+        if (ComboOverload.Block(skill)) return;
         if ((TileMap.mapID == 112 || TileMap.mapID == 113) && Char.myCharz().cTypePk == 0)
         {
             return;
@@ -5228,6 +5180,72 @@ public class GameScr : mScreen, IChatable
     public static Mob findMobInMap(sbyte mobIndex)
     {
         return (Mob)vMob.elementAt(mobIndex);
+    }
+
+    private static void ClearSummonReferences(Char person, int ownerId)
+    {
+        if (person == null) return;
+        if (person.mobFocus != null && person.mobFocus.isMobMe && person.mobFocus.mobId == ownerId)
+            person.ForgetAttackMob(person.mobFocus);
+        if (person.mobMe != null && person.mobMe.mobId == ownerId) person.mobMe = null;
+    }
+
+    internal static void RemoveSummonedMob(int ownerId)
+    {
+        ClearSummonReferences(Char.ExistingLocalPlayer, ownerId);
+        for (int i = 0; i < vCharInMap.size(); i++) ClearSummonReferences((Char)vCharInMap.elementAt(i), ownerId);
+        for (int i = vMob.size() - 1; i >= 0; i--) {
+            if (!(vMob.elementAt(i) is Mob mob) || !mob.isMobMe || mob.mobId != ownerId) continue;
+            mob.hp = 0; mob.status = 0;
+            vMob.removeElementAt(i);
+        }
+        Hud.HudLayout.Invalidate();
+    }
+
+    private static void BindSummon(Char person, int ownerId, Mob summoned)
+    {
+        if (person == null) return;
+        if (person.charID == ownerId) person.mobMe = summoned;
+        if (person.mobFocus != null && person.mobFocus.isMobMe && person.mobFocus.mobId == ownerId)
+            person.mobFocus = summoned;
+    }
+
+    internal static Mob ApplySummonSnapshot(int ownerId, short templateId, int hp, out bool created)
+    {
+        Mob summoned = findSummonedMob(ownerId);
+        if (summoned != null && (summoned.templateId != templateId || summoned.hp <= 0
+                || summoned.status == 0 || summoned.status == 1)) {
+            RemoveSummonedMob(ownerId);
+            summoned = null;
+        }
+        created = summoned == null;
+        Char owner = ownerId == Char.myCharz().charID ? Char.myCharz() : findCharInMap(ownerId);
+        if (created) {
+            short x = owner == null ? (short)-100 : (short)(owner.cx + (owner.cdir == 1 ? 40 : -40));
+            short y = owner == null ? (short)-100 : (short)owner.cy;
+            summoned = new Mob(ownerId, false, false, false, false, false, templateId, 1, hp, 0, hp, x, y, 4, 0);
+            summoned.isMobMe = true;
+            vMob.addElement(summoned);
+        }
+        summoned.hp = hp;
+        summoned.maxHp = System.Math.Max(summoned.maxHp, hp);
+        summoned.updateHp_bar();
+        // Repeated state packets update the same unit, including every observer's focus.
+        BindSummon(Char.ExistingLocalPlayer, ownerId, summoned);
+        for (int i = 0; i < vCharInMap.size(); i++) BindSummon((Char)vCharInMap.elementAt(i), ownerId, summoned);
+        for (int i = vMob.size() - 1; i >= 0; i--)
+            if (vMob.elementAt(i) is Mob duplicate && duplicate != summoned && duplicate.isMobMe && duplicate.mobId == ownerId)
+                vMob.removeElementAt(i);
+        return summoned;
+    }
+
+    public static Mob findSummonedMob(int ownerId)
+    {
+        for (int i = 0; i < vMob.size(); i++) {
+            Mob mob = (Mob)vMob.elementAt(i);
+            if (mob.isMobMe && mob.mobId == ownerId) return mob;
+        }
+        return null;
     }
 
     public static Mob findMobInMap(int mobId)

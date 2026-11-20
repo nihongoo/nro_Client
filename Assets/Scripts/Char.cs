@@ -319,7 +319,6 @@ public class Char : IMapObject
 
     public ItemMap itemFocus;
 
-    public MyVector focus = new MyVector();
 
     public Mob[] attMobs;
 
@@ -3106,6 +3105,7 @@ public class Char : IMapObject
         {
             return;
         }
+        if (skillPaint != null && IsHealingPaint(skillPaint.id)) return;
         IMapObject mapObject6 = null;
         if (mobFocus != null)
         {
@@ -4904,7 +4904,7 @@ public class Char : IMapObject
 
     public void setSkillPaint(SkillPaint skillPaint, int sType)
     {
-        if (stone || (me && myskill.template.id == 9 && cHP <= cHPFull / 10))
+        if (stone)
         {
             return;
         }
@@ -4918,7 +4918,7 @@ public class Char : IMapObject
             {
                 stopUseChargeSkill();
             }
-            if (charFocus != null && (charFocus.statusMe == 14 || charFocus.statusMe == 5))
+            if (charFocus != null && myskill.template.type != 2 && (charFocus.statusMe == 14 || charFocus.statusMe == 5))
             {
                 stopUseChargeSkill();
             }
@@ -4945,8 +4945,8 @@ public class Char : IMapObject
                 return;
             }
             hasSendAttack = false;
-            myskill.lastTimeUseThisSkill = num;
-            if (myskill.template.id != 10 && myskill.template.id != 11)
+            if (myskill.template.id != 7) myskill.lastTimeUseThisSkill = num;
+            if (myskill.template.id != 7 && myskill.template.id != 10 && myskill.template.id != 11)
             {
                 if (myskill.template.manaUseType != 2)
                 {
@@ -5086,11 +5086,25 @@ public class Char : IMapObject
         return GameScr.sks[requested.id - 44];
     }
 
+    internal static bool IsHealingPaint(int id)
+    {
+        if (GameScr.nClasss == null) return false;
+        foreach (NClass race in GameScr.nClasss) {
+            if (race?.skillTemplates == null) continue;
+            foreach (SkillTemplate template in race.skillTemplates) {
+                if (template == null || template.id != 7 || template.skills == null) continue;
+                foreach (Skill skill in template.skills) if (skill != null && skill.skillId == id) return true;
+            }
+        }
+        return false;
+    }
+
     internal void ConfirmAttack(SkillPaint confirmed, int type)
     {
         if (confirmed == null) return;
         if (isMonkey == 1 && confirmed.id >= 35 && confirmed.id <= 41) confirmed = GameScr.sks[106];
         confirmed = prepareLienHoanPaint(confirmed);
+        if (IsHealingPaint(confirmed.id)) SoundMn.gI().hoisinh();
         hasSendAttack = true; // This cast already has a server result; its hit frame must not resend.
         setAutoSkillPaint(confirmed, type);
     }
@@ -5246,6 +5260,12 @@ public class Char : IMapObject
     public void setAutoSkillPaint(SkillPaint skillPaint, int sType)
     {
         this.skillPaint = skillPaint;
+        if (IsHealingPaint(skillPaint.id)) {
+            currentMovePoint = null;
+            endMovePointCommand = null;
+            vMovePoints.removeAllElements();
+            cvx = cvy = 0;
+        }
         Res.outz("set auto skill " + ((skillPaint == null) ? "null" : "ko null"));
         if (skillPaint.id >= 0 && skillPaint.id <= 6)
         {
@@ -7076,123 +7096,31 @@ public class Char : IMapObject
 
     public void findNextFocusByKey()
     {
-        Res.outz("focus size= " + focus.size());
-        if ((myCharz().skillPaint != null || myCharz().arr != null || myCharz().dart != null || myCharz().skillInfoPaint() != null) && focus.size() == 0)
-        {
-            return;
-        }
+        if (skillPaint != null || arr != null || dart != null || skillInfoPaint() != null) return;
         ClearRespawnFocus();
-        focus.removeAllElements();
-        int num = 0;
-        int num2 = GameScr.cmx + 10;
-        int num3 = GameScr.cmx + GameCanvas.w - 10;
-        int num4 = GameScr.cmy + 10;
-        int num5 = GameScr.cmy + GameScr.gH;
-        for (int i = 0; i < GameScr.vCharInMap.size(); i++)
-        {
-            Char obj = (Char)GameScr.vCharInMap.elementAt(i);
-            if (obj.statusMe != 15 && !obj.isInvisiblez && num2 <= obj.cx && obj.cx <= num3 && num4 <= obj.cy && obj.cy <= num5 && obj.charID != -114 && (TileMap.mapID != 129 || (TileMap.mapID == 129 && myCharz().cy > 264)))
-            {
-                focus.addElement(obj);
-                if (charFocus != null && obj.Equals(charFocus))
-                {
-                    num = focus.size();
-                }
-            }
+        object selected = mobFocus != null ? (object)mobFocus : npcFocus != null ? npcFocus
+            : charFocus != null ? (object)charFocus : itemFocus;
+        var targets = new System.Collections.Generic.List<IMapObject>();
+        MyVector[] groups = { GameScr.vMob, GameScr.vNpc, GameScr.vCharInMap, GameScr.vItemMap };
+        foreach (MyVector group in groups) for (int i = 0; i < group.size(); i++) {
+            IMapObject target = group.elementAt(i) as IMapObject;
+            if (GameScr.CanSelectTarget(target) && target.getX() >= GameScr.cmx + 10
+                    && target.getX() <= GameScr.cmx + GameCanvas.w - 10 && target.getY() >= GameScr.cmy
+                    && target.getY() <= GameScr.cmy + GameScr.gH) targets.Add(target);
         }
-        if (me && isAttacPlayerStatus())
-        {
-            Res.outz("co the tan cong nguoi");
-            for (int j = 0; j < GameScr.vMob.size(); j++)
-            {
-                Mob mob = (Mob)GameScr.vMob.elementAt(j);
-                if (GameScr.gI().isMeCanAttackMob(mob))
-                {
-                    Res.outz("co the tan ong quai");
-                    focus.addElement(mob);
-                    if (mobFocus != null)
-                    {
-                        num = focus.size();
-                    }
-                }
-                else
-                {
-                    Res.outz("khong the tan cong quai");
-                    mobFocus = null;
-                }
-            }
-            npcFocus = null;
-            itemFocus = null;
-            if (focus.size() > 0)
-            {
-                if (num >= focus.size())
-                {
-                    num = 0;
-                }
-                focusManualTo(focus.elementAt(num));
-            }
-            else
-            {
-                mobFocus = null;
-                deFocusNPC();
-                charFocus = null;
-                itemFocus = null;
-                isManualFocus = false;
-            }
+        targets.Sort((a, b) => {
+            int rank = GameScr.TargetPriority(a).CompareTo(GameScr.TargetPriority(b));
+            if (rank != 0) return rank;
+            int distanceA = Res.abs(a.getX() - cx) + Res.abs(a.getY() - cy);
+            int distanceB = Res.abs(b.getX() - cx) + Res.abs(b.getY() - cy);
+            return distanceA.CompareTo(distanceB);
+        });
+        if (targets.Count == 0) {
+            mobFocus = null; deFocusNPC(); charFocus = null; itemFocus = null; isManualFocus = false;
             return;
         }
-        for (int k = 0; k < GameScr.vItemMap.size(); k++)
-        {
-            ItemMap itemMap = (ItemMap)GameScr.vItemMap.elementAt(k);
-            if (num2 <= itemMap.x && itemMap.x <= num3 && num4 <= itemMap.y && itemMap.y <= num5)
-            {
-                focus.addElement(itemMap);
-                if (itemFocus != null && itemMap.Equals(itemFocus))
-                {
-                    num = focus.size();
-                }
-            }
-        }
-        for (int l = 0; l < GameScr.vMob.size(); l++)
-        {
-            Mob mob2 = (Mob)GameScr.vMob.elementAt(l);
-            if (mob2.status != 1 && mob2.status != 0 && num2 <= mob2.x && mob2.x <= num3 && num4 <= mob2.y && mob2.y <= num5)
-            {
-                focus.addElement(mob2);
-                if (mobFocus != null && mob2.Equals(mobFocus))
-                {
-                    num = focus.size();
-                }
-            }
-        }
-        for (int m = 0; m < GameScr.vNpc.size(); m++)
-        {
-            Npc npc = (Npc)GameScr.vNpc.elementAt(m);
-            if (npc.statusMe != 15 && num2 <= npc.cx && npc.cx <= num3 && num4 <= npc.cy && npc.cy <= num5)
-            {
-                focus.addElement(npc);
-                if (npcFocus != null && npc.Equals(npcFocus))
-                {
-                    num = focus.size();
-                }
-            }
-        }
-        if (focus.size() > 0)
-        {
-            if (num >= focus.size())
-            {
-                num = 0;
-            }
-            focusManualTo(focus.elementAt(num));
-        }
-        else
-        {
-            mobFocus = null;
-            deFocusNPC();
-            charFocus = null;
-            itemFocus = null;
-            isManualFocus = false;
-        }
+        int current = targets.FindIndex(target => ReferenceEquals(target, selected));
+        focusManualTo(targets[(current + 1) % targets.Count]);
     }
 
     public void deFocusNPC()
@@ -7302,6 +7230,8 @@ public class Char : IMapObject
 
     public void doInjure(long HPShow, long MPShow, bool isCrit, bool isMob)
     {
+        // The server ignores new damage for 1.5s after revival; older hit animations may finish later.
+        if (lastVisualRevival > 0 && mSystem.currentTimeMillis() - lastVisualRevival < 1500) return;
         this.isCrit = isCrit;
         this.isMob = isMob;
         Res.outz("CHP= " + cHP + " dame -= " + HPShow + " HP FULL= " + cHPFull);
@@ -7400,6 +7330,7 @@ public class Char : IMapObject
 
     public void waitToDie(short toX, short toY)
     {
+        cHP = cHPShow = 0;
         wdx = toX;
         wdy = toY;
     }
@@ -7415,12 +7346,16 @@ public class Char : IMapObject
         isDie = false;
     }
 
+    private long lastVisualRevival;
+
     public void reviveAt(short x, short y, long hp, long maxHp)
     {
         resetRevivalMovement();
         cx = xSd = x;
         cy = ySd = y;
-        cHP = hp;
+        lastVisualRevival = mSystem.currentTimeMillis();
+        cHP = cHPShow = cHPNew = hp;
+        damHP = damMP = 0;
         cHPFull = maxHp;
         statusMe = 1;
         if (me)
@@ -7429,12 +7364,15 @@ public class Char : IMapObject
             cySend = cy;
             meDead = false;
             isLockMove = false;
+            isLockKey = false;
         }
     }
 
     public void liveFromDead()
     {
         resetRevivalMovement();
+        lastVisualRevival = mSystem.currentTimeMillis();
+        isLockKey = false;
         cHP = cHPFull;
         cMP = cMPFull;
         statusMe = 1;
@@ -7516,6 +7454,7 @@ public class Char : IMapObject
 
     public void focusManualTo(object objectz)
     {
+        if (objectz is IMapObject target && !GameScr.CanSelectTarget(target)) return;
         if (objectz is Mob && !MucTieu.deselectMob)
         {
             ClearRespawnFocus();
@@ -7633,9 +7572,8 @@ public class Char : IMapObject
         if (charFocus != null && myskill != null && myskill.template.type == 1
             && !GameScr.IsLivePlayerTarget(charFocus))
         {
-            charFocus = null;
             CancelAttackApproach();
-            cleared = true;
+            if (!isManualFocus) { charFocus = null; cleared = true; }
         }
         return cleared;
     }

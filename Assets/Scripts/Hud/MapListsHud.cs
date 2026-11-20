@@ -200,7 +200,8 @@ namespace Hud
         {
             Char localPlayer = Char.ExistingLocalPlayer;
             if (localPlayer == null || Char.ischangingMap || value == null || value.isInvisible()) return false;
-            if (value is Char person && person.IsHiddenFromHudList) return false;
+            if (value is Char person && (person.isInvisiblez || person.IsHiddenFromHudList
+                    && person.cHP > 0 && person.statusMe != 5 && person.statusMe != 14)) return false;
             long dx = (long)value.getX() - localPlayer.cx;
             long itemY = value is Char ? value.getY() : (long)value.getY() - value.getH() / 2;
             long dy = itemY - localPlayer.cy;
@@ -414,7 +415,8 @@ namespace Hud
                 RowSlot row = box.Rows[slot];
                 Rect full = HudLayout.GetRect(row.Full), dot = HudLayout.GetRect(row.Dot), name = HudLayout.GetRect(row.Name);
                 Clip(g, Intersection(full, body));
-                bool enabled = !box.Items || GameScr.instance.CanPickHudItem(drops[index]);
+                bool dead = !box.Items && (people[index].cHP <= 0 || people[index].statusMe == 5 || people[index].statusMe == 14);
+                bool enabled = box.Items ? GameScr.instance.CanPickHudItem(drops[index]) : !dead;
                 float alpha = enabled ? 1 : 0.55f;
                 bool focused = box.Items ? ReferenceEquals(drops[index],Char.myCharz().itemFocus)
                     : ReferenceEquals(people[index], Char.myCharz().charFocus);
@@ -424,7 +426,7 @@ namespace Hud
                 if (!box.Items && owners.ContainsKey(people[index])
                     && (TileMap.mapID != 170 || (people[index].flagImage != 2323 && people[index].flagImage != 2325)))
                     statusFont = mFont.tahoma_7_blue1Small;
-                Color status = StatusColor(statusFont);
+                Color status = dead ? Color.gray : StatusColor(statusFont);
                 Dot(g, dot, status, alpha);
                 if (box.Items) {
                     Rect icon = HudLayout.GetRect(row.Icon);
@@ -434,7 +436,7 @@ namespace Hud
                     PaintItemIcon(g, inner, drops[index].template.iconID, Intersection(full, body), alpha);
                 }
                 Clip(g, Intersection(name, body));
-                Text(g, mFont.tahoma_7_white, box.Items ? ShortName(drops[index].template.name, (int)name.width - 2) : PersonName(people[index], (int)name.width - 2),
+                Text(g, dead ? mFont.tahoma_7_grey : mFont.tahoma_7_white, box.Items ? ShortName(drops[index].template.name, (int)name.width - 2) : PersonName(people[index], (int)name.width - 2),
                     (int)name.x + 1, (int)name.center.y - mFont.tahoma_7_white.getHeight() / 2, alpha);
                 GUI.color = Color.white;
             }

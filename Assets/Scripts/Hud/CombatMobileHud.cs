@@ -104,6 +104,7 @@ namespace Hud
                 if (skill == null) { PaintEmptySlot(g,rect,i); continue; }
                 if (!GameScr.isHaveSelectSkill) continue;
                 CircularCombatIcon.PaintSkill(g,rect,skill);
+                ComboOverload.Paint(g,rect,skill);
                 if (selected) PaintSelectedSkill(rect);
                 long remaining = skill.coolDown - mSystem.currentTimeMillis() + skill.lastTimeUseThisSkill;
                 mFont.tahoma_7b_yellow.drawString(g, remaining > 0 ? string.Concat(remaining/1000) : string.Empty,

@@ -708,7 +708,7 @@ public class Mob : IMapObject
                     {
                         for (int j = 0; j < GameScr.vMob.size(); j++)
                         {
-                            if (((Mob)GameScr.vMob.elementAt(j)).mobId == mobId)
+                            if (GameScr.vMob.elementAt(j) == this)
                             {
                                 GameScr.vMob.removeElementAt(j);
                             }
