@@ -263,7 +263,7 @@ namespace Notifications
             g.translate(-tx, -ty);
             try {
                 Hud.HudButtonSkin.PaintNativeBackground(g, bell, Hud.TopActionsHud.IsHovered(Hud.HudLayout.Bell));
-                g.drawImage(NotificationSkin.BellGlyph, centerX, y + size / 2, 3);
+                g.drawImage(NotificationSkin.BellGlyph, bell.center.x, bell.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
                 if (NotificationStore.UnreadCount > 0)
                 {
                     int badgeX = System.Math.Min(x + size - 12, centerX + 10);

@@ -5,9 +5,12 @@ namespace Hud
     internal static class TopActionsHud
     {
         internal const string Hub = "top-actions.hub";
-        internal const int Size = 34, ButtonGap = 4, HubOrder = HudLayout.ChatOrder;
+        internal const string MapListSwitch = "top-actions.map-list-switch";
+        internal const int ButtonGap = 4;
+        private const int SlotSize = 34, HubOrder = HudLayout.ChatOrder, SwitchSlot = 3;
         private static string pressed;
-        private static bool captured;
+        private static bool captured, keepMovement;
+        private static Image mapItemsGlyph, mapCombatGlyph;
         private static int consumedTick = -1;
         internal static bool ConsumesInput => consumedTick == GameCanvas.gameTick;
         internal static bool IsRowVisible => GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance
@@ -24,25 +27,40 @@ namespace Hud
 
         internal static void Register()
         {
-            // Both platform layouts retain the same 34 logical units and original R margins.
-            // No legacy isPC/isTouch flag is used to derive geometry.
-            HudLayout.Register(HudLayout.ChatButton, ChatBounds, HudLayout.ChatOrder, () => GameScr.IsChatButtonVisible);
-            HudLayout.Register(HudLayout.Bell, BellBounds, HudLayout.BellOrder, () => Notifications.NotificationCenter.IsBellVisible);
-            HudLayout.Register(Hub, HubBounds, HubOrder, () => IsRowVisible);
+            HudLayout.Register(HudLayout.ChatButton, () => ButtonBounds(0), HudLayout.ChatOrder, () => GameScr.IsChatButtonVisible);
+            HudLayout.Register(HudLayout.Bell, () => ButtonBounds(1), HudLayout.BellOrder, () => Notifications.NotificationCenter.IsBellVisible);
+            HudLayout.Register(Hub, () => ButtonBounds(2), HubOrder, () => IsRowVisible);
+            HudLayout.Register(MapListSwitch, () => ButtonBounds(SwitchSlot), HubOrder, () => IsRowVisible);
+            ResourceRequest items = Resources.LoadAsync<Texture2D>("res/map-list-items");
+            ResourceRequest combat = Resources.LoadAsync<Texture2D>("res/map-list-combat");
+            items.completed += _ => mapItemsGlyph = CreateMapListGlyph(items.asset as Texture2D);
+            combat.completed += _ => mapCombatGlyph = CreateMapListGlyph(combat.asset as Texture2D);
         }
 
-        private static Rect ChatBounds() => HudLayout.Anchor(HorizontalAnchor.Right, VerticalAnchor.Top,
-            new Vector2(Size, Size), new Vector2(GameCanvas.w <= 240 ? 1 : 6,
-                (GameCanvas.w <= 240 ? 5 : 2) + mGraphics.addYWhenOpenKeyBoard));
-        private static Rect BellBounds()
+        private static Rect ButtonBounds(int slot)
         {
-            Rect chat = HudLayout.GetRect(HudLayout.ChatButton);
-            return new Rect(chat.x - Size - ButtonGap, chat.y, Size, Size);
+            Image skin = GameScr.imgChatPC;
+            if (skin == null) return new Rect();
+
+            bool compact = GameCanvas.w <= 240;
+            int width = skin.getWidth(), height = skin.getHeight();
+            int right = (compact ? 1 : 6) + (SlotSize - width + 1) / 2;
+            int top = (compact ? 5 : 2) + (SlotSize - height + 1) / 2 + mGraphics.addYWhenOpenKeyBoard;
+            // Keep the native button size and existing slot spacing, tightening only on tiny viewports.
+            int stride = Mathf.Clamp((GameCanvas.w - right - width) / SwitchSlot, width, SlotSize + ButtonGap);
+            return HudLayout.Anchor(HorizontalAnchor.Right, VerticalAnchor.Top,
+                new Vector2(width, height), new Vector2(right + slot * stride, top));
         }
-        private static Rect HubBounds()
+
+        private static Image CreateMapListGlyph(Texture2D source)
         {
-            Rect bell = HudLayout.GetRect(HudLayout.Bell);
-            return new Rect(bell.x - Size - ButtonGap, bell.y, Size, Size);
+            if (source == null) return null;
+            // The supplied icon's alpha defines its silhouette on the shared button skin.
+            int size = SlotSize / 2 * mGraphics.zoomLevel;
+            return HudButtonSkin.CopyNative(source, (pixels, _, __) => {
+                for (int i = 0; i < pixels.Length; i++)
+                    pixels[i] = new Color32(255, 255, 255, pixels[i].a);
+            }, size);
         }
 
         // Runs after invitation capture, before notification/forms and gameplay pointer dispatch.
@@ -51,8 +69,12 @@ namespace Hud
             consumedTick = -1;
             if (!CanInput) { pressed = null; captured = false; return; }
             string hit = HudLayout.HitTest(new Vector2(GameCanvas.px, GameCanvas.py));
-            bool action = hit == Hub || hit == HudLayout.ChatButton || hit == HudLayout.Bell;
-            if (GameCanvas.isPointerJustDown) { captured = action; pressed = action ? hit : null; }
+            bool action = hit == Hub || hit == MapListSwitch || hit == HudLayout.ChatButton || hit == HudLayout.Bell;
+            if (GameCanvas.isPointerJustDown) {
+                captured = action;
+                pressed = action ? hit : null;
+                keepMovement = hit == MapListSwitch || (hit == Hub && MapNavigation.Active);
+            }
             if (captured && hit != pressed) pressed = null; // Dragging out cancels activation.
             if (!captured) return;
             if (GameCanvas.isPointerJustRelease) {
@@ -62,6 +84,10 @@ namespace Hud
                 if (activate == HudLayout.Bell) Notifications.NotificationCenter.TryOpenBell();
                 else if (activate == HudLayout.ChatButton) {
                     ChatTextField.gI().startChat(GameScr.instance, string.Empty);
+                    SoundMn.gI().buttonClick();
+                }
+                else if (activate == MapListSwitch) {
+                    MapListsHud.ToggleMode();
                     SoundMn.gI().buttonClick();
                 }
                 else if (activate == Hub) {
@@ -77,7 +103,10 @@ namespace Hud
         {
             consumedTick = GameCanvas.gameTick;
             GameScr.instance.isPointerDowning = false;
-            Char.myCharz().currentMovePoint = null;
+            if (!keepMovement) {
+                MapNavigation.Cancel();
+                Char.myCharz().currentMovePoint = null;
+            }
             // pointerReleased does not restore isPointerClick: retain it until the release.
             if (released) GameCanvas.clearAllPointerEvent();
             else GameCanvas.isPointerJustDown = false;
@@ -92,13 +121,18 @@ namespace Hud
             g.translate(-tx, -ty);
             try {
                 HudLayout.ForEachBackToFront((name, rect) => {
+                    bool highlighted = hover == name || pressed == name;
                     if (name == HudLayout.ChatButton) {
-                        // R keeps the existing R-labelled game asset on PC and mobile.
-                        Image skin = hover == name || pressed == name ? GameScr.imgChatsPC2 : GameScr.imgChatPC;
-                        g.drawImage(skin, (int)rect.center.x, (int)rect.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+                        Image skin = highlighted ? GameScr.imgChatsPC2 : GameScr.imgChatPC;
+                        g.drawImage(skin, (int)rect.x, (int)rect.y);
                     }
-                    else if (name == Hub) {
-                        HudButtonSkin.PaintNativeBackground(g, rect, hover == name || pressed == name);
+                    else if (name == MapListSwitch || name == Hub) {
+                        HudButtonSkin.PaintNativeBackground(g, rect, highlighted);
+                        if (name == MapListSwitch) {
+                            Image glyph = MapListsHud.ShowsCombatLists ? mapCombatGlyph : mapItemsGlyph;
+                            g.drawImage(glyph, rect.center.x, rect.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+                            return;
+                        }
                         g.setColor(0xffffff);
                         const int cell = 3, gap = 2, total = cell * 3 + gap * 2;
                         int x = (int)rect.center.x - total / 2, y = (int)rect.center.y - total / 2;
@@ -110,5 +144,6 @@ namespace Hud
             }
             finally { g.translate(tx, ty); }
         }
+
     }
 }

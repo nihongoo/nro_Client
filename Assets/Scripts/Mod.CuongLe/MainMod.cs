@@ -130,12 +130,6 @@ namespace Mod.CuongLe
 
     	public static List<Color> listFlagColor;
 
-    	public static int widthRect;
-
-    	public static int heightRect;
-
-    	public static List<Char> listCharsInMap;
-
     	public static string string_0;
 
     	public static bool isUsingSkill;
@@ -259,18 +253,6 @@ namespace Mod.CuongLe
     			}
     			return;
     		}
-            if (listCharsInMap != null)
-    		{
-    			listCharsInMap.Clear();
-    			for (int num = 0; num < GameScr.vCharInMap.size(); num++)
-    			{
-    				Char obj2 = (Char)GameScr.vCharInMap.elementAt(num);
-    				if (obj2.cName != null && obj2.cName != "" && !obj2.isPet && !obj2.isMiniPet && !obj2.cName.StartsWith("#") && !obj2.cName.StartsWith("$") && obj2.cName != "Trọng tài")
-    				{
-    					listCharsInMap.Add(obj2);
-    				}
-    			}
-    		}
     		if (isAutoEnterNRDMap)
     		{
     			EnterNRDMap();
@@ -319,10 +301,6 @@ namespace Mod.CuongLe
     	{
 
             DoHoa.Paint(g);
-    		//if (DoHoa.isShowCharsInMap)
-    		//{
-    		//	paintListCharsInMap(g);
-    		//}
     		if (DoHoa.isShowMenuVIP)
     		{
     			UnifiedAutoMenu.Paint(g);
@@ -456,84 +434,6 @@ namespace Mod.CuongLe
     				s = "Bạn chưa thể tới: " + TileMap.mapNames[AutoMap.IdMapEnd];
                 }
                 DoHoa.DrawFont.drawString(g, s, centerX, yButtonMap - 12, mFont.CENTER);
-    		}
-    	}
-
-    	public static void paintListCharsInMap(mGraphics g)
-    	{
-    		int num = (isMeInNRDMap() ? 35 : 95);
-    		widthRect = 120;
-    		heightRect = 7;
-    		GUIStyle gUIStyle = new GUIStyle();
-    		gUIStyle.font = Resources.GetBuiltinResource<UnityEngine.Font>("Arial.ttf");
-    		gUIStyle.fontSize = 7 * mGraphics.zoomLevel;
-    		gUIStyle.fontStyle = UnityEngine.FontStyle.Bold;
-    		gUIStyle.alignment = TextAnchor.UpperLeft;
-    		for (int i = 0; i < listCharsInMap.Count; i++)
-    		{
-    			Char obj = listCharsInMap[i];
-    			g.setColor(2721889, 0.5f);
-    			g.fillRect(GameCanvas.w - widthRect, num + 1, widthRect - 2, heightRect);
-    			if (obj.cName != null && obj.cName != "" && !obj.isPet && !obj.isMiniPet && !obj.cName.StartsWith("#") && !obj.cName.StartsWith("$") && obj.cName != "Trọng tài")
-    			{
-                    paintPKFlag(g, obj, num);
-                    if (obj.isNRD)
-    				{
-    					paintCharInfo(g, obj);
-    				}
-    				string text = obj.cName + " [" + NinjaUtil.getMoneys(obj.cHP) + "]";
-    				bool flag = isBoss(obj);
-    				if (!flag)
-    				{
-    					text = obj.cName + " [" + NinjaUtil.getMoneys(obj.cHP) + " - " + obj.getGender() + "]";
-    				}
-    				GUIStyle gUIStyle2 = new GUIStyle(gUIStyle);
-    				if (Char.myCharz().charFocus != null && Char.myCharz().charFocus.cName == obj.cName)
-    				{
-    					g.setColor(14155776);
-    					g.drawLine(Char.myCharz().cx - GameScr.cmx, Char.myCharz().cy - GameScr.cmy + 1, obj.cx - GameScr.cmx, obj.cy - GameScr.cmy);
-    					gUIStyle2.normal.textColor = Color.red;
-    				}
-    				else if (flag)
-    				{
-    					g.setColor(16383818);
-    					g.drawLine(Char.myCharz().cx - GameScr.cmx, Char.myCharz().cy - GameScr.cmy + 1, obj.cx - GameScr.cmx, obj.cy - GameScr.cmy);
-    					gUIStyle2.normal.textColor = Color.yellow;
-    				}
-    				else if (obj.cHPFull > 100000000 && obj.cHP > 0 && isMeInNRDMap() && !obj.isNRD)
-    				{
-    					gUIStyle2.normal.textColor = Color.magenta;
-    				}
-    				else
-    				{
-    					gUIStyle2.normal.textColor = Color.black;
-    				}
-    				g.drawString(i + 1 + ". " + text, GameCanvas.w - widthRect + 2, num, gUIStyle2);
-    				num += heightRect + 1;
-    			}
-    		}
-    	}
-
-    	public static void paintCharInfo(mGraphics g, Char ch)
-    	{
-    		GUIStyle gUIStyle = new GUIStyle();
-    		gUIStyle.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
-    		gUIStyle.fontSize = 6 * mGraphics.zoomLevel;
-    		gUIStyle.fontStyle = FontStyle.Bold;
-    		gUIStyle.normal.textColor = Color.black;
-            int num = 72;
-            int num2 = 6;
-            g.drawString(ch.cName + " [" + NinjaUtil.getMoneys(ch.cHP) + "/" + NinjaUtil.getMoneys(ch.cHPFull) + "]", GameCanvas.w / 2, num, gUIStyle);
-            num += num2;
-            if (ch.isNRD)
-    		{
-    			mFont.tahoma_7b_yellow.drawString(g, "Còn: " + ch.timeNRD + " giây", GameCanvas.w / 2, num, 2);
-    			num += num2;
-    		}
-    		if (ch.isFreez)
-    		{
-    			mFont.tahoma_7b_yellow.drawString(g, "Bị TDHS: " + ch.freezSeconds + " giây", GameCanvas.w / 2, num, 2);
-    			num += num2;
     		}
     	}
 
@@ -783,6 +683,10 @@ namespace Mod.CuongLe
     		case 34:
     			ModProCuongLe.ShowMenu();
     			break;
+            case 113:
+                if (p is bool cancelRoute && cancelRoute) MapNavigation.Cancel();
+                else MapNavigation.ChoosePoint();
+                break;
             case 112:
                 DoHoa.isShowMenuVIP = !DoHoa.isShowMenuVIP;
                 GameCanvas.clearAllPointerEvent();
@@ -1065,6 +969,8 @@ namespace Mod.CuongLe
     	{
     		MyVector myVector = new MyVector();
     		myVector.addElement(new Command("Auto Map", getInstance(), 1, null));
+            bool cancelRoute = MapNavigation.Active;
+            myVector.addElement(new Command(cancelRoute ? "Hủy đi tới" : "Đi tới điểm", getInstance(), 113, cancelRoute));
     		myVector.addElement(new Command("Auto Pro Cuong Le", getInstance(), 34, null));
     		myVector.addElement(new Command("Auto Skill", getInstance(), 2, null));
     		myVector.addElement(new Command("Auto Pean", getInstance(), 3, null));
@@ -1150,7 +1056,6 @@ namespace Mod.CuongLe
     	{
     		account = "";
     		listFlagColor = new List<Color>();
-    		listCharsInMap = new List<Char>();
     		string_0 = "https://www.facebook.com/cuongle1002/";
     		thongBao = true;
     		GoldCurrent = 0L;
@@ -1433,34 +1338,6 @@ namespace Mod.CuongLe
     		listFlagColor.Add(Color.blue);
     		listFlagColor.Add(Color.red);
     		listFlagColor.Add(Color.blue);
-    	}
-
-    	public static void RefreshListCharsInMap()
-    	{
-    		if (listCharsInMap.Count <= 2)
-    		{
-    			return;
-    		}
-    		List<Char> list = new List<Char>();
-    		while (listCharsInMap.Count != 0)
-    		{
-    			Char obj = listCharsInMap[0];
-    			list.Add(obj);
-    			string nameWithoutClanTag = obj.GetNameWithoutClanTag();
-    			listCharsInMap.RemoveAt(0);
-    			for (int i = 0; i < listCharsInMap.Count; i++)
-    			{
-    				Char obj2 = listCharsInMap[i];
-    				if (nameWithoutClanTag == obj2.GetNameWithoutClanTag())
-    				{
-    					list.Add(obj2);
-    					listCharsInMap.RemoveAt(i);
-    					i--;
-    				}
-    			}
-    		}
-    		listCharsInMap.Clear();
-    		listCharsInMap = list;
     	}
 
 
@@ -1854,13 +1731,6 @@ namespace Mod.CuongLe
     		DoHoa.DrawFont.drawString(g, "SM: " + NinjaUtil.getMoneys(c.cPower), xStart, yStart + 32, 0);
     		DoHoa.DrawFont.drawString(g, "TN: " + NinjaUtil.getMoneys(c.cTiemNang), xStart, yStart + 40, 0);
     	}
-        public static void paintPKFlag(mGraphics g, Char @char, int num)
-        {
-            if (@char.cFlag != 0 && @char.cFlag != -1)
-            {
-                SmallImage.drawFlagSquare(g, @char.cFlag, GameCanvas.w - widthRect - 8, num + 1);
-            }
-        }
         public static void outConnect()
     	{
     		if (Controller.isConnectionFail)
@@ -1914,33 +1784,6 @@ namespace Mod.CuongLe
     		UseItem(454);
     	}
 
-        public static void controlTeleChar()
-        {
-            int num = (isMeInNRDMap() ? 35 : 95);
-            widthRect = 120;
-            heightRect = 7;
-            for (int i = 0; i < listCharsInMap.Count; i++)
-            {
-                if (listCharsInMap[i] != null)
-                {
-                    if (GameCanvas.isPointerHoldIn(GameCanvas.w - widthRect, num + 1, widthRect * 3/4, heightRect) && GameCanvas.isPointerClick)
-                    {
-    					if(Char.myCharz().charFocus == listCharsInMap[i])
-    					{
-                            AutoMap.TeleportTo(listCharsInMap[i].cx, listCharsInMap[i].cy);
-                        }
-    					else
-    					{
-                            Char.myCharz().focusManualTo(listCharsInMap[i]);
-                        }
-                        SoundMn.gI().buttonClick();
-                        Char.myCharz().currentMovePoint = null;
-                        GameCanvas.clearAllPointerEvent();
-                    }
-                    num += heightRect + 1;
-                }
-            }
-        }
         static bool IsEmulator()
         {
             string model = SystemInfo.deviceModel.ToLower();

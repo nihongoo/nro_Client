@@ -37,13 +37,13 @@ public class PopUpYesNo : IActionListener
 
     private static Rect QuickBounds()
     {
-        Rect hub = Hud.HudLayout.GetRect(Hud.TopActionsHud.Hub);
-        float right = hub.xMin - RowGap;
+        Rect actions = Hud.HudLayout.GetRect(Hud.TopActionsHud.MapListSwitch);
+        float right = actions.xMin - RowGap;
         // The whole quick invitation, including Yes/No, stays in the right half.
         // On narrow screens its full content remains available in the bell's Invitations tab.
         float width = Mathf.Floor(Mathf.Min(W + (ButtonSize + Gap) * 2, right - Mathf.Ceil(GameCanvas.w / 2f)));
         if (width < MinimumTextWidth + (ButtonSize + Gap) * 2) return new Rect();
-        return new Rect(right - width, hub.y + (hub.height - ButtonSize) / 2, width, H + 17);
+        return new Rect(right - width, actions.y + (actions.height - ButtonSize) / 2, width, H + 17);
     }
 
     public PopUpYesNo(NotificationEntry entry)

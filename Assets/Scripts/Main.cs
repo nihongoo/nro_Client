@@ -301,6 +301,7 @@ public class Main : MonoBehaviour
 
 	private void Update()
 	{
+		MapNavigation.AdvancePlanning();
 	}
 
     private bool HandleAccountKeyboard()
@@ -442,6 +443,7 @@ public class Main : MonoBehaviour
 
 	private void OnApplicationQuit()
 	{
+		Hud.MapListsHud.FlushModePreference();
 		Debug.LogWarning("APP QUIT");
 		GameCanvas.bRun = false;
 		Session_ME.gI().close();
@@ -454,6 +456,7 @@ public class Main : MonoBehaviour
 
 	private void OnApplicationPause(bool paused)
 	{
+		if (paused) Hud.MapListsHud.FlushModePreference();
         if (!paused) Hud.BuffIconProtocol.RequestResync();
 		if (paused && Hud.HudLayout.IsMobileLayout) Hud.MobileCombatPointers.Cancel();
 		if (paused && !Hud.HudLayout.IsMobileLayout) { Hud.CombatPcPointer.Cancel(); Hud.TargetInfoHud.ClearShapes(); }

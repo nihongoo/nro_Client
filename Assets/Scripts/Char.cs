@@ -103,6 +103,9 @@ public class Char : IMapObject
 
     public int cspeed = 4;
 
+    internal int FlightHorizontalSpeed => cspeed + 1;
+    internal const int HeldJumpSpeed = 7, TerminalFallSpeed = 8;
+
     public int cCriticalFull;
 
     public int clevel;
@@ -2317,7 +2320,7 @@ public class Char : IMapObject
                                     }
                                     //searchFocus();
                                 }
-                                switch (statusMe)
+                                if (!(me && MapNavigation.ApplyMovement(this))) switch (statusMe)
                                 {
                                     case 1:
                                         updateCharStand();
@@ -3652,6 +3655,53 @@ public class Char : IMapObject
         return 0.1f;
     }
 
+    internal void ApplyNavigationMotion(int x, int y, int movementStatus)
+    {
+        bool changedStatus = statusMe != movementStatus;
+        cvx = x - cx;
+        cvy = y - cy;
+        if (cvx != 0) cdir = cvx > 0 ? 1 : -1;
+        cx = x;
+        cy = y;
+        delayFall = 0;
+        ty = 0;
+        statusMe = movementStatus;
+        if (changedStatus) cp1 = 0;
+
+        switch (movementStatus)
+        {
+            case 1:
+                cf = 0;
+                if (changedStatus) SoundMn.gI().charFall();
+                break;
+            case 2:
+                cp1 = (cp1 + 1) % 10;
+                cf = (cp1 >> 1) + 2;
+                if (cp1 == 1) SoundMn.gI().charRun(getSoundVolumn());
+                break;
+            case 3:
+                cf = 7;
+                if (changedStatus) SoundMn.gI().charJump();
+                break;
+            case 4:
+                cf = 12;
+                break;
+            case 10:
+                setMountIsStart();
+                cf = cvx == 0 ? 7 : 8;
+                break;
+        }
+    }
+
+    internal void EndNavigationMotion(bool grounded)
+    {
+        cvx = cvy = 0;
+        delayFall = 0;
+        cyStartFall = 0;
+        if (statusMe == 1 || statusMe == 2 || statusMe == 3 || statusMe == 4 || statusMe == 10)
+            statusMe = grounded ? 1 : 4;
+    }
+
     public void updateCharRun()
     {
         int num = ((isMonkey != 1 || me) ? 1 : 1);
@@ -4030,9 +4080,9 @@ public class Char : IMapObject
                 }
             }
             cvy++;
-            if (cvy > 8)
+            if (cvy > TerminalFallSpeed)
             {
-                cvy = 8;
+                cvy = TerminalFallSpeed;
             }
             if (skillPaintRandomPaint == null)
             {

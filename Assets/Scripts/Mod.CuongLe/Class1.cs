@@ -14,11 +14,9 @@ namespace Mod.CuongLe
 
         public PointTrain parent;
 
-        private static int[][] directions;
-
-        private static readonly int[][] directions4;
-
-        public static readonly int[][] directions8;
+        private static readonly int[][] directions4 = {
+            new[] { 0, -1 }, new[] { 0, 1 }, new[] { -1, 0 }, new[] { 1, 0 }
+        };
 
         public int fCost => gCost + hCost;
 
@@ -47,10 +45,6 @@ namespace Mod.CuongLe
         public override int GetHashCode()
         {
             return (x << 16) | y;
-        }
-
-        public static void TileMoveToMob(Mob mob)
-        {
         }
 
         public static List<PointTrain> FindPath_AStar(int sx, int sy, int ex, int ey)
@@ -110,7 +104,7 @@ namespace Mod.CuongLe
                         (tileTypeCur == 0 && tileTypeNext == 2 && dy < 0))
                         continue;
 
-                    int moveCost = current.gCost + ((dir[0] != 0 && dir[1] != 0) ? 70 : 50);
+                    int moveCost = current.gCost + 50;
 
                     if (!openDict.TryGetValue(key, out PointTrain neighbor))
                     {
@@ -137,76 +131,6 @@ namespace Mod.CuongLe
         private static int Heuristic(int x, int y, int ex, int ey)
         {
             return (Math.abs(x - ex) + Math.abs(y - ey)) * 10;
-        }
-
-        static PointTrain()
-        {
-            int[][] array = new int[8][]
-            {
-                new int[2] { 0, -1 },
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            };
-            int num = 1;
-            array[num] = new int[2] { 1, 0 };
-            array[2] = new int[2] { 0, 1 };
-            int num2 = 3;
-            array[num2] = new int[2] { -1, 0 };
-            array[4] = new int[2] { -1, -1 };
-            array[5] = new int[2] { 1, -1 };
-            array[6] = new int[2] { 1, 1 };
-            array[7] = new int[2] { -1, 1 };
-            directions8 = array;
-            int[][] array2 = new int[4][]
-            {
-                new int[2] { 0, -2 },
-                new int[2] { 0, 2 },
-                null,
-                null
-            };
-            int num3 = 2;
-            array2[num3] = new int[2] { -2, 0 };
-            int num4 = 3;
-            array2[num4] = new int[2] { 2, 0 };
-            directions4 = array2;
-            int[][] array3 = new int[4][]
-            {
-                new int[2] { 0, -1 },
-                new int[2] { 0, 1 },
-                null,
-                null
-            };
-            int num5 = 2;
-            array3[num5] = new int[2] { -1, 0 };
-            int num6 = 3;
-            array3[num6] = new int[2] { 1, 0 };
-            directions4 = array3;
-            int[][] array4 = new int[8][]
-            {
-                new int[2] { 0, 1 },
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
-            };
-            int num7 = 1;
-            array4[num7] = new int[2] { 1, 0 };
-            array4[2] = new int[2] { 0, -1 };
-            int num8 = 3;
-            array4[num8] = new int[2] { -1, 0 };
-            array4[4] = new int[2] { -1, -1 };
-            array4[5] = new int[2] { 1, -1 };
-            array4[6] = new int[2] { 1, 1 };
-            array4[7] = new int[2] { -1, 1 };
-            directions = array4;
         }
 
         public static bool isBlock(int tileX, int tileY, int ex, int ey)

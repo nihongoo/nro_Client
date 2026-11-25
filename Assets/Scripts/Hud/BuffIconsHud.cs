@@ -109,7 +109,7 @@ namespace Hud
                 for (int i = 0; i < visible.Count; i++) countdownDigits = Mathf.Max(countdownDigits, visible[i].IsCombo ? 3 : visible[i].Countdown(now).Length - 1);
             }
             HudLayout.TryGetRect("target-info.bounds", out Rect target);
-            Rect info = HudLayout.GetRect("top-info.bounds"), hp = HudLayout.GetRect("top-info.hp"), actions = HudLayout.GetRect(TopActionsHud.Hub);
+            Rect info = HudLayout.GetRect("top-info.bounds"), hp = HudLayout.GetRect("top-info.hp"), actions = HudLayout.GetRect(TopActionsHud.MapListSwitch);
             bool geometryChanged = viewportChanged || fontChanged || layoutCount != visible.Count || !Same(infoRect, info) || !Same(hpRect, hp)
                 || !Same(targetRect, target) || !Same(actionsRect, actions);
             if (geometryChanged) {
