@@ -47,8 +47,8 @@ namespace Hud
                 new Vector2(DesignUnit(HudLayout.IsMobileLayout ? 6 : 12), DesignUnit(6)));
             float left = avatar.xMax + gap;
             // Reserve the complete right-hand row through its leftmost registered button.
-            Rect hub = HudLayout.GetRect(TopActionsHud.Hub);
-            float right = Mathf.Min(GameCanvas.w - gap, hub.xMin - gap);
+            Rect actions = HudLayout.GetRect(TopActionsHud.MapListSwitch);
+            float right = Mathf.Min(GameCanvas.w - gap, actions.xMin - gap);
             int fpsWidth = mFont.tahoma_7_white.getWidth("FPS: 999") + 2;
             int preferredWidth = DesignUnit(HudLayout.IsMobileLayout ? 210 : 250);
             if (HudLayout.IsMobileLayout) {

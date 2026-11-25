@@ -56,6 +56,7 @@ public class MyKeyMap
 		h.Add(KeyCode.RightArrow, -4);
 		h.Add(KeyCode.Backspace, -8);
 		h.Add(KeyCode.Return, -5);
+		h.Add(KeyCode.KeypadEnter, -5);
 		h.Add(KeyCode.Period, 46);
 		h.Add(KeyCode.Slash, 47);
 		h.Add(KeyCode.At, 64);

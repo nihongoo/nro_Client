@@ -11,7 +11,7 @@ namespace Hud
             public Vector2 First, Point;
             public Skill Skill;
             public int ItemId = -1;
-            public bool Cancelled, MapTargetThroughJoystick;
+            public bool Cancelled, MapTargetThroughJoystick, GroundTapFromStick;
             public float Started;
         }
         private sealed class Click { public Capture Capture; public Vector2 Point; }
@@ -85,7 +85,7 @@ namespace Hud
                 // the visible stick reach the original selection handler. UI/modal hits still win.
                 bool mapTarget = target == CombatMobileHud.JoystickTouch && CombatMobileHud.CanInput
                     && !HudLayout.GetRect(CombatMobileHud.Joystick).Contains(point)
-                    && GameScr.instance.HasMobilePointerTarget(point);
+                    && (MapNavigation.ChoosingPoint || GameScr.instance.HasMobilePointerTarget(point));
                 if (mapTarget) target = null;
                 var capture = new Capture { Target = target, First = point, Point = point, Cancelled = !inside,
                     MapTargetThroughJoystick = mapTarget, Started = Time.realtimeSinceStartup };
@@ -95,7 +95,10 @@ namespace Hud
                     if (target.StartsWith("combat.item.")) capture.ItemId = MobileQuickItems.Template(int.Parse(target.Substring("combat.item.".Length)));
                     if (target == CombatMobileHud.JoystickTouch) {
                         if (stickPointer.HasValue) capture.Cancelled = true;
-                        else stickPointer = id;
+                        else {
+                            stickPointer = id;
+                            capture.GroundTapFromStick = !HudLayout.GetRect(CombatMobileHud.Joystick).Contains(point);
+                        }
                     }
                 }
                 else if (inside && !worldPointer.HasValue) {
@@ -109,6 +112,9 @@ namespace Hud
             current.Point = point;
             if (cancelled) current.Cancelled = true;
             if (CombatMobileHud.Owns(current.Target) && !CombatMobileHud.CanInput) current.Cancelled = true;
+            // Once the finger crosses the joystick dead zone, keep it as a joystick drag.
+            if (current.GroundTapFromStick && (Mathf.Abs(point.x - current.First.x) > 4
+                || Mathf.Abs(point.y - current.First.y) > 4)) current.GroundTapFromStick = false;
             if (!ended && !current.Cancelled && current.Target != null && current.Target.StartsWith("combat.item.")
                 && Time.realtimeSinceStartup-current.Started >= .6f
                 && (point-current.First).sqrMagnitude <= Mathf.Pow(CombatMobileHud.DesignUnit(8),2)
@@ -141,6 +147,13 @@ namespace Hud
                 else if(!began) GameMidlet.gameCanvas.pointerDragged((int)point.x,(int)point.y);
             }
             if (!ended) return;
+            if (current.GroundTapFromStick && !current.Cancelled && inside && !worldPointer.HasValue
+                && !GameCanvas.isPointerJustRelease && Time.realtimeSinceStartup - current.Started < 0.4f
+                && HudLayout.HitTest(point) == CombatMobileHud.JoystickTouch
+                && !HudLayout.GetRect(CombatMobileHud.Joystick).Contains(point)) {
+                GameMidlet.gameCanvas.pointerPressed((int)current.First.x, (int)current.First.y);
+                GameMidlet.gameCanvas.pointerReleased((int)point.x, (int)point.y);
+            }
             if (!current.Cancelled && CombatMobileHud.Owns(current.Target) && current.Target != CombatMobileHud.JoystickTouch
                 && HudLayout.HitTest(point) == current.Target) clicks.Enqueue(new Click { Capture=current,Point=point });
             if(worldPointer == id) worldPointer = null;

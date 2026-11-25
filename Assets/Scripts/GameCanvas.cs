@@ -691,6 +691,7 @@ public class GameCanvas : IActionListener
 				{
 					currentScreen.updateKey();
 				}
+                Hud.MapListsHud.RefreshAfterWorldUpdate();
 				Hint.update();
 				SoundMn.gI().update();
 			}

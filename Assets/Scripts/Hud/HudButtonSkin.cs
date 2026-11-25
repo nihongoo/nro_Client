@@ -10,27 +10,34 @@ namespace Hud
 
         // Imported textures need not be CPU-readable. Copy once without altering the shared asset.
         internal static Image CopyNative(Image source, System.Action<Color32[], int, int> edit = null, FilterMode filter = FilterMode.Point)
+            => CopyNative(source.texture, edit, 0, filter);
+
+        internal static Image CopyNative(Texture2D source, System.Action<Color32[], int, int> edit,
+            int squareSize, FilterMode filter = FilterMode.Point)
         {
-            Texture2D copy = CopyNativeTexture(source.texture, edit, filter);
+            Texture2D copy = CopyNativeTexture(source, edit, filter, squareSize);
             Image result = new Image();
             UnityEngine.Object.Destroy(result.texture);
             result.texture = copy; result.w = copy.width; result.h = copy.height;
             return result;
         }
 
-        internal static Texture2D CopyNativeTexture(Texture original, System.Action<Color32[], int, int> edit, FilterMode filter = FilterMode.Point)
+        internal static Texture2D CopyNativeTexture(Texture original, System.Action<Color32[], int, int> edit,
+            FilterMode filter = FilterMode.Point, int squareSize = 0)
         {
+            int width = squareSize > 0 ? squareSize : original.width;
+            int height = squareSize > 0 ? squareSize : original.height;
             RenderTexture previous = RenderTexture.active;
-            RenderTexture temporary = RenderTexture.GetTemporary(original.width, original.height, 0, RenderTextureFormat.ARGB32);
+            RenderTexture temporary = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32);
             Texture2D copy = null;
             try {
                 Graphics.Blit(original, temporary);
                 RenderTexture.active = temporary;
-                copy = new Texture2D(original.width, original.height, TextureFormat.RGBA32, false);
-                copy.ReadPixels(new Rect(0, 0, original.width, original.height), 0, 0);
+                copy = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                copy.ReadPixels(new Rect(0, 0, width, height), 0, 0);
                 if (edit != null) {
                     Color32[] pixels = copy.GetPixels32();
-                    edit(pixels, original.width, original.height);
+                    edit(pixels, width, height);
                     copy.SetPixels32(pixels);
                 }
                 copy.filterMode = filter;
@@ -52,14 +59,18 @@ namespace Hud
             if (cached != null && source == skin.texture) return cached;
             if (cached != null) UnityEngine.Object.Destroy(cached.texture);
             cached = CopyNative(skin, (pixels, width, height) => {
-                // Pixel rows are bottom-up. Preserve the complete native frame and replace only
-                // the chat-glyph rectangle with clean background pixels from the same source row.
-                for (int y = 0; y < height; y++) {
-                    float topY = 1 - (y + 0.5f) / height;
-                    if (topY < 0.28f || topY > 0.82f) continue;
-                    Color32 clean = pixels[y * width + Mathf.FloorToInt(width * 0.19f)];
-                    for (int x = Mathf.FloorToInt(width * 0.23f); x < Mathf.CeilToInt(width * 0.77f); x++)
-                        pixels[y * width + x] = clean;
+                // The 31-unit chat glyph narrows to a tail near the lower rim. A wide mask
+                // there would sample the rim and copy it across the button as a horizontal line.
+                for (int topY = 9 * height / 31; topY < 25 * height / 31; topY++) {
+                    bool tail = topY >= 21 * height / 31;
+                    int left = (tail ? 15 : 6) * width / 31;
+                    int right = (tail ? 23 : 25) * width / 31;
+                    int row = (height - 1 - topY) * width; // Texture pixels are bottom-up.
+                    Color32 before = pixels[row + left - 1], after = pixels[row + right];
+                    for (int x = left; x < right; x++) {
+                        float t = (float)(x - left + 1) / (right - left + 1);
+                        pixels[row + x] = Color32.Lerp(before, after, t);
+                    }
                 }
             });
             if (hover) { hoverSource = skin.texture; hoverBackground = cached; }
@@ -102,8 +113,7 @@ namespace Hud
 
         internal static void PaintNativeBackground(mGraphics g, Rect rect, bool hover)
         {
-            // Identical native dimensions, centering and rendering path to R, inside the 34x34 hit rect.
-            g.drawImage(NativeBackground(hover), (int)rect.center.x, (int)rect.center.y, mGraphics.HCENTER | mGraphics.VCENTER);
+            g.drawImage(NativeBackground(hover), (int)rect.x, (int)rect.y);
         }
     }
 }

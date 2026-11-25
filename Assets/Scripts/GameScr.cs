@@ -2015,20 +2015,13 @@ public class GameScr : mScreen, IChatable
         }
     }
 
-    public bool isAttack()
+    public bool isAttack(bool routedAttack = false)
     {
         if (Char.myCharz().ClearInvalidAttackFocus()) return false;
         if (Char.myCharz().charFocus != null && Char.myCharz().myskill != null
             && Char.myCharz().myskill.template.type == 1 && !IsLivePlayerTarget(Char.myCharz().charFocus)) return false;
-        if (checkClickToBotton(Char.myCharz().charFocus))
-        {
-            return false;
-        }
-        if (checkClickToBotton(Char.myCharz().mobFocus))
-        {
-            return false;
-        }
-        if (checkClickToBotton(Char.myCharz().npcFocus))
+        if (!routedAttack && (checkClickToBotton(Char.myCharz().charFocus)
+            || checkClickToBotton(Char.myCharz().mobFocus) || checkClickToBotton(Char.myCharz().npcFocus)))
         {
             return false;
         }
@@ -2060,7 +2053,7 @@ public class GameScr : mScreen, IChatable
                 Char.myCharz().mobFocus = null;
                 Char.myCharz().currentMovePoint = null;
             }
-            isAutoPlay = true;
+            if (!routedAttack) isAutoPlay = true;
             if (!isMeCanAttackMob(Char.myCharz().mobFocus))
             {
                 Res.outz("can not attack");
@@ -2078,17 +2071,7 @@ public class GameScr : mScreen, IChatable
             {
                 return false;
             }
-            int num = -1;
-            int num2 = Res.abs(Char.myCharz().cx - cmx) * mGraphics.zoomLevel;
-            if (Char.myCharz().charFocus != null)
-            {
-                num = Res.abs(Char.myCharz().cx - Char.myCharz().charFocus.cx) * mGraphics.zoomLevel;
-            }
-            else if (Char.myCharz().mobFocus != null)
-            {
-                num = Res.abs(Char.myCharz().cx - Char.myCharz().mobFocus.x) * mGraphics.zoomLevel;
-            }
-            if ((Char.myCharz().mobFocus.status == 1 || Char.myCharz().mobFocus.status == 0 || Char.myCharz().myskill.template.type == 4 || num == -1 || num > num2) && Char.myCharz().myskill.template.type == 4)
+            if (!routedAttack && Char.myCharz().myskill.template.type == 4)
             {
                 if (Char.myCharz().mobFocus.x < Char.myCharz().cx)
                 {
@@ -2117,6 +2100,7 @@ public class GameScr : mScreen, IChatable
             Char.myCharz().cvx = 0;
             if (num3 > Char.myCharz().myskill.dx || num4 > Char.myCharz().myskill.dy)
             {
+                if (routedAttack) return false;
                 bool flag = false;
                 if (Char.myCharz().mobFocus is BigBoss || Char.myCharz().mobFocus is BigBoss2)
                 {
@@ -2133,7 +2117,7 @@ public class GameScr : mScreen, IChatable
                 GameCanvas.clearKeyPressed();
                 return false;
             }
-            if (Char.myCharz().myskill.template.id == 20)
+            if (routedAttack || Char.myCharz().myskill.template.id == 20)
             {
                 return true;
             }
@@ -2301,6 +2285,7 @@ public class GameScr : mScreen, IChatable
             int num14 = Math.abs(Char.myCharz().cy - Char.myCharz().charFocus.cy);
             if (!Char.myCharz().isMeCanAttackOtherPlayer(Char.myCharz().charFocus) && !Char.myCharz().isSelectingSkillBuffToPlayer())
             {
+                if (routedAttack) return false;
                 if (num13 < 60 && num14 < 40)
                 {
                     playerMenu(Char.myCharz().charFocus);
@@ -2341,6 +2326,7 @@ public class GameScr : mScreen, IChatable
             Char.myCharz().cvx = 0;
             if (num13 > Char.myCharz().myskill.dx || num14 > Char.myCharz().myskill.dy)
             {
+                if (routedAttack) return false;
                 int num16 = (Char.myCharz().myskill.dx - 20) * ((Char.myCharz().cx > Char.myCharz().charFocus.cx) ? 1 : (-1));
                 if (num13 <= Char.myCharz().myskill.dx)
                 {
@@ -2355,7 +2341,7 @@ public class GameScr : mScreen, IChatable
                 GameCanvas.clearKeyPressed();
                 return false;
             }
-            if (Char.myCharz().myskill.template.id == 20)
+            if (routedAttack || Char.myCharz().myskill.template.id == 20)
             {
                 return true;
             }
@@ -2417,14 +2403,44 @@ public class GameScr : mScreen, IChatable
             && target.cy >= 0 && target.cy < TileMap.pxh;
     }
 
-    internal void FireAttackInput()
+    internal void FireAttackInput(bool held = false)
     {
+        int attackKey = Main.isPC ? 25 : 5;
+        if (AutoMap.isXmaping || (held && GameCanvas.keyPressed[attackKey])) return;
         Char owner = Char.myCharz();
         owner.ClearInvalidAttackFocus();
         if (owner.myskill != null && owner.myskill.template.type == 1
             && owner.npcFocus == null
             && owner.mobFocus == null && owner.charFocus == null) return;
+
+        if (MapNavigation.TryQueueAttack()) return;
+        IMapObject entry = owner.mobFocus != null && !owner.mobFocus.isMobMe && isMeCanAttackMob(owner.mobFocus)
+            ? (IMapObject)owner.mobFocus : null;
+        if (entry == null && owner.charFocus != null && TargetPriority(owner.charFocus) == 0
+            && owner.isMeCanAttackOtherPlayer(owner.charFocus))
+            entry = owner.charFocus;
+        if (entry != null && CanSelectTarget(entry) && IsRoutedAttackSkill(owner.myskill)) {
+            if (held && MapNavigation.FollowingRoute) return;
+            if (MapNavigation.CanAttackFromHere(owner, entry))
+                FireOnNavigationArrival(entry, shortcut: false);
+            else if (!held) MapNavigation.GoToTarget(entry, attack: true);
+            return;
+        }
         doFire(isFireByShortCut: false);
+    }
+
+    internal static bool IsRoutedAttackSkill(Skill skill)
+    {
+        SkillTemplate template = skill?.template;
+        return template != null && (template.isAttackSkill() || template.isSkillSpec());
+    }
+
+    internal void FireOnNavigationArrival(IMapObject entry, bool shortcut)
+    {
+        Char player = Char.myCharz();
+        if (!IsRoutedAttackSkill(player.myskill)
+            || (!ReferenceEquals(entry, player.mobFocus) && !ReferenceEquals(entry, player.charFocus))) return;
+        doFire(isFireByShortCut: shortcut, routedAttack: true);
     }
 
     public bool isMeCanAttackMob(Mob m)
@@ -2591,13 +2607,20 @@ public class GameScr : mScreen, IChatable
         GameCanvas.debug("F6", 0);
         updateKeyAlert();
         GameCanvas.debug("F7", 0);
-        if (Char.myCharz().currentMovePoint != null)
+        if (Char.myCharz().currentMovePoint != null || MapNavigation.FollowingRoute)
         {
             for (int i = 0; i < GameCanvas.keyPressed.Length; i++)
             {
-                if (GameCanvas.keyPressed[i])
+                // Enter also raises the UI-confirmation slot (15), including on key release.
+                if (i != 15 && GameCanvas.keyPressed[i])
                 {
-                    Char.myCharz().currentMovePoint = null;
+                    if (i == (Main.isPC ? 25 : 5) && MapNavigation.TryQueueAttack())
+                    {
+                        GameCanvas.keyPressed[i] = false;
+                        continue;
+                    }
+                    if (MapNavigation.FollowingRoute) MapNavigation.Cancel();
+                    else Char.myCharz().currentMovePoint = null;
                     break;
                 }
             }
@@ -2843,7 +2866,7 @@ public class GameScr : mScreen, IChatable
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 5 : 25] && mobCapcha == null)
                     {
-                        FireAttackInput();
+                        FireAttackInput(held: true);
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 4 : 23])
                     {
@@ -2891,7 +2914,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false);
+                    FireAttackInput();
                 }
                 else if (GameCanvas.keyHold[(!Main.isPC) ? 2 : 21])
                 {
@@ -2965,7 +2988,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false);
+                    FireAttackInput();
                 }
                 if (GameCanvas.keyHold[(!Main.isPC) ? 4 : 23] || (GameCanvas.keyHold[1] && mobCapcha == null))
                 {
@@ -2992,7 +3015,7 @@ public class GameScr : mScreen, IChatable
                 if ((GameCanvas.keyHold[(!Main.isPC) ? 2 : 21] || ((GameCanvas.keyHold[1] || GameCanvas.keyHold[3]) && mobCapcha == null)) && Char.myCharz().canFly && Char.myCharz().cMP > 0 && Char.myCharz().cp1 < 8 && Char.myCharz().cvy > -4)
                 {
                     Char.myCharz().cp1++;
-                    Char.myCharz().cvy = -7;
+                    Char.myCharz().cvy = -Char.HeldJumpSpeed;
                 }
             }
             else if (Char.myCharz().statusMe == 4)
@@ -3001,7 +3024,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false);
+                    FireAttackInput();
                 }
                 if (GameCanvas.keyHold[(!Main.isPC) ? 2 : 21] && Char.myCharz().cMP > 0 && Char.myCharz().canFly)
                 {
@@ -3059,7 +3082,7 @@ public class GameScr : mScreen, IChatable
                 if (GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25])
                 {
                     GameCanvas.keyPressed[(!Main.isPC) ? 5 : 25] = false;
-                    doFire(isFireByShortCut: false);
+                    FireAttackInput();
                 }
                 if (Char.myCharz().canFly && Char.myCharz().cMP > 0)
                 {
@@ -3083,7 +3106,7 @@ public class GameScr : mScreen, IChatable
                         }
                         else
                         {
-                            Char.myCharz().cvx = -(Char.myCharz().cspeed + 1);
+                            Char.myCharz().cvx = -Char.myCharz().FlightHorizontalSpeed;
                         }
                     }
                     else if (GameCanvas.keyHold[(!Main.isPC) ? 6 : 24])
@@ -3094,7 +3117,7 @@ public class GameScr : mScreen, IChatable
                         }
                         else
                         {
-                            Char.myCharz().cvx = Char.myCharz().cspeed + 1;
+                            Char.myCharz().cvx = Char.myCharz().FlightHorizontalSpeed;
                         }
                     }
                 }
@@ -3244,6 +3267,12 @@ public class GameScr : mScreen, IChatable
         }
     }
 
+    internal void ClearPendingMapClick()
+    {
+        lastSingleClick = 0;
+        isWaitingDoubleClick = false;
+    }
+
     private void checkClick()
     {
         if (isCharging())
@@ -3253,6 +3282,22 @@ public class GameScr : mScreen, IChatable
         if (checkClickToCapcha())
         {
             return;
+        }
+        if (GameCanvas.isPointerJustRelease && GameCanvas.isPointerClick) {
+            var pointer = new Vector2(GameCanvas.px, GameCanvas.py);
+            string hit = Hud.HudLayout.HitTest(pointer);
+            bool mapPoint = hit == null || (hit == Hud.CombatMobileHud.JoystickTouch
+                && !Hud.HudLayout.GetRect(Hud.CombatMobileHud.Joystick).Contains(pointer));
+            if (mapPoint) {
+                if (MapNavigation.ChoosingPoint) {
+                    ClearPendingMapClick();
+                    GameCanvas.clearAllPointerEvent();
+                    MapNavigation.GoTo((int)pointer.x + cmx, (int)pointer.y + cmy);
+                    return;
+                }
+                if (TryNavigateMapTap((int)pointer.x + cmx, (int)pointer.y + cmy)) return;
+                if (MapNavigation.FollowingRoute) MapNavigation.Cancel();
+            }
         }
         long num = mSystem.currentTimeMillis();
         if (lastSingleClick != 0)
@@ -3286,12 +3331,36 @@ public class GameScr : mScreen, IChatable
         }
     }
 
-    // Read-only routing probe: use the exact existing target hitboxes and visibility rules.
-    // Selection, double-click attacks and movement stay in the original pointer handlers.
+    private bool TryNavigateMapTap(int x, int y)
+    {
+        if (isLockKey || mobCapcha != null) return false;
+        IMapObject entry = findClickToItem(x, y, padding: 0);
+        bool combatTarget = entry is Mob mob && !mob.isMobMe
+            || entry is Char boss && TargetPriority(boss) == 0 && IsLivePlayerTarget(boss);
+        ItemMap item = entry as ItemMap;
+        if (entry != null && !combatTarget && item == null) return false;
+
+        // Consume navigation taps before the legacy single/double-click handlers run.
+        ClearPendingMapClick();
+        if (!checkClickToPopup(x, y) && !checkClipTopChatPopUp(x, y)) {
+            if (entry == null) MapNavigation.GoTo(x, y);
+            else {
+                Char player = Char.myCharz();
+                player.cancelAttack();
+                player.focusManualTo(entry);
+                if (combatTarget || CanPickHudItem(item)) MapNavigation.GoToTarget(entry, attack: combatTarget);
+                else MapNavigation.Cancel();
+            }
+        }
+        GameCanvas.clearAllPointerEvent();
+        return true;
+    }
+
+    // Read-only routing probe for taps on a target through the floating joystick zone.
     internal bool HasMobilePointerTarget(Vector2 point)
     {
         return Hud.HudLayout.IsMobileLayout
-            && findClickToItem((int)point.x + cmx, (int)point.y + cmy) != null;
+            && findClickToItem((int)point.x + cmx, (int)point.y + cmy, padding: 0) != null;
     }
 
     internal static int TargetPriority(IMapObject target)
@@ -3316,7 +3385,7 @@ public class GameScr : mScreen, IChatable
         return target is ItemMap;
     }
 
-    private IMapObject findClickToItem(int px, int py)
+    private IMapObject findClickToItem(int px, int py, int padding = 30)
     {
         IMapObject best = null;
         int distance = int.MaxValue;
@@ -3325,8 +3394,8 @@ public class GameScr : mScreen, IChatable
             IMapObject target = group.elementAt(i) as IMapObject;
             if (!CanSelectTarget(target)) continue;
             int x = target.getX(), y = target.getY();
-            if (!inRectangle(px, py, x - target.getW() / 2 - 30, y - target.getH() - 30,
-                    target.getW() + 60, target.getH() + 60)) continue;
+            if (!inRectangle(px, py, x - target.getW() / 2 - padding, y - target.getH() - padding,
+                    target.getW() + 2 * padding, target.getH() + 2 * padding)) continue;
             int nextDistance = Res.abs(px - x) + Res.abs(py - y);
             if (best == null || TargetPriority(target) < TargetPriority(best)
                     || TargetPriority(target) == TargetPriority(best) && nextDistance < distance) {
@@ -3360,7 +3429,7 @@ public class GameScr : mScreen, IChatable
             Char obj = (Char)mapObject;
             if (obj.cTypePk != 5 && !obj.isAttacPlayerStatus())
             {
-                checkClickMoveTo(num, num2, 2);
+                checkClickMoveTo(num, num2);
                 return false;
             }
         }
@@ -3371,7 +3440,7 @@ public class GameScr : mScreen, IChatable
         }
         if (TileMap.mapID == 51 && mapObject.Equals(Char.myCharz().npcFocus))
         {
-            checkClickMoveTo(num, num2, 3);
+            checkClickMoveTo(num, num2);
             return false;
         }
         if (Char.myCharz().skillPaint != null || Char.myCharz().arr != null || Char.myCharz().dart != null || Char.myCharz().skillInfoPaint() != null)
@@ -3397,7 +3466,7 @@ public class GameScr : mScreen, IChatable
         {
             if (mapObject is Mob && !isMeCanAttackMob((Mob)mapObject))
             {
-                checkClickMoveTo(num, num2, 4);
+                checkClickMoveTo(num, num2);
             }
             else
             {
@@ -3410,13 +3479,13 @@ public class GameScr : mScreen, IChatable
                     Char obj = (Char)mapObject;
                     if (obj.cTypePk != 5 && !obj.isAttacPlayerStatus())
                     {
-                        checkClickMoveTo(num, num2, 5);
+                        checkClickMoveTo(num, num2);
                         return;
                     }
                 }
                 if (TileMap.mapID == 51 && mapObject.Equals(Char.myCharz().npcFocus))
                 {
-                    checkClickMoveTo(num, num2, 6);
+                    checkClickMoveTo(num, num2);
                 }
                 else
                 {
@@ -3426,7 +3495,7 @@ public class GameScr : mScreen, IChatable
         }
         else if (!checkClickToPopup(num, num2) && !checkClipTopChatPopUp(num, num2) && !Main.isPC)
         {
-            checkClickMoveTo(num, num2, 7);
+            if (!gamePad.disableClickMove()) MapNavigation.GoTo(num, num2);
         }
     }
 
@@ -3482,7 +3551,7 @@ public class GameScr : mScreen, IChatable
         int yClick = GameCanvas.py + lastClickCMY;
         if (!isLockKey && !checkClickToPopup(xClick, yClick) && !checkClipTopChatPopUp(xClick, yClick))
         {
-            checkClickMoveTo(xClick, yClick, 0);
+            if (!gamePad.disableClickMove()) MapNavigation.GoTo(xClick, yClick);
         }
     }
 
@@ -3526,7 +3595,7 @@ public class GameScr : mScreen, IChatable
         return false;
     }
 
-    private void checkClickMoveTo(int xClick, int yClick, int index)
+    private void checkClickMoveTo(int xClick, int yClick)
     {
         if (gamePad.disableClickMove())
         {
@@ -3734,12 +3803,13 @@ public class GameScr : mScreen, IChatable
     {
     }
 
-    private void doFire(bool isFireByShortCut)
+    private void doFire(bool isFireByShortCut, bool routedAttack = false)
     {
         if (AutoMap.isXmaping)
         {
             return;
         }
+        if (!routedAttack && MapNavigation.TryQueueAttack(isFireByShortCut)) return;
         Char owner = Char.myCharz();
         if (owner.myskill != null && owner.myskill.template.type == 1
             && owner.npcFocus == null
@@ -3759,7 +3829,7 @@ public class GameScr : mScreen, IChatable
                 Char.myCharz().useSkillNotFocus();
             }
         }
-        else if (isAttack())
+        else if (isAttack(routedAttack))
         {
             if (Char.myCharz().isUseChargeSkill() && Char.myCharz().focusToAttack())
             {
@@ -3812,12 +3882,15 @@ public class GameScr : mScreen, IChatable
             && Char.myCharz().statusMe != 5 && Char.myCharz().statusMe != 14 && !Char.isLockKey;
     }
 
-    internal bool PickHudItem(ItemMap item)
+    internal const int ItemPickupRange = 40;
+
+    internal void PickHudItemOnArrival(ItemMap item)
     {
-        if (!CanPickHudItem(item)) return false;
+        if (!CanPickHudItem(item) || Math.abs(Char.myCharz().cx - item.x) > ItemPickupRange
+            || Math.abs(Char.myCharz().cy - item.y) >= ItemPickupRange) return;
         Char.myCharz().focusManualTo(item);
-        pickItem(); // Includes MovePoint/8002 completion and the existing item-673 prompt.
-        return true;
+        Char.myCharz().cdir = Char.myCharz().cx < item.x ? 1 : -1;
+        PickItemInRange(item);
     }
 
     private void pickItem()
@@ -3836,18 +3909,9 @@ public class GameScr : mScreen, IChatable
         }
         int num = Math.abs(Char.myCharz().cx - Char.myCharz().itemFocus.x);
         int num2 = Math.abs(Char.myCharz().cy - Char.myCharz().itemFocus.y);
-        if (num <= 40 && num2 < 40)
+        if (num <= ItemPickupRange && num2 < ItemPickupRange)
         {
-            GameCanvas.clearKeyHold();
-            GameCanvas.clearKeyPressed();
-            if (Char.myCharz().itemFocus.template.id != 673)
-            {
-                Service.gI().pickItem(Char.myCharz().itemFocus.itemMapID);
-            }
-            else
-            {
-                askToPick();
-            }
+            PickItemInRange(Char.myCharz().itemFocus);
         }
         else
         {
@@ -3856,6 +3920,14 @@ public class GameScr : mScreen, IChatable
             GameCanvas.clearKeyHold();
             GameCanvas.clearKeyPressed();
         }
+    }
+
+    private void PickItemInRange(ItemMap item)
+    {
+        GameCanvas.clearKeyHold();
+        GameCanvas.clearKeyPressed();
+        if (item.template.id == 673) askToPick();
+        else Service.gI().pickItem(item.itemMapID);
     }
 
     public bool isCharging()
@@ -4309,6 +4381,7 @@ public class GameScr : mScreen, IChatable
             {
                 ((Teleport)Teleport.vTeleport.elementAt(j)).update();
             }
+            MapNavigation.Update();
             Char.myCharz().update();
             _ = Char.myCharz().statusMe;
             EffecMn.update();
@@ -5076,9 +5149,14 @@ public class GameScr : mScreen, IChatable
             IMapObject mapObject = findClickToItem(clickToX, clickToY);
             if (mapObject == null || (mapObject != null && mapObject.Equals(Char.myCharz().npcFocus) && TileMap.mapID == 51))
             {
-                ServerEffect.addServerEffect(134, clickToX, clickToY + GameCanvas.transY / 2, 3);
+                ShowClickPositionEffect(clickToX, clickToY);
             }
         }
+    }
+
+    internal void ShowClickPositionEffect(int x, int y)
+    {
+        ServerEffect.addServerEffect(134, x, y + GameCanvas.transY / 2, 3);
     }
 
     private void paintWaypointArrow(mGraphics g)

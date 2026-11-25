@@ -132,8 +132,8 @@ namespace Hud
             bool hasTarget = Read(out Target target,out object identity);
             layoutFocus = identity; layoutHasPower = target.HasPower;
             float gap = Unit(6), center = GameCanvas.w/2f, wing = Unit(14);
-            Rect info = HudLayout.GetRect("top-info.bounds"), hub = HudLayout.GetRect(TopActionsHud.Hub);
-            float available = Mathf.Max(0,2*Mathf.Min(center-info.xMax-gap,hub.xMin-gap-center));
+            Rect info = HudLayout.GetRect("top-info.bounds"), actions = HudLayout.GetRect(TopActionsHud.MapListSwitch);
+            float available = Mathf.Max(0,2*Mathf.Min(center-info.xMax-gap,actions.xMin-gap-center));
             // HP keeps its existing painter, height and preferred width. Only narrow screens shrink it.
             upperWidth = Mathf.Min(Unit(PreferredHpWidth+20),available-2*wing);
             float mapHeight = Mathf.Max(Unit(12),mFont.tahoma_7_white.getHeight());

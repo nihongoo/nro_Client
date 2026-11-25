@@ -168,7 +168,7 @@ internal static class AttackSync
         if (IsBasicAttack(owner.myskill) && (GameCanvas.AttackHeld && (Hud.CombatPcHud.CanInput || Hud.CombatMobileHud.CanInput)
             || Hud.CombatPcHud.CanInput && Hud.CombatPcPointer.Held(Hud.CombatPcHud.Attack)
             || Hud.CombatMobileHud.CanInput && Hud.MobileCombatPointers.Held(Hud.CombatMobileHud.Attack)))
-            GameScr.gI().FireAttackInput();
+            GameScr.gI().FireAttackInput(held: true);
     }
 
     // Called by the real transport for manual input and all auto-attack senders.
