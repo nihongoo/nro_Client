@@ -17,6 +17,118 @@ public partial class Panel
     private static readonly string[] inventoryBagFilters = { "Tất cả", "Trang bị", "Tiêu hao", "Nguyên liệu" };
     internal int InventoryBagCellCount => inventoryBagMap.Count;
     internal bool InventoryBagDetailOpen => inventoryBagDetailOpen && (currentTabIndex == 1 || DisciplePanelActive) && inventoryBagDetailItem?.template != null;
+    private bool TradeBagActive => type == TYPE_GIAODICH && currentTabIndex == 0 && Equals(GameCanvas.panel);
+    private Rect TradeBagViewport => new Rect(xScroll + 3, yScroll, Mathf.Max(0, wScroll - 6), hScroll);
+
+    private void SetTradeBag()
+    {
+        RefreshTradeBagBounds();
+        cmy = cmtoY = Mathf.Clamp(cmyLast[currentTabIndex], 0, cmyLim);
+        selected = !GameCanvas.isTouch && currentListLength > 0 ? 0 : -1;
+    }
+
+    private void RefreshTradeBagBounds()
+    {
+        currentListLength = Char.myCharz().arrItemBag?.Length ?? 0;
+        int last = InventoryBag.DisplaySlots(currentListLength, InventoryBagFilter.All) - 1;
+        Rect viewport = TradeBagViewport;
+        cmyLim = Mathf.Max(0, Mathf.CeilToInt(InventoryFrame.BagCellBounds(last, viewport, 0).yMax + 3 - viewport.yMax));
+        if (selected >= currentListLength) selected = -1;
+        cmtoY = Mathf.Clamp(cmtoY, 0, cmyLim);
+    }
+
+    private int TradeBagSlotAt(int x, int y)
+    {
+        Rect viewport = TradeBagViewport;
+        var point = new Vector2(x, y);
+        if (!viewport.Contains(point)) return -1;
+        for (int slot = 0; slot < currentListLength; slot++) {
+            if (InventoryFrame.BagCellBounds(slot, viewport, cmy).Contains(point)) return slot;
+        }
+        return -1;
+    }
+
+    private void MoveTradeBagSelection()
+    {
+        int offset;
+        if (GameCanvas.keyPressed[Main.isPC ? 21 : 2]) offset = -InventoryBag.Columns;
+        else if (GameCanvas.keyPressed[Main.isPC ? 22 : 8]) offset = InventoryBag.Columns;
+        else if (GameCanvas.keyPressed[Main.isPC ? 23 : 4]) offset = -1;
+        else if (GameCanvas.keyPressed[Main.isPC ? 24 : 6]) offset = 1;
+        else return;
+        selected = selected < 0 ? 0 : Mathf.Clamp(selected + offset, 0, currentListLength - 1);
+        lastSelect[currentTabIndex] = selected;
+        Rect viewport = TradeBagViewport;
+        Rect cell = InventoryFrame.BagCellBounds(selected, viewport, cmy);
+        if (cell.yMin < viewport.yMin) cmy -= Mathf.CeilToInt(viewport.yMin - cell.yMin);
+        else if (cell.yMax > viewport.yMax) cmy += Mathf.CeilToInt(cell.yMax - viewport.yMax);
+        cmy = cmtoY = Mathf.Clamp(cmy, 0, cmyLim);
+    }
+
+    private void PaintTradeBag(mGraphics g)
+    {
+        Item[] bag = Char.myCharz().arrItemBag;
+        int length = bag?.Length ?? 0;
+        Rect viewport = TradeBagViewport;
+        int cells = InventoryBag.DisplaySlots(length, InventoryBagFilter.All);
+        for (int slot = 0; slot < cells; slot++) {
+            Rect cell = InventoryFrame.BagCellBounds(slot, viewport, cmy);
+            bool allocated = slot < length;
+            PaintBagCell(g, cell, viewport, allocated ? bag[slot] : null, allocated, slot == selected, bag != null);
+        }
+        InventoryFrame.Clip(g, viewport);
+        paintScrollArrow(g);
+    }
+
+    private Item GetTradeBagItem(int slot)
+    {
+        Item[] bag = Char.myCharz().arrItemBag;
+        return bag != null && slot >= 0 && slot < bag.Length ? bag[slot] : null;
+    }
+
+    private bool CanOfferTradeBagItem(Item item)
+        => TradeBagActive && !isLock && item?.template != null && !item.IsPetItem
+            && ReferenceEquals(item, GetTradeBagItem(item.indexUI));
+
+    private void AddTradeBagOffer(Item source, int quantity)
+    {
+        var offer = new Item {
+            template = source.template, itemOption = source.itemOption,
+            indexUI = source.indexUI, quantity = quantity
+        };
+        vMyGD.addElement(offer);
+        Service.gI().giaodich(2, -1, (sbyte)offer.indexUI, quantity);
+    }
+
+    internal void RejectTradeBagOffer(int slot)
+    {
+        if (type != TYPE_GIAODICH) return;
+        for (int i = 0; i < vMyGD.size(); i++) {
+            var offer = (Item)vMyGD.elementAt(i);
+            if (offer.indexUI != slot) continue;
+            vMyGD.removeElement(offer);
+            if (currentTabIndex == 1) setTabGiaoDich(isMe: true);
+            return;
+        }
+    }
+
+    private void OpenTradeBagItem()
+    {
+        currItem = GetTradeBagItem(selected);
+        if (currItem?.template == null) { cp = null; return; }
+        if (Char.myCharz().statusMe == 14) {
+            GameCanvas.startOKDlg(mResources.can_not_do_when_die);
+            return;
+        }
+        var commands = new MyVector();
+        if (!currItem.IsPetItem)
+            commands.addElement(new Command(mResources.use_for_trade, this, 7000, currItem));
+        if (commands.size() == 0)
+            commands.addElement(new Command(mResources.CLOSE, this, 8000, currItem));
+        Rect cell = InventoryFrame.BagCellBounds(selected, TradeBagViewport, cmy);
+        GameCanvas.menu.startAt(commands, X, (int)cell.yMax);
+        addItemDetail(currItem);
+    }
 
     private void SyncInventoryBag()
     {
@@ -170,36 +282,40 @@ public partial class Panel
         Item[] bag = Char.myCharz().arrItemBag;
         for (int visual = 0; visual < cells; visual++) {
             Rect cell = InventoryFrame.BagCellBounds(visual);
-            if (cell.yMax + 4 < viewport.y || cell.y > viewport.yMax) continue;
             bool allocated = visual < inventoryBagMap.Count;
             int index = allocated ? inventoryBagMap[visual] : -1;
             Item item = index >= 0 && bag != null && index < bag.Length ? bag[index] : null;
             bool chosen = allocated && selected == (Char.myCharz().arrItemBody?.Length ?? 0) + index;
-            InventoryFrame.Clip(g, viewport);
-            InventoryFrame.Rounded(g, cell, chosen ? InventoryFrame.Accent : allocated ? InventoryFrame.SlotBackground : InventoryFrame.MoneyBackground,
-                allocated ? (byte)255 : (byte)100);
-            if (!allocated) {
-                if (inventoryBagFilter == InventoryBagFilter.All && bag != null) {
-                    InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
-                    PaintClosedBagSlot(g, cell);
-                }
-                continue;
-            }
-            if (item?.template == null) continue;
-            if (item.template.type >= 0 && item.template.type <= 4) {
-                int setColor = InventoryFrame.SetColor(item);
-                if (setColor != InventoryFrame.Border) InventoryItemVisuals.PaintAura(cell, viewport, setColor);
-            }
-            // Icon position never depends on quantity, badge width or level.
-            InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
-            SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0,
-                mGraphics.HCENTER | mGraphics.VCENTER);
-            InventoryFrame.Clip(g, viewport);
-            if (InventoryBag.HasLevel(item))
-                InventoryItemVisuals.PaintLevel(g, cell, viewport, InventoryFrame.Option(item, Item.OPT_LVITEM), true);
-            if (item.quantity > 1) InventoryBagBadge.Paint(g, cell, viewport, item.quantity);
+            PaintBagCell(g, cell, viewport, item, allocated, chosen, inventoryBagFilter == InventoryBagFilter.All && bag != null);
         }
         InventoryFrame.Clip(g, viewport);
+    }
+
+    private static void PaintBagCell(mGraphics g, Rect cell, Rect viewport, Item item, bool allocated, bool chosen, bool showLock)
+    {
+        if (cell.yMax + 4 < viewport.y || cell.y > viewport.yMax) return;
+        InventoryFrame.Clip(g, viewport);
+        InventoryFrame.Rounded(g, cell, allocated ? (chosen ? InventoryFrame.Accent : InventoryFrame.SlotBackground) : InventoryFrame.MoneyBackground,
+            allocated ? (byte)255 : (byte)100);
+        if (!allocated) {
+            if (showLock) {
+                InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
+                PaintClosedBagSlot(g, cell);
+            }
+            return;
+        }
+        if (item?.template == null) return;
+        if (item.template.type >= 0 && item.template.type <= 4) {
+            int setColor = InventoryFrame.SetColor(item);
+            if (setColor != InventoryFrame.Border) InventoryItemVisuals.PaintAura(cell, viewport, setColor);
+        }
+        InventoryFrame.Clip(g, InventoryFrame.Intersection(cell, viewport));
+        SmallImage.drawSmallImage(g, item.template.iconID, (int)cell.center.x, (int)cell.center.y, 0,
+            mGraphics.HCENTER | mGraphics.VCENTER);
+        InventoryFrame.Clip(g, viewport);
+        if (InventoryBag.HasLevel(item))
+            InventoryItemVisuals.PaintLevel(g, cell, viewport, InventoryFrame.Option(item, Item.OPT_LVITEM), true);
+        if (item.quantity > 1) InventoryBagBadge.Paint(g, cell, viewport, item.quantity);
     }
 
     private static void PaintClosedBagSlot(mGraphics g, Rect cell)

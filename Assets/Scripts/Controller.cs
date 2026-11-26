@@ -576,7 +576,6 @@ public class Controller : IMessageHandler
 			case -86:
 			{
 				sbyte b42 = msg.reader().readByte();
-				Res.outz("server gui ve giao dich action = " + b42);
 				if (b42 == 1)
 				{
 					int num99 = msg.reader().readInt();
@@ -591,19 +590,7 @@ public class Controller : IMessageHandler
 				}
 				if (b42 == 2)
 				{
-					sbyte b43 = msg.reader().readByte();
-					for (int num100 = 0; num100 < GameCanvas.panel.vMyGD.size(); num100++)
-					{
-						Item item2 = (Item)GameCanvas.panel.vMyGD.elementAt(num100);
-						if (item2.indexUI == b43)
-						{
-							GameCanvas.panel.vMyGD.removeElement(item2);
-							break;
-						}
-					}
-				}
-				if (b42 == 5)
-				{
+					GameCanvas.panel.RejectTradeBagOffer(msg.reader().readByte());
 				}
 				if (b42 == 6)
 				{
@@ -618,8 +605,7 @@ public class Controller : IMessageHandler
 						GameCanvas.panel2.vFriendGD.removeAllElements();
 					}
 					int friendMoneyGD = msg.reader().readInt();
-					sbyte b44 = msg.reader().readByte();
-					Res.outz("item size = " + b44);
+					int b44 = msg.reader().readUnsignedByte();
 					for (int num101 = 0; num101 < b44; num101++)
 					{
 						Item item3 = new Item();
