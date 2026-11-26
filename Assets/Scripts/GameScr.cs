@@ -3380,7 +3380,7 @@ public class GameScr : mScreen, IChatable
         if (target is Mob mob) return !Mod.CuongLe.MucTieu.deselectMob && IsLiveMobTarget(mob);
         if (target is Npc npc) return !Mod.CuongLe.MucTieu.deselectNpc && npc.statusMe != 15;
         if (target is Char person) return !Mod.CuongLe.MucTieu.deselectChar && person != Char.myCharz()
-            && person.statusMe != 15 && !person.isInvisiblez
+            && person.statusMe != 15 && !person.IsUntargetable
             && (person.cHP <= 0 || person.statusMe == 5 || person.statusMe == 14 || !person.IsHiddenFromHudList)
             && vCharInMap.contains(person);
         return target is ItemMap;

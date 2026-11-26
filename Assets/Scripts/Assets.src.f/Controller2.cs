@@ -694,6 +694,16 @@ namespace Assets.src.f
 								GameScr.findCharInMap(num6).removeSleepEff();
 							}
 						}
+						if (num5 == 43)
+						{
+							Char target = num6 == Char.myCharz().charID ? Char.myCharz() : GameScr.findCharInMap(num6);
+							target?.SetNightVeil(b4 == 1);
+						}
+						if (num5 == 44)
+						{
+							Char target = num6 == Char.myCharz().charID ? Char.myCharz() : GameScr.findCharInMap(num6);
+							if (target != null) target.SetCerberusLastStand(b4 == 1);
+						}
 						if (num5 == 42)
 						{
 							if (b4 == 1)

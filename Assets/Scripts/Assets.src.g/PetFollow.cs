@@ -9,7 +9,8 @@ namespace Assets.src.g
 		public int cmy;
 		public int GroundFootInset { get; set; } = -1;
 
-		private const int FollowDistance = 20;
+		private const int FlyingFollowDistance = 30;
+		private const int GroundFollowDistance = 36;
 		private const int GroundSpeed = 5;
 		private const int CatchUpDistance = 144;
 		private const int CloudFollowDistance = 36;
@@ -82,8 +83,8 @@ namespace Assets.src.g
 
 			if (GameCanvas.gameTick % 3 == 0)
 			{
-				if (ownerDirection == 1) cmtoX = ownerX - FollowDistance;
-				if (ownerDirection == -1) cmtoX = ownerX + FollowDistance;
+				if (ownerDirection == 1) cmtoX = ownerX - FlyingFollowDistance;
+				if (ownerDirection == -1) cmtoX = ownerX + FlyingFollowDistance;
 				cmtoY = ownerY - 40;
 				dir = cmx > ownerX ? -1 : 1;
 				cmtoX = System.Math.Min(System.Math.Max(cmtoX, 100), TileMap.pxw - 100);
@@ -103,7 +104,7 @@ namespace Assets.src.g
 				ridingCloud = false;
 			}
 
-			int targetX = System.Math.Max(0, System.Math.Min(ownerX - ownerDirection * FollowDistance, TileMap.pxw - 1));
+			int targetX = System.Math.Max(0, System.Math.Min(ownerX - ownerDirection * GroundFollowDistance, TileMap.pxw - 1));
 			int ownerFloor = TileMap.tileYofPixel(ownerY + 2);
 			bool ownerOnFloor = System.Math.Abs(ownerY - ownerFloor) <= 2 && TileMap.IsMapEntryGround(ownerX, ownerFloor);
 			if (ridingCloud || (ownerFlying && !ownerOnFloor))
@@ -146,7 +147,7 @@ namespace Assets.src.g
 			{
 				if (TileMap.IsMapEntryGround(nextX, cmy - tileSize)) nextY -= tileSize;
 				else if (TileMap.IsMapEntryGround(nextX, cmy + tileSize)) nextY += tileSize;
-				else if (ownerOnFloor && System.Math.Abs(cmx - ownerX) > FollowDistance + tileSize)
+				else if (ownerOnFloor && System.Math.Abs(cmx - ownerX) > GroundFollowDistance + tileSize)
 				{
 					int catchUpX = TileMap.IsMapEntryGround(targetX, ownerFloor) ? targetX : ownerX;
 					StandOnGround(catchUpX, ownerFloor, ownerDirection);

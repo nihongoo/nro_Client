@@ -3518,7 +3518,7 @@ public class Controller : IMessageHandler
 						if (num3 == Char.myCharz().charID)
 						{
 							char3 = Char.myCharz();
-							if (!GameScr.isChangeZone && GameScr.isAutoPlay && GameScr.canAutoPlay)
+							if (!char3.HasCerberusLastStand && !GameScr.isChangeZone && GameScr.isAutoPlay && GameScr.canAutoPlay)
 							{
 								Service.gI().requestChangeZone(-1, -1);
 								GameScr.isChangeZone = true;
@@ -3746,7 +3746,7 @@ public class Controller : IMessageHandler
 				{
 					char15.isCopy = true;
 				}
-				if (readCharInfo(char15, msg))
+				if (readCharInfo(char15, msg, includesNightVeil: true))
 				{
 					sbyte b73 = msg.reader().readByte();
 					if (char15.cy <= 10 && b73 != 0 && b73 != 2)
@@ -5947,12 +5947,17 @@ public class Controller : IMessageHandler
 		}
 	}
 
-	public bool readCharInfo(Char c, Message msg)
+	public bool readCharInfo(Char c, Message msg, bool includesNightVeil = false)
 	{
 		try
 		{
 			c.clevel = msg.reader().readByte();
-			c.isInvisiblez = msg.reader().readBoolean();
+			bool hidden = msg.reader().readBoolean();
+			c.isInvisiblez = !includesNightVeil && hidden;
+			if (includesNightVeil)
+			{
+				c.SetNightVeil(hidden);
+			}
 			c.cTypePk = msg.reader().readByte();
 			Res.outz("ADD TYPE PK= " + c.cTypePk + " to player " + c.charID + " @@ " + c.cName);
 			c.nClass = GameScr.nClasss[msg.reader().readByte()];
