@@ -78,10 +78,12 @@ namespace Hud
         internal static Rect StackBounds {
             get {
                 if (!Visible) return new Rect();
+                EnsureLayout();
                 Rect buffs = HudLayout.GetRect(Root);
-                if (gem == null) return buffs;
-                Rect rune = HudLayout.GetRect(GemSlot);
-                float bottom = rune.yMax + (BuffIconStore.Remaining(gem, BuffIconStore.Now) > 0 ? grid.CaptionGap + grid.CaptionHeight : 0);
+                Rect rune = gemBounds;
+                if (rune.width <= 0) return buffs;
+                // Keep the list anchor below the caption lane even when the countdown is hidden.
+                float bottom = rune.yMax + grid.CaptionGap + grid.CaptionHeight;
                 if (buffs.height <= 0) return new Rect(rune.x, rune.y, rune.width, bottom - rune.y);
                 return new Rect(Mathf.Min(buffs.x, rune.x), Mathf.Min(buffs.y, rune.y),
                     Mathf.Max(buffs.xMax, rune.xMax) - Mathf.Min(buffs.x, rune.x), Mathf.Max(buffs.yMax, bottom) - Mathf.Min(buffs.y, rune.y));
@@ -128,7 +130,7 @@ namespace Hud
             }
             Rect avatar = HudLayout.GetRect("top-info.avatar");
             float gemSize = Mathf.Min(avatar.width, grid.Size);
-            gemBounds = gem == null ? new Rect() : new Rect(Mathf.Round(avatar.center.x - gemSize / 2),
+            gemBounds = new Rect(Mathf.Round(avatar.center.x - gemSize / 2),
                 Mathf.Ceil(avatar.yMax + grid.Gap), gemSize, gemSize);
             if (entriesChanged) layoutVersion++;
             first = Mathf.Clamp(first, 0, Mathf.Max(0, visible.Count - grid.Count));
