@@ -1498,6 +1498,10 @@ public partial class Panel : IActionListener, IChatable
             {
                 text += "\n\n";
             }
+            if (item.IsPetItem) {
+                text += "\n|2|~pet-timer~";
+                cp.PetTimerItem = item;
+            }
             popUpDetailInit(cp, text);
             idIcon = item.template.iconID;
             partID = null;
@@ -6787,7 +6791,7 @@ public partial class Panel : IActionListener, IChatable
                 }
                 else if (GameCanvas.panel.type == 13)
                 {
-                    myVector.addElement(new Command(mResources.use_for_trade, this, 7000, currItem));
+                    if (!currItem.IsPetItem) myVector.addElement(new Command(mResources.use_for_trade, this, 7000, currItem));
                 }
                 else if (GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody))
                 {
@@ -6801,7 +6805,7 @@ public partial class Panel : IActionListener, IChatable
                         myVector.addElement(new Command(mResources.GETOUT, this, 2002, currItem));
                     }
                 }
-                else if (currItem.isTypeBody())
+                else if (currItem.IsPetItem || currItem.isTypeBody())
                 {
                     myVector.addElement(new Command(mResources.USE, this, 2000, currItem));
                     if (CanEquipForDisciple(currItem) && position != 1)
@@ -6869,7 +6873,7 @@ public partial class Panel : IActionListener, IChatable
                     {
                         myVector.addElement(new Command(mResources.MOVEOUT, this, 2003, currItem));
                     }
-                    else if (position == 1)
+                    else if (position == 1 && !currItem.IsPetItem)
                     {
                         myVector.addElement(new Command(mResources.SALE, this, 3002, currItem));
                     }
@@ -7783,7 +7787,7 @@ public partial class Panel : IActionListener, IChatable
                 if (item2 != null)
                 {
                     myVector.addElement(new Command(mResources.move_to_chest, this, 1001, item2));
-                    if (item2.isTypeBody())
+                    if (item2.IsPetItem || item2.isTypeBody())
                     {
                         myVector.addElement(new Command(mResources.USE, this, 2000, item2));
                     }

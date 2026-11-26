@@ -16,7 +16,8 @@ namespace Hud
         internal static bool SameDetailItem(Item before, Item after)
         {
             if (before?.template == null || after?.template == null
-                || before.template.id != after.template.id || before.info != after.info || before.content != after.content) return false;
+                || before.template.id != after.template.id || before.info != after.info
+                || (before.IsPetItem ? !before.SamePetTimer(after) : before.content != after.content)) return false;
             int count = before.itemOption?.Length ?? 0;
             if (count != (after.itemOption?.Length ?? 0)) return false;
             for (int i = 0; i < count; i++) {
@@ -28,7 +29,7 @@ namespace Hud
         }
         internal static int EquippedPorataIndex(Item[] body) => body != null && body.Length > 7
             && body[7]?.template != null && body[7].template.id == 454 ? 7 : -1;
-        internal static bool CanEquip(Item item) => item?.template != null && (item.isTypeBody()
+        internal static bool CanEquip(Item item) => item?.template != null && (item.IsPetItem || item.isTypeBody()
             || item.template.type == 24 || item.template.type == 27
                 && (item.template.id == 454 || item.template.id == 921 || item.template.id == 1819));
         internal static bool HasLevel(Item item) => item?.template != null

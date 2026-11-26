@@ -1561,11 +1561,11 @@ public class Char : IMapObject
             {
                 if (GameCanvas.gameTick % 3 == 0)
                 {
-                    if (myCharz().cdir == 1)
+                    if (cdir == 1)
                     {
                         petFollow.cmtoX = cx - 20;
                     }
-                    if (myCharz().cdir == -1)
+                    if (cdir == -1)
                     {
                         petFollow.cmtoX = cx + 20;
                     }

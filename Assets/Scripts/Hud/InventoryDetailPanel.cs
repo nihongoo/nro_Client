@@ -12,6 +12,7 @@ public partial class Panel
         internal mFont Font;
         internal int Meter, Value;
         internal Item StarItem;
+        internal Item PetTimerItem;
     }
     private sealed class InventoryDetailButton
     {
@@ -169,7 +170,10 @@ public partial class Panel
         bool worn = DisciplePanelActive || selected >= 0 && selected < (inventoryDetailBody?.Length ?? 0);
         AddInventoryDetailText(inventoryDetailInfo, item.template.name + (InventoryBag.HasLevel(item) ? " [+" + level + "]" : ""), mFont.tahoma_7b_dark);
         AddInventoryDetailText(inventoryDetailInfo, worn ? "Đang mặc" : "Chưa mặc", mFont.tahoma_7_grey);
-        if (item.template.type != Item.TYPE_DISCIPLE_GEM) {
+        if (item.IsPetItem) {
+            inventoryDetailInfo.Add(new InventoryDetailLine { PetTimerItem = item, Font = mFont.tahoma_7_blue });
+        }
+        if (item.template.type != Item.TYPE_DISCIPLE_GEM && !item.IsPetItem) {
             if (InventoryBag.HasLevel(item)) {
                 inventoryDetailInfo.Add(new InventoryDetailLine { Text = "Cấp " + level + "/7", Font = mFont.tahoma_7b_dark, Meter = 7, Value = level });
             }
@@ -196,7 +200,7 @@ public partial class Panel
             if (!DisciplePanelActive && worn && InventoryBag.HasLevel(item)) AddInventoryDetailText(inventoryDetailInfo, "Nâng cấp / Gắn sao: đến NPC như trước", mFont.tahoma_7_grey);
         }
         AddInventoryDetailText(inventoryDetailDescription, item.template.description, mFont.tahoma_7b_dark);
-        if (item.template.type != Item.TYPE_DISCIPLE_GEM && !string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
+        if (!item.IsPetItem && item.template.type != Item.TYPE_DISCIPLE_GEM && !string.IsNullOrEmpty(item.content) && item.content != item.template.description) AddInventoryDetailText(inventoryDetailDescription, item.content, mFont.tahoma_7_grey);
         if (inventoryDetailDescription.Count == 0) AddInventoryDetailText(inventoryDetailDescription, "Không có mô tả", mFont.tahoma_7_grey);
         for (int i = 0; i < inventoryDetailButtons.Count; i++) {
             var button = inventoryDetailButtons[i];
@@ -270,7 +274,9 @@ public partial class Panel
             int y = (int)bounds.y + 6 + i * 12 - scroll;
             if (y + 12 < bounds.y || y > bounds.yMax) continue;
             // Native setTypePaint shifts text left; keep glyphs inside the clip on both sides.
-            var line = lines[i]; line.Font.drawString(g, line.Text, (int)bounds.x + 4, y, mFont.LEFT);
+            var line = lines[i];
+            string text = line.PetTimerItem?.PetTimerText() ?? line.Text;
+            if (text != null) line.Font.drawString(g, text, (int)bounds.x + 4, y, mFont.LEFT);
             if (line.StarItem != null) InventoryItemVisuals.PaintStars(new Rect(bounds.xMax - 44, y - 3.5f, 44, 0), bounds, line.StarItem);
             else if (line.Meter == 7) for (int n = 0; n < 7; n++) {
                 int x = (int)(bounds.xMax - 45 + n * 6);
