@@ -10,6 +10,7 @@ public class ChatPopup : Effect2, IActionListener
     public int sayRun;
 
     public string[] says;
+    public Item PetTimerItem;
 
     public int cx;
 
@@ -371,6 +372,7 @@ public class ChatPopup : Effect2, IActionListener
                     mFont2 = mFont.tahoma_7b_yellow;
                     break;
             }
+            if (st == "~pet-timer~") st = PetTimerItem?.PetTimerText() ?? string.Empty;
             if (says[i].StartsWith("<"))
             {
                 string[] array2 = Res.split(Res.split(says[i], "<", 0)[1], ">", 1);
@@ -540,6 +542,7 @@ public class ChatPopup : Effect2, IActionListener
                     mFont2 = mFont.tahoma_7b_red;
                     break;
             }
+            if (st == "~pet-timer~") st = PetTimerItem?.PetTimerText() ?? string.Empty;
             if (says[i].StartsWith("<"))
             {
                 string[] array2 = Res.split(Res.split(says[i], "<", 0)[1], ">", 1);
