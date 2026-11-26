@@ -576,7 +576,6 @@ public class Controller : IMessageHandler
 			case -86:
 			{
 				sbyte b42 = msg.reader().readByte();
-				Res.outz("server gui ve giao dich action = " + b42);
 				if (b42 == 1)
 				{
 					int num99 = msg.reader().readInt();
@@ -591,19 +590,7 @@ public class Controller : IMessageHandler
 				}
 				if (b42 == 2)
 				{
-					sbyte b43 = msg.reader().readByte();
-					for (int num100 = 0; num100 < GameCanvas.panel.vMyGD.size(); num100++)
-					{
-						Item item2 = (Item)GameCanvas.panel.vMyGD.elementAt(num100);
-						if (item2.indexUI == b43)
-						{
-							GameCanvas.panel.vMyGD.removeElement(item2);
-							break;
-						}
-					}
-				}
-				if (b42 == 5)
-				{
+					GameCanvas.panel.RejectTradeBagOffer(msg.reader().readByte());
 				}
 				if (b42 == 6)
 				{
@@ -618,8 +605,7 @@ public class Controller : IMessageHandler
 						GameCanvas.panel2.vFriendGD.removeAllElements();
 					}
 					int friendMoneyGD = msg.reader().readInt();
-					sbyte b44 = msg.reader().readByte();
-					Res.outz("item size = " + b44);
+					int b44 = msg.reader().readUnsignedByte();
 					for (int num101 = 0; num101 < b44; num101++)
 					{
 						Item item3 = new Item();
@@ -3518,7 +3504,7 @@ public class Controller : IMessageHandler
 						if (num3 == Char.myCharz().charID)
 						{
 							char3 = Char.myCharz();
-							if (!GameScr.isChangeZone && GameScr.isAutoPlay && GameScr.canAutoPlay)
+							if (!char3.HasCerberusLastStand && !GameScr.isChangeZone && GameScr.isAutoPlay && GameScr.canAutoPlay)
 							{
 								Service.gI().requestChangeZone(-1, -1);
 								GameScr.isChangeZone = true;
@@ -3746,7 +3732,7 @@ public class Controller : IMessageHandler
 				{
 					char15.isCopy = true;
 				}
-				if (readCharInfo(char15, msg))
+				if (readCharInfo(char15, msg, includesNightVeil: true))
 				{
 					sbyte b73 = msg.reader().readByte();
 					if (char15.cy <= 10 && b73 != 0 && b73 != 2)
@@ -5947,12 +5933,17 @@ public class Controller : IMessageHandler
 		}
 	}
 
-	public bool readCharInfo(Char c, Message msg)
+	public bool readCharInfo(Char c, Message msg, bool includesNightVeil = false)
 	{
 		try
 		{
 			c.clevel = msg.reader().readByte();
-			c.isInvisiblez = msg.reader().readBoolean();
+			bool hidden = msg.reader().readBoolean();
+			c.isInvisiblez = !includesNightVeil && hidden;
+			if (includesNightVeil)
+			{
+				c.SetNightVeil(hidden);
+			}
 			c.cTypePk = msg.reader().readByte();
 			Res.outz("ADD TYPE PK= " + c.cTypePk + " to player " + c.charID + " @@ " + c.cName);
 			c.nClass = GameScr.nClasss[msg.reader().readByte()];

@@ -298,7 +298,7 @@ namespace Hud
         {
             Char localPlayer = Char.ExistingLocalPlayer;
             if (localPlayer == null || Char.ischangingMap || value == null || value.isInvisible()) return false;
-            if (value is Char person && (person.isInvisiblez || person.IsHiddenFromHudList
+            if (value is Char person && (person.IsHiddenFromHudList
                     && person.cHP > 0 && person.statusMe != 5 && person.statusMe != 14)) return false;
             long dx = (long)value.getX() - localPlayer.cx;
             long itemY = value is Char ? value.getY() : (long)value.getY() - value.getH() / 2;

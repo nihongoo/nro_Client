@@ -156,9 +156,21 @@ namespace Hud
         }
         internal static Rect BagCellBounds(int index)
         {
-            EnsureMetrics();float left=metrics.BagLeft;
-            return new Rect(left + index % InventoryBag.Columns * (BagSize + BagGap),
-                FilterBounds(0).yMax + 6 + index / InventoryBag.Columns * (BagSize + BagGap), BagSize, BagSize);
+            EnsureMetrics();
+            return BagCellBounds(index, metrics.BagLeft, FilterBounds(0).yMax + 6, BagSize, BagGap);
+        }
+        internal static Rect BagCellBounds(int index, Rect viewport, int scroll)
+        {
+            float gap = Mathf.Min(BagGap, viewport.width / (InventoryBag.Columns * 2f));
+            float gaps = gap * (InventoryBag.Columns - 1);
+            float size = Mathf.Min(BagSize, (viewport.width - gaps) / InventoryBag.Columns);
+            float left = viewport.center.x - (size * InventoryBag.Columns + gaps) / 2;
+            return BagCellBounds(index, left, viewport.yMin + 3 - scroll, size, gap);
+        }
+        private static Rect BagCellBounds(int index, float left, float top, float size, float gap)
+        {
+            return new Rect(left + index % InventoryBag.Columns * (size + gap),
+                top + index / InventoryBag.Columns * (size + gap), size, size);
         }
         internal static int Option(Item item, int id)
         {

@@ -10,7 +10,9 @@ namespace Hud
         internal bool IsCombo => Id == ComboId;
         internal bool IsGem => Id == GemId;
         internal bool Inactive => IsGem && ExpiresAt < 0;
-        internal long Deadline => IsGem ? (ExpiresAt == -1 ? 0 : System.Math.Abs(ExpiresAt)) : ExpiresAt;
+        internal bool IsCerberusCooldown => (Id == 3 || Id == 4) && ExpiresAt < 0;
+        internal long Deadline => IsGem && ExpiresAt == -1 ? 0
+            : IsGem || IsCerberusCooldown ? System.Math.Abs(ExpiresAt) : ExpiresAt;
         internal int Id, Icon;
         internal long ExpiresAt;
         internal string Name, Effect;
@@ -98,7 +100,7 @@ namespace Hud
                 }
                 else {
                     output.Add(entry);
-                    nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.ExpiresAt - serverTime);
+                    nextExpiry = System.Math.Min(nextExpiry, receivedAt + entry.Deadline - serverTime);
                 }
             }
             return nextExpiry;

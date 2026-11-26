@@ -1916,7 +1916,8 @@ public partial class Panel : IActionListener, IChatable
         {
             if (Equals(GameCanvas.panel))
             {
-                updateKeyInventory();
+                RefreshTradeBagBounds();
+                updateKeyScrollView();
             }
             if (Equals(GameCanvas.panel2))
             {
@@ -1995,9 +1996,9 @@ public partial class Panel : IActionListener, IChatable
         {
             setType(0);
         }
-        if (currentTabIndex == 0)
+        if (TradeBagActive)
         {
-            setTabInventory(resetSelect: true);
+            SetTradeBag();
         }
         if (currentTabIndex == 1)
         {
@@ -2501,6 +2502,12 @@ public partial class Panel : IActionListener, IChatable
     {
         if (ScrollSkillPanelMouse(a)) return;
         if (ScrollInventoryBagMouse(a)) return;
+        if (TradeBagActive)
+        {
+            if (TradeBagViewport.Contains(new Vector2(GameCanvas.pxMouse, GameCanvas.pyMouse)))
+                cmtoY = Mathf.Clamp(cmtoY - a * 24, 0, cmyLim);
+            return;
+        }
         bool flag = false;
         if (GameCanvas.pxMouse > wScroll)
         {
@@ -2540,12 +2547,17 @@ public partial class Panel : IActionListener, IChatable
 
     private void updateKeyScrollView()
     {
-        if (currentListLength <= 0)
+        bool tradeBag = TradeBagActive;
+        if (currentListLength <= 0 && !tradeBag)
         {
             return;
         }
         bool flag = false;
-        if (GameCanvas.keyPressed[(!Main.isPC) ? 2 : 21])
+        if (tradeBag)
+        {
+            if (currentListLength > 0) MoveTradeBagSelection();
+        }
+        else if (GameCanvas.keyPressed[(!Main.isPC) ? 2 : 21])
         {
             flag = true;
             {
@@ -2658,7 +2670,8 @@ public partial class Panel : IActionListener, IChatable
                 if (pointerDownTime > 5 && pointerDownFirstX == GameCanvas.py && !isDownWhenRunning)
                 {
                     pointerDownFirstX = -1000;
-                    selected = (cmtoY + GameCanvas.py - yScroll) / ITEM_HEIGHT;
+                    selected = tradeBag ? TradeBagSlotAt(GameCanvas.px, GameCanvas.py)
+                        : (cmtoY + GameCanvas.py - yScroll) / ITEM_HEIGHT;
                     if (selected >= currentListLength)
                     {
                         selected = -1;
@@ -2725,7 +2738,8 @@ public partial class Panel : IActionListener, IChatable
             cmRun = 0;
             cmtoY = cmy;
             pointerDownFirstX = -1000;
-            selected = (cmtoY + GameCanvas.py - yScroll) / ITEM_HEIGHT;
+            selected = tradeBag ? TradeBagSlotAt(GameCanvas.px, GameCanvas.py)
+                : (cmtoY + GameCanvas.py - yScroll) / ITEM_HEIGHT;
             if (selected >= currentListLength)
             {
                 selected = -1;
@@ -2758,7 +2772,7 @@ public partial class Panel : IActionListener, IChatable
                 cmRun = -num5 * 100;
             }
         }
-        if ((isTabInven() || type == 13) && GameCanvas.py < yScroll + 21)
+        if (isTabInven() && GameCanvas.py < yScroll + 21)
         {
             updateKeyInvenTab();
         }
@@ -2940,7 +2954,7 @@ public partial class Panel : IActionListener, IChatable
                 {
                     if (Equals(GameCanvas.panel))
                     {
-                        setTabInventory(resetSelect: true);
+                        SetTradeBag();
                     }
                     else if (Equals(GameCanvas.panel2))
                     {
@@ -3662,7 +3676,7 @@ public partial class Panel : IActionListener, IChatable
                 {
                     if (Equals(GameCanvas.panel))
                     {
-                        paintInventory(g);
+                        PaintTradeBag(g);
                     }
                     else
                     {
@@ -6455,9 +6469,9 @@ public partial class Panel : IActionListener, IChatable
 
     private void doFireGiaoDich()
     {
-        if (currentTabIndex == 0 && Equals(GameCanvas.panel))
+        if (TradeBagActive)
         {
-            doFireInventory();
+            OpenTradeBagItem();
             return;
         }
         if ((currentTabIndex == 0 && Equals(GameCanvas.panel2)) || currentTabIndex == 2)
@@ -6470,7 +6484,6 @@ public partial class Panel : IActionListener, IChatable
             {
                 currItem = (Item)GameCanvas.panel.vFriendGD.elementAt(selected);
             }
-            Res.outz2("toi day select= " + selected);
             MyVector myVector = new MyVector();
             myVector.addElement(new Command(mResources.CLOSE, this, 8000, currItem));
             if (currItem != null)
@@ -6788,10 +6801,6 @@ public partial class Panel : IActionListener, IChatable
                 if (GameCanvas.panel.type == 12)
                 {
                     myVector.addElement(new Command(mResources.use_for_combine, this, 6000, currItem));
-                }
-                else if (GameCanvas.panel.type == 13)
-                {
-                    if (!currItem.IsPetItem) myVector.addElement(new Command(mResources.use_for_trade, this, 7000, currItem));
                 }
                 else if (GetInventorySelect_isbody(selected, newSelected, Char.myCharz().arrItemBody))
                 {
@@ -7894,6 +7903,7 @@ public partial class Panel : IActionListener, IChatable
                 return;
             }
             Item item3 = (Item)p;
+            if (!CanOfferTradeBagItem(item3)) return;
             for (int j = 0; j < GameCanvas.panel.vMyGD.size(); j++)
             {
                 if (((Item)GameCanvas.panel.vMyGD.elementAt(j)).indexUI == item3.indexUI)
@@ -7904,27 +7914,11 @@ public partial class Panel : IActionListener, IChatable
             }
             if (item3.quantity > 1)
             {
+                currItem = item3;
                 putQuantily();
                 return;
             }
-            item3.isSelect = true;
-            Item item4 = new Item();
-            item4.template = item3.template;
-            item4.itemOption = item3.itemOption;
-            item4.indexUI = item3.indexUI;
-            GameCanvas.panel.vMyGD.addElement(item4);
-            Service.gI().giaodich(2, -1, (sbyte)item4.indexUI, item4.quantity);
-        }
-        if (idAction == 7001)
-        {
-            Item item5 = (Item)p;
-            item5.isSelect = false;
-            GameCanvas.panel.vMyGD.removeElement(item5);
-            if (GameCanvas.panel.currentTabIndex == 1)
-            {
-                GameCanvas.panel.setTabGiaoDich(isMe: true);
-            }
-            Service.gI().giaodich(4, -1, (sbyte)item5.indexUI, -1);
+            AddTradeBagOffer(item3, 1);
         }
         if (idAction == 7002)
         {
@@ -8409,21 +8403,14 @@ public partial class Panel : IActionListener, IChatable
                     chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
                     return;
                 }
-                if (num <= 0 || num > currItem.quantity)
+                if (!CanOfferTradeBagItem(currItem) || num <= 0 || num > currItem.quantity)
                 {
                     GameCanvas.startOKDlg(mResources.input_quantity_wrong);
                     chatTField.isShow = false;
                     chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
                     return;
                 }
-                currItem.isSelect = true;
-                Item item = new Item();
-                item.template = currItem.template;
-                item.quantity = num;
-                item.indexUI = currItem.indexUI;
-                item.itemOption = currItem.itemOption;
-                GameCanvas.panel.vMyGD.addElement(item);
-                Service.gI().giaodich(2, -1, (sbyte)item.indexUI, item.quantity);
+                AddTradeBagOffer(currItem, num);
                 chatTField.isShow = false;
                 chatTField.tfChat.setIputType(TField.INPUT_TYPE_ANY);
             }

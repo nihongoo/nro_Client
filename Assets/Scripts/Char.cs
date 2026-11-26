@@ -340,6 +340,15 @@ public class Char : IMapObject
     public int countKillMax;
 
     public bool isInvisiblez;
+    private bool nightVeilActive;
+    internal bool IsUntargetable => isInvisiblez || nightVeilActive;
+
+    // Parts used by the Người Vô Hình costume (item 449).
+    private const int InvisibleCostumeHead = 377;
+    private const int InvisibleCostumeBody = 378;
+    private const int InvisibleCostumeLeg = 379;
+    private bool cerberusLastStand;
+    internal bool HasCerberusLastStand => cerberusLastStand;
 
     public bool isShadown = true;
 
@@ -5515,9 +5524,27 @@ public class Char : IMapObject
         isMabuHold = m;
     }
 
+    internal void SetNightVeil(bool hidden)
+    {
+        nightVeilActive = hidden;
+        Char viewer = ExistingLocalPlayer;
+        if (hidden && viewer != null && viewer.charFocus == this)
+        {
+            viewer.charFocus = null;
+            Char.isManualFocus = false;
+            viewer.CancelAttackApproach();
+        }
+    }
+
+    internal void SetCerberusLastStand(bool active)
+    {
+        cerberusLastStand = active;
+        if (active && cHP <= 0) cHP = 1;
+    }
+
     public virtual void paint(mGraphics g)
     {
-        if (isHide)
+        if (isHide || (!me && isInvisiblez))
         {
             return;
         }
@@ -5962,7 +5989,7 @@ public class Char : IMapObject
     }
 
     // Read-only projection of existing visibility flags; no gameplay state is changed.
-    internal bool IsHiddenFromHudList => isSetPos || isFusion || isInvisiblez;
+    internal bool IsHiddenFromHudList => isSetPos || isFusion || IsUntargetable;
     // Unlike myCharz(), inspecting HUD readiness must not create a player.
     internal static Char ExistingLocalPlayer => myChar;
 
@@ -6016,7 +6043,7 @@ public class Char : IMapObject
     {
         Part part = GameScr.parts[getFHead(head)];
         int num = CharInfo[cf][0][2] - part.pi[CharInfo[cf][0][0]].dy + 11;
-        if ((isInvisiblez && !me) || (!me && TileMap.mapID == 113 && cy >= 360))
+        if (!me && (IsUntargetable || (TileMap.mapID == 113 && cy >= 360)))
         {
             return;
         }
@@ -6101,7 +6128,7 @@ public class Char : IMapObject
 
     public void paintShadow(mGraphics g)
     {
-        if (isMabuHold || head == 377 || leg == 471 || isTeleport || isFlyUp)
+        if ((!me && isInvisiblez) || nightVeilActive || isMabuHold || head == InvisibleCostumeHead || leg == 471 || isTeleport || isFlyUp)
         {
             return;
         }
@@ -6354,10 +6381,12 @@ public class Char : IMapObject
 
     public void paintCharBody(mGraphics g, int cx, int cy, int cdir, int cf, bool isPaintBag)
     {
-        ph = GameScr.parts[head];
-        pl = GameScr.parts[leg];
-        pb = GameScr.parts[body];
-        if (bag >= 0 && statusMe != 14)
+        bool showInvisibleCostume = nightVeilActive && statusMe != 14 && !isMafuba;
+        int appearanceHead = showInvisibleCostume ? InvisibleCostumeHead : head;
+        ph = GameScr.parts[appearanceHead];
+        pl = GameScr.parts[showInvisibleCostume ? InvisibleCostumeLeg : leg];
+        pb = GameScr.parts[showInvisibleCostume ? InvisibleCostumeBody : body];
+        if (!showInvisibleCostume && bag >= 0 && statusMe != 14)
         {
             if (ClanImage.idImages.containsKey(bag + string.Empty))
             {
@@ -6386,21 +6415,27 @@ public class Char : IMapObject
         }
         if (statusMe != 14)
         {
-            paintHat_behind(g, cf, cy - CharInfo[cf][2][2] + pb.pi[CharInfo[cf][2][0]].dy);
+            if (!showInvisibleCostume)
+            {
+                paintHat_behind(g, cf, cy - CharInfo[cf][2][2] + pb.pi[CharInfo[cf][2][0]].dy);
+            }
             try
             {
-                if (!isHead_2Fr(head))
+                if (!isHead_2Fr(appearanceHead))
                 {
                     SmallImage.drawSmallImage(g, ph.pi[CharInfo[cf][0][0]].id, cx + (CharInfo[cf][0][1] + ph.pi[CharInfo[cf][0][0]].dx) * num2, cy - CharInfo[cf][0][2] + ph.pi[CharInfo[cf][0][0]].dy, num, anchor);
                 }
                 else
                 {
-                    Part part = GameScr.parts[getFHead(head)];
+                    Part part = GameScr.parts[getFHead(appearanceHead)];
                     SmallImage.drawSmallImage(g, part.pi[CharInfo[cf][0][0]].id, cx + (CharInfo[cf][0][1] + part.pi[CharInfo[cf][0][0]].dx) * num2, cy - CharInfo[cf][0][2] + part.pi[CharInfo[cf][0][0]].dy, num, anchor);
                 }
                 SmallImage.drawSmallImage(g, pl.pi[CharInfo[cf][1][0]].id, cx + (CharInfo[cf][1][1] + pl.pi[CharInfo[cf][1][0]].dx) * num2, cy - CharInfo[cf][1][2] + pl.pi[CharInfo[cf][1][0]].dy, num, anchor);
                 SmallImage.drawSmallImage(g, pb.pi[CharInfo[cf][2][0]].id, cx + (CharInfo[cf][2][1] + pb.pi[CharInfo[cf][2][0]].dx) * num2, cy - CharInfo[cf][2][2] + pb.pi[CharInfo[cf][2][0]].dy, num, anchor);
-                paintRedEye(g, cx + (CharInfo[cf][0][1] + ph.pi[CharInfo[cf][0][0]].dx) * num2, cy - CharInfo[cf][0][2] + ph.pi[CharInfo[cf][0][0]].dy, num, anchor);
+                if (!showInvisibleCostume)
+                {
+                    paintRedEye(g, cx + (CharInfo[cf][0][1] + ph.pi[CharInfo[cf][0][0]].dx) * num2, cy - CharInfo[cf][0][2] + ph.pi[CharInfo[cf][0][0]].dy, num, anchor);
+                }
             }
             catch (Exception ex)
             {
@@ -6441,7 +6476,7 @@ public class Char : IMapObject
         ch = ((isMonkey == 1 || isFusion) ? 60 : (CharInfo[0][0][2] + ph.pi[CharInfo[0][0][0]].dy + 10));
         int num4 = ((Res.abs(ph.pi[CharInfo[cf][0][0]].dy) < 22) ? ph.pi[CharInfo[cf][0][0]].dy : ((ph.pi[CharInfo[cf][0][0]].dy >= 0) ? (ph.pi[CharInfo[cf][0][0]].dy - 5) : (ph.pi[CharInfo[cf][0][0]].dy + 5)));
         cH_new = cy - CharInfo[cf][0][2] + num4;
-        if (statusMe == 1 && charID > 0 && !isMask && !isUseChargeSkill() && !isWaitMonkey && skillPaint == null && cf != 23 && bag < 0 && ((GameCanvas.gameTick + charID) % 30 == 0 || isFreez))
+        if (!showInvisibleCostume && statusMe == 1 && charID > 0 && !isMask && !isUseChargeSkill() && !isWaitMonkey && skillPaint == null && cf != 23 && bag < 0 && ((GameCanvas.gameTick + charID) % 30 == 0 || isFreez))
         {
             g.drawImage((cgender != 1) ? eyeTraiDat : eyeNamek, cx + -((cgender != 1) ? 2 : 2) * num2, cy - 32 + ((cgender != 1) ? 11 : 10) - cf, anchor2);
         }
@@ -6749,7 +6784,7 @@ public class Char : IMapObject
                 timeFocusToMob--;
                 return;
             }
-            if (isManualFocus && charFocus != null && (charFocus.statusMe == 15 || charFocus.isInvisiblez))
+            if (isManualFocus && charFocus != null && (charFocus.statusMe == 15 || charFocus.IsUntargetable))
             {
                 charFocus = null;
             }
@@ -6955,7 +6990,7 @@ public class Char : IMapObject
                 for (int num23 = 0; num23 < GameScr.vCharInMap.size(); num23++)
                 {
                     Char obj = (Char)GameScr.vCharInMap.elementAt(num23);
-                    if (obj.statusMe != 15 && !obj.isInvisiblez && wdx == 0 && wdy == 0)
+                    if (obj.statusMe != 15 && !obj.IsUntargetable && wdx == 0 && wdy == 0)
                     {
                         int num24 = Math.abs(myCharz().cx - obj.cx);
                         int num25 = Math.abs(myCharz().cy - obj.cy);
@@ -6970,7 +7005,7 @@ public class Char : IMapObject
             }
             else if (!MucTieu.deselectChar)
             {
-                if (num2 <= charFocus.cx && charFocus.cx <= num3 && cmy <= charFocus.cy && charFocus.cy <= num4 && charFocus.statusMe != 15 && !charFocus.isInvisiblez)
+                if (num2 <= charFocus.cx && charFocus.cx <= num3 && cmy <= charFocus.cy && charFocus.cy <= num4 && charFocus.statusMe != 15 && !charFocus.IsUntargetable)
                 {
                     clearFocus(2);
                     return;
@@ -6979,7 +7014,7 @@ public class Char : IMapObject
                 for (int num27 = 0; num27 < GameScr.vCharInMap.size(); num27++)
                 {
                     Char obj2 = (Char)GameScr.vCharInMap.elementAt(num27);
-                    if (obj2.statusMe != 15 && !obj2.isInvisiblez && wdx == 0 && wdy == 0)
+                    if (obj2.statusMe != 15 && !obj2.IsUntargetable && wdx == 0 && wdy == 0)
                     {
                         int num28 = Math.abs(myCharz().cx - obj2.cx);
                         int num29 = Math.abs(myCharz().cy - obj2.cy);
@@ -7057,7 +7092,7 @@ public class Char : IMapObject
         int num = GameScr.cmx + GameCanvas.w;
         int num2 = GameScr.cmy + 10;
         int num3 = GameScr.cmy + GameScr.gH;
-        if (c.statusMe == 15 || c.isInvisiblez || cmx > c.cx || c.cx > num || num2 > c.cy)
+        if (c.statusMe == 15 || c.IsUntargetable || cmx > c.cx || c.cx > num || num2 > c.cy)
         {
             return false;
         }
@@ -7248,9 +7283,10 @@ public class Char : IMapObject
         GameScr.gI().twHp = 0L;
         GameScr.gI().isInjureMp = true;
         GameScr.gI().twMp = 0L;
-        if (cHP < 0)
+        long minHp = cerberusLastStand ? 1L : 0L;
+        if (cHP < minHp)
         {
-            cHP = 0L;
+            cHP = minHp;
         }
         if (cMP < 0)
         {
@@ -7298,6 +7334,7 @@ public class Char : IMapObject
 
     public void startDie(short toX, short toY)
     {
+        cerberusLastStand = false;
         if (me) ClearRespawnFocus();
         isMonkey = 0;
         isWaitMonkey = false;

@@ -271,6 +271,7 @@ namespace Hud
                     int icon = entry.Icon == 15359 && mGraphics.zoomLevel == 1 ? 433 : entry.Icon;
                     InventoryItemVisuals.PaintCompactIcon(g, icon, InventoryFrame.Inset(cell, 1), cell);
                     if (entry.IsCombo && ComboOverload.Locked) PaintInactive(cell, true);
+                    if (entry.IsCerberusCooldown) PaintInactive(cell);
                     countdown.Paint(cell, entry.Countdown(now), grid.CaptionGap);
                 }
             } finally {
