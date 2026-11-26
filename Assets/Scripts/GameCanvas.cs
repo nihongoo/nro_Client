@@ -527,6 +527,13 @@ public class GameCanvas : IActionListener
 		Mod.CuongLe.MainMod.UpdateAccountManager();
 		LoginScr.updateLoginAttempt();
 		CustomServerAddress.UpdateConnection();
+        if (currentScreen is GameScr && Char.isLoadingMap && !TileMap.CollisionReady
+            && mSystem.currentTimeMillis() > timeBreakLoading)
+        {
+            onDisconnected();
+            startOKDlg("Không thể tải dữ liệu bản đồ. Vui lòng đăng nhập lại.");
+            return;
+        }
 		if (mSystem.currentTimeMillis() > timefps)
 		{
 			timefps += 1000L;
@@ -1836,6 +1843,11 @@ public class GameCanvas : IActionListener
 			keyAsciiPress = 0;
 			return;
 		}
+        if (Main.isPC && (keyCode == -5 || keyCode == 10) && currentScreen is GameScr game
+            && game.TryActivateNearbyWaypoint()) {
+            keyAsciiPress = 0;
+            return;
+        }
 		currentScreen.keyPress(keyCode);
 
         // PC number-row keys select HUD slots; 5 must not also hold the current attack.
@@ -2331,7 +2343,6 @@ public class GameCanvas : IActionListener
 				paintChangeMap(g);
 				if (timeLoading > 0 && LoginScr.timeLogin <= 0)
 				{
-					startWaitDlg();
 					if (mSystem.currentTimeMillis() - TIMEOUT >= 1000)
 					{
 						timeLoading--;
@@ -2346,16 +2357,9 @@ public class GameCanvas : IActionListener
 				if (!LoginScr.isLoggingIn && mSystem.currentTimeMillis() > timeBreakLoading)
 				{
 					timeBreakLoading = mSystem.currentTimeMillis() + 30000;
-					if (currentScreen != null)
+					if (currentScreen is LoginScr)
 					{
-						if (currentScreen is GameScr)
-						{
-							GameScr.gI().switchToMe();
-						}
-						else if (!(currentScreen is SplashScr) && currentScreen is LoginScr)
-						{
-							gI().resetToLoginScrz();
-						}
+						gI().resetToLoginScrz();
 					}
 				}
 			}

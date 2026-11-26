@@ -10,7 +10,8 @@ public class Controller : IMessageHandler
 
 	protected static Controller me2;
 
-	public Message messWait;
+    private Message pendingMap;
+    private int requestedMapTemplate = -1;
 
 	public static bool isLoadingData = false;
 
@@ -64,6 +65,9 @@ public class Controller : IMessageHandler
 
 	public void onConnectOK(bool isMain1)
 	{
+        pendingMap = null;
+        requestedMapTemplate = -1;
+        if (isMain1) Service.gI().FinishWaypointRequest();
 		isMain = isMain1;
 		mSystem.onConnectOK();
 	}
@@ -2724,6 +2728,7 @@ public class Controller : IMessageHandler
 				GameCanvas.debug("SA5", 2);
 				Cout.LogWarning("Controler RESET_POINT  " + Char.ischangingMap);
 				Char.isLockKey = false;
+                Service.gI().FinishWaypointRequest();
 				Char.myCharz().setResetPoint(msg.reader().readShort(), msg.reader().readShort());
 				break;
 			case -29:
@@ -3135,6 +3140,8 @@ public class Controller : IMessageHandler
 				GameScr.vItemMap.addElement(new ItemMap(msg.reader().readShort(), msg.reader().readShort(), @char.cx, @char.cy, msg.reader().readShort(), msg.reader().readShort()));
 				break;
 			case -22:
+                MapNavigation.Cancel();
+                GameScr.gI().ClearPendingMapClick();
 				GameCanvas.debug("SA65", 2);
 				Char.isLockKey = true;
 				Char.ischangingMap = true;
@@ -3273,9 +3280,15 @@ public class Controller : IMessageHandler
 				GameCanvas.endDlg();
 				break;
 			case -24:
+                Service.gI().FinishWaypointRequest();
+                TileMap.BeginCollisionLoad();
+                Char.ischangingMap = true;
+                pendingMap = null;
+                MapNavigation.Cancel();
+                GameScr.gI().ClearPendingMapClick();
 				if (GameCanvas.currentScreen is GameScr)
 				{
-					GameCanvas.timeBreakLoading = mSystem.currentTimeMillis() + 3000;
+					GameCanvas.timeBreakLoading = mSystem.currentTimeMillis() + 10000;
 				}
 				else
 				{
@@ -3306,21 +3319,11 @@ public class Controller : IMessageHandler
 				}
 				catch (Exception)
 				{
-					Service.gI().requestMaptemplate(TileMap.mapID);
-					messWait = msg;
+                    pendingMap = msg;
+                    RequestPendingMapTemplate();
 					return;
 				}
 				loadInfoMap(msg);
-				try
-				{
-					sbyte b33 = msg.reader().readByte();
-					TileMap.isMapDouble = ((b33 != 0) ? true : false);
-				}
-				catch (Exception)
-				{
-				}
-				GameScr.cmx = GameScr.cmtoX;
-				GameScr.cmy = GameScr.cmtoY;
 				break;
 			case -31:
 			{
@@ -4263,6 +4266,43 @@ public class Controller : IMessageHandler
 		}
 	}
 
+    private void RequestPendingMapTemplate()
+    {
+        // The template response has no map ID. Keep only one request in flight.
+        if (pendingMap == null || requestedMapTemplate != -1) return;
+        requestedMapTemplate = TileMap.mapID;
+        Service.gI().requestMaptemplate(requestedMapTemplate);
+    }
+
+    private void ReceiveMapTemplate(Message msg)
+    {
+        int map = requestedMapTemplate;
+        requestedMapTemplate = -1;
+        if (map < 0 || pendingMap == null || map != TileMap.mapID)
+        {
+            RequestPendingMapTemplate();
+            return;
+        }
+
+        var reader = msg.reader();
+        int width = reader.readUnsignedByte();
+        int height = reader.readUnsignedByte();
+        if (width == 0 || height == 0 || reader.available() < width * height)
+            throw new InvalidOperationException("Invalid map template " + map);
+        int[] tiles = new int[width * height];
+        for (int i = 0; i < tiles.Length; i++) tiles[i] = reader.readUnsignedByte();
+
+        TileMap.tmw = width;
+        TileMap.tmh = height;
+        TileMap.maps = tiles;
+        TileMap.types = new int[tiles.Length];
+
+        Message mapInfo = pendingMap;
+        pendingMap = null;
+        loadInfoMap(mapInfo);
+        mapInfo.cleanup();
+    }
+
 	private void readLogin(Message msg)
 	{
 		sbyte b = msg.reader().readByte();
@@ -4535,13 +4575,22 @@ public class Controller : IMessageHandler
 		{
 			GameScr.gI().initSelectChar();
 		}
-		GameScr.loadCamera(false, (teleport3 != 1) ? (-1) : Char.myCharz().cx, (teleport3 == 0) ? (-1) : 0);
 		TileMap.loadMainTile();
 		TileMap.loadMap(TileMap.tileID);
+        Char player = Char.myCharz();
+        if (player.cy > 10 || teleport3 == 0) {
+            MovePoint spawn = TileMap.ResolveMapEntry(player.cx, player.cy, player.chw, player.chh, !TileMap.isInAirMap());
+            player.cx = player.xSd = player.cxFocus = spawn.xEnd;
+            player.cy = player.ySd = player.cyFocus = spawn.yEnd;
+        }
+        bool grounded = TileMap.IsMapEntryGround(player.cx, player.cy);
+        player.currentMovePoint = null;
+        player.endMovePointCommand = null;
+        player.EndNavigationMotion(grounded);
+        player.statusMe = grounded ? 1 : 4;
+
+        GameScr.loadCamera(false, (teleport3 != 1) ? (-1) : player.cx, (teleport3 == 0) ? (-1) : 0);
 		Res.outz("LOAD GAMESCR 2");
-		Char.myCharz().cvx = 0;
-		Char.myCharz().statusMe = 4;
-		Char.myCharz().currentMovePoint = null;
 		Char.myCharz().mobFocus = null;
 		Char.myCharz().charFocus = null;
 		Char.myCharz().npcFocus = null;
@@ -4550,12 +4599,7 @@ public class Controller : IMessageHandler
 		Char.myCharz().setMabuHold(false);
 		Char.myCharz().skillPaintRandomPaint = null;
 		GameCanvas.clearAllPointerEvent();
-		if (Char.myCharz().cy >= TileMap.pxh - 100)
-		{
-			Char.myCharz().isFlyUp = true;
-			Char.myCharz().cx += Res.abs(Res.random(0, 80));
-			Service.gI().charMove();
-		}
+        player.isFlyUp = !grounded && TileMap.isInAirMap() && player.cy >= TileMap.pxh - 100;
 		GameScr.gI().loadGameScr();
 		GameCanvas.loadBG(TileMap.bgID);
 		Char.isLockKey = false;
@@ -4575,6 +4619,7 @@ public class Controller : IMessageHandler
 		GameScr.gI().dMP = Char.myCharz().cMP;
 		Char.ischangingMap = false;
 		GameScr.gI().switchToMe();
+        if (player.cx != player.cxSend || player.cy != player.cySend) Service.gI().SendWaypointPosition();
 		if (Char.myCharz().cy <= 10 && teleport3 != 0 && teleport3 != 2)
 		{
 			Teleport p = new Teleport(Char.myCharz().cx, Char.myCharz().cy, Char.myCharz().head, Char.myCharz().cdir, 1, true, (teleport3 != 1) ? teleport3 : Char.myCharz().cgender);
@@ -4928,8 +4973,11 @@ public class Controller : IMessageHandler
 			}
 			TileMap.bgType = msg.reader().readByte();
 			sbyte teleport = msg.reader().readByte();
+            if (msg.reader().available() > 0)
+                TileMap.isMapDouble = msg.reader().readByte() != 0;
 			loadCurrMap(teleport);
-			Char.isLoadingMap = false;
+            GameScr.cmx = GameScr.cmtoX;
+            GameScr.cmy = GameScr.cmtoY;
 			GameCanvas.debug("SA75x8", 2);
 			Resources.UnloadUnusedAssets();
 			GC.Collect();
@@ -5200,49 +5248,7 @@ public class Controller : IMessageHandler
 				createItemNew(msg.reader());
 				break;
 			case 10:
-				try
-				{
-					Char.isLoadingMap = true;
-					Res.outz("REQUEST MAP TEMPLATE");
-					GameCanvas.isLoading = true;
-					TileMap.maps = null;
-					TileMap.types = null;
-					mSystem.gcc();
-					GameCanvas.debug("SA99", 2);
-					TileMap.tmw = msg.reader().readByte();
-					TileMap.tmh = msg.reader().readByte();
-					TileMap.maps = new int[TileMap.tmw * TileMap.tmh];
-					Res.err("   M apsize= " + TileMap.tmw * TileMap.tmh);
-					for (int i = 0; i < TileMap.maps.Length; i++)
-					{
-						int num = msg.reader().readByte();
-						if (num < 0)
-						{
-							num += 256;
-						}
-						TileMap.maps[i] = (ushort)num;
-					}
-					TileMap.types = new int[TileMap.maps.Length];
-					msg = messWait;
-					loadInfoMap(msg);
-					try
-					{
-						sbyte b2 = msg.reader().readByte();
-						TileMap.isMapDouble = ((b2 != 0) ? true : false);
-					}
-					catch (Exception ex)
-					{
-						Res.err(" 1 LOI TAI CASE REQUEST_MAPTEMPLATE " + ex.ToString());
-					}
-				}
-				catch (Exception ex2)
-				{
-					Res.err("2 LOI TAI CASE REQUEST_MAPTEMPLATE " + ex2.ToString());
-				}
-				msg.cleanup();
-				messWait.cleanup();
-				msg = (messWait = null);
-				GameScr.gI().switchToMe();
+                ReceiveMapTemplate(msg);
 				break;
 			case 12:
 				GameCanvas.debug("SA10", 2);

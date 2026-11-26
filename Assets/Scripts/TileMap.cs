@@ -353,27 +353,25 @@ public class TileMap
         }
     }
 
+    private static int[] collisionTypes;
+    internal static bool CollisionReady => collisionTypes != null && collisionTypes == types;
+
+    internal static void BeginCollisionLoad() => collisionTypes = null;
+
     public static void loadMap(int tileId)
     {
         pxh = tmh * size;
         pxw = tmw * size;
         Res.outz("load tile ID= " + tileID);
         int num = tileId - 1;
-        try
+        for (int i = 0; i < tmw * tmh; i++)
         {
-            for (int i = 0; i < tmw * tmh; i++)
+            for (int j = 0; j < tileType[num].Length; j++)
             {
-                for (int j = 0; j < tileType[num].Length; j++)
-                {
-                    setTile(i, tileIndex[num][j], tileType[num][j]);
-                }
+                setTile(i, tileIndex[num][j], tileType[num][j]);
             }
         }
-        catch (Exception)
-        {
-            Cout.println("Error Load Map");
-            GameMidlet.instance.exit();
-        }
+        collisionTypes = types;
     }
 
     public static bool isInAirMap()
@@ -749,6 +747,77 @@ public class TileMap
             }
         }
         return new MovePoint(x, y);
+    }
+
+    internal static bool IsClearMapEntry(int x, int y)
+    {
+        if (x < 0 || x >= pxw || y < 0 || y >= pxh || size <= 0 || types == null
+            || types.Length < tmw * tmh) return false;
+        const int blocked = T_OUTSIDE | T_SOLIDGROUND | T_DIE;
+        const int walls = T_LEFT | T_RIGHT;
+        int flags = tileTypeAtPixel(x, y);
+        return (flags & blocked) == 0 && (flags & walls) != walls;
+    }
+
+    internal static bool IsMapEntryGround(int x, int y)
+        => IsClearMapEntry(x, y) && y % size == 0 && tileTypeAt(x, y, T_TOP);
+
+    internal static MovePoint ResolveMapEntry(int x, int y, int halfBody, int bodyHeight, bool landOnFloor = true)
+    {
+        if (size <= 0 || tmw <= 0 || tmh <= 0 || types == null || types.Length < tmw * tmh
+            || maps == null || maps.Length < tmw * tmh) return new MovePoint(x, y);
+
+        bool clear = CanStandAtMapEntry(x, y, halfBody, bodyHeight);
+        if (clear && IsMapEntryGround(x, y)) return new MovePoint(x, y);
+        if (clear && !IsBuriedMapEntry(x, y)) {
+            int floor = y / size * size;
+            if (IsMapEntryGround(x, floor) && CanStandAtMapEntry(x, floor, halfBody, bodyHeight))
+                return new MovePoint(x, floor);
+            if (landOnFloor) {
+                for (floor += size; floor < pxh; floor += size) {
+                    if (!CanStandAtMapEntry(x, floor, halfBody, bodyHeight)) break;
+                    if (IsMapEntryGround(x, floor)) return new MovePoint(x, floor);
+                }
+            }
+            return new MovePoint(x, y);
+        }
+
+        int bestScore = int.MaxValue;
+        MovePoint best = null;
+        for (int row = 1; row < tmh; row++) {
+            int floor = row * size;
+            for (int column = 0; column < tmw; column++) {
+                int startX = column * size;
+                int candidateX = System.Math.Max(startX, System.Math.Min(x, startX + size - 1));
+                if (!IsMapEntryGround(candidateX, floor)) continue;
+                if (!CanStandAtMapEntry(candidateX, floor, halfBody, bodyHeight)) {
+                    candidateX = startX + size / 2;
+                    if (!CanStandAtMapEntry(candidateX, floor, halfBody, bodyHeight)) continue;
+                }
+                int score = System.Math.Abs(candidateX - x) + System.Math.Abs(floor - y);
+                if (score >= bestScore) continue;
+                bestScore = score;
+                best = new MovePoint(candidateX, floor);
+            }
+        }
+        return best ?? new MovePoint(x, y);
+    }
+
+    private static bool CanStandAtMapEntry(int x, int y, int halfBody, int bodyHeight)
+    {
+        if (!IsClearMapEntry(x, y) || x - halfBody < 0 || x + halfBody >= pxw || y < bodyHeight) return false;
+        for (int row = (y - bodyHeight) / size; row <= (y - 1) / size; row++)
+            for (int column = (x - halfBody) / size; column <= (x + halfBody) / size; column++)
+                if (!IsClearMapEntry(column * size, row * size)) return false;
+        return true;
+    }
+
+    private static bool IsBuriedMapEntry(int x, int y)
+    {
+        int column = x / size;
+        for (int row = y / size; row >= 0 && maps[row * tmw + column] != 0; row--)
+            if ((types[row * tmw + column] & T_TOP) != 0) return true;
+        return false;
     }
 
     public static int tileTypeAt(int x, int y)

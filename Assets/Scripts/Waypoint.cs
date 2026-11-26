@@ -67,18 +67,44 @@ public class Waypoint : IActionListener
 		TileMap.vGo.addElement(this);
 	}
 
+    internal bool TryGetEntryPoint(out int x, out int y)
+    {
+        int left = System.Math.Max(0, (int)minX), right = System.Math.Min(TileMap.pxw - 1, maxX);
+        int top = System.Math.Max(1, (int)minY), bottom = System.Math.Min(TileMap.pxh - 1, maxY);
+        int center = (left + right) / 2;
+        x = y = -1;
+        int bestScore = int.MaxValue;
+        for (int row = bottom; row >= top; row--) {
+            for (int column = left; column <= right; column++) {
+                if (!TileMap.IsClearMapEntry(column, row)) continue;
+                bool onFloor = TileMap.IsMapEntryGround(column, row);
+                int score = (onFloor ? 0 : TileMap.pxw + TileMap.pxh)
+                    + System.Math.Abs(center - column) + bottom - row;
+                if (score >= bestScore) continue;
+                bestScore = score;
+                x = column;
+                y = row;
+            }
+        }
+        return x >= 0;
+    }
+
 	public void perform(int idAction, object p)
 	{
+        if (Char.ischangingMap || Char.isLoadingMap) return;
 		switch (idAction)
 		{
 		case 1:
 		{
-			int xEnd2 = (minX + maxX) / 2;
-			int yEnd2 = maxY;
-			if (maxY > minY + 24)
-			{
-				yEnd2 = (minY + maxY) / 2;
-			}
+            Char player = Char.myCharz();
+            if (player.cx >= minX && player.cx <= maxX && player.cy >= minY && player.cy <= maxY) {
+                if (Service.gI().SendWaypointPosition()) {
+                    if (isOffline || TileMap.isTrainingMap()) Service.gI().getMapOffline();
+                    else Service.gI().requestChangeMap();
+                }
+                break;
+            }
+            if (!TryGetEntryPoint(out int xEnd2, out int yEnd2)) break;
 			GameScr.gI().auto = 0;
 			Char.myCharz().currentMovePoint = new MovePoint(xEnd2, yEnd2);
 			Char.myCharz().cdir = ((Char.myCharz().cx - Char.myCharz().currentMovePoint.xEnd <= 0) ? 1 : (-1));
@@ -90,24 +116,16 @@ public class Waypoint : IActionListener
 			if (Char.myCharz().isInEnterOfflinePoint() != null)
 			{
 				Service.gI().charMove();
-				InfoDlg.showWait();
 				Service.gI().getMapOffline();
-				Char.ischangingMap = true;
 			}
 			else if (Char.myCharz().isInEnterOnlinePoint() != null)
 			{
 				Service.gI().charMove();
 				Service.gI().requestChangeMap();
-				Char.isLockKey = true;
-				Char.ischangingMap = true;
-				GameCanvas.clearKeyHold();
-				GameCanvas.clearKeyPressed();
-				InfoDlg.showWait();
 			}
 			else
 			{
-				int xEnd = (minX + maxX) / 2;
-				int yEnd = maxY;
+                if (!TryGetEntryPoint(out int xEnd, out int yEnd)) break;
 				Char.myCharz().currentMovePoint = new MovePoint(xEnd, yEnd);
 				Char.myCharz().cdir = ((Char.myCharz().cx - Char.myCharz().currentMovePoint.xEnd <= 0) ? 1 : (-1));
 				Char.myCharz().endMovePointCommand = new Command(null, this, 2, null);
