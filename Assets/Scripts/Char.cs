@@ -1554,41 +1554,7 @@ public class Char : IMapObject
             {
                 return;
             }
-            if ((!isCopy && clevel < 14) || statusMe == 1)
-            {
-            }
-            if (petFollow != null)
-            {
-                if (GameCanvas.gameTick % 3 == 0)
-                {
-                    if (cdir == 1)
-                    {
-                        petFollow.cmtoX = cx - 20;
-                    }
-                    if (cdir == -1)
-                    {
-                        petFollow.cmtoX = cx + 20;
-                    }
-                    petFollow.cmtoY = cy - 40;
-                    if (petFollow.cmx > cx)
-                    {
-                        petFollow.dir = -1;
-                    }
-                    else
-                    {
-                        petFollow.dir = 1;
-                    }
-                    if (petFollow.cmtoX < 100)
-                    {
-                        petFollow.cmtoX = 100;
-                    }
-                    if (petFollow.cmtoX > TileMap.pxw - 100)
-                    {
-                        petFollow.cmtoX = TileMap.pxw - 100;
-                    }
-                }
-                petFollow.update();
-            }
+            petFollow?.FollowOwner(cx, cy, cdir, isMount || statusMe == 10);
             if (!me && cHP <= 0 && clanID != -100 && statusMe != 14 && statusMe != 5)
             {
                 startDie((short)cx, (short)cy);
