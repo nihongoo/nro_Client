@@ -125,7 +125,7 @@ internal static class MapNavigation
 
     private static bool CanMove(Char player) => player != null && player.cHP > 0
         && !player.meDead && player.statusMe != 5 && player.statusMe != 14
-        && !Char.ischangingMap && !player.isTeleport && !Char.isLockKey && !player.isLockMove
+        && !Char.ischangingMap && !Char.isLoadingMap && !player.isTeleport && !Char.isLockKey && !player.isLockMove
         && !player.stone && !player.holder && !player.isFlyAndCharge && !Controller.isStopReadMessage
         && GameScr.instance != null && GameCanvas.currentScreen == GameScr.instance && !GameScr.instance.isLockKey;
 
@@ -150,6 +150,14 @@ internal static class MapNavigation
                 return;
             }
             GameScr.instance.ShowClickPositionEffect(goalX, goalY);
+        }
+        if (owner.statusMe == 1 || owner.statusMe == 2 || owner.statusMe == 4) {
+            Point aligned = grid.AlignToGround(start);
+            if (!aligned.Equals(start)) {
+                owner.ApplyNavigationMotion(aligned.X, aligned.Y, 1);
+                Service.gI().charMove();
+                start = aligned;
+            }
         }
         int rangeX = 0, rangeY = 0;
         if (target != null) {
@@ -470,7 +478,8 @@ internal static class MapNavigation
             if (!Valid || !InBounds(target) || !CanSweep(start, start)) yield break;
             bool interaction = rangeX > 0;
             bool airApproach = CanApproachInAir(target, combatTarget);
-            bool airGoal = !interaction && canFly && (Flags(target.X / size, target.Y / size) & TileMap.T_TOP) == 0
+            bool airGoal = !interaction && canFly && !IsExit(target)
+                && (Flags(target.X / size, target.Y / size) & TileMap.T_TOP) == 0
                 && CanSweep(target, target);
             int bestScore = 0;
             var goals = searchGoals;
@@ -678,6 +687,7 @@ internal static class MapNavigation
 
             void AddGoal(Point position)
             {
+                if (IsExit(position)) return;
                 if (interaction) {
                     if (position.Equals(target) || !CanApproach(position, target, rangeX, rangeY, combatTarget)) return;
                 }
@@ -890,7 +900,7 @@ internal static class MapNavigation
 
         internal bool HasInteractionLine(Point from, Point target)
         {
-            if (!Valid || !InBounds(target) || !CanSweep(from, from)) return false;
+            if (!Valid || !InBounds(target) || IsExit(from) || !CanSweep(from, from)) return false;
             // An interaction uses the same solid tiles with a narrow ray above the feet.
             var rayStart = new Point(from.X, System.Math.Max(1, from.Y - 3));
             var rayEnd = new Point(target.X, System.Math.Max(1, target.Y - 3));
@@ -900,6 +910,25 @@ internal static class MapNavigation
         private bool InBounds(Point point) => point.X >= 0 && point.X < width && point.Y >= 0 && point.Y < height;
 
         private int Flags(int column, int row) => tiles[row * columns + column];
+
+        internal Point AlignToGround(Point point)
+        {
+            if (!Valid || !InBounds(point) || point.Y % size == 0) return point;
+
+            // Map spawn coordinates can put the feet inside the floor tile.
+            var floor = new Point(point.X, point.Y / size * size);
+            return IsGrounded(floor) && CanSweep(floor, floor) ? floor : point;
+        }
+
+        private static bool InExit(Point point, Waypoint exit) => point.X >= exit.minX && point.X <= exit.maxX
+            && point.Y >= exit.minY && point.Y <= exit.maxY;
+
+        private bool IsExit(Point point)
+        {
+            foreach (Waypoint exit in exits)
+                if (InExit(point, exit)) return true;
+            return false;
+        }
 
         internal bool IsGrounded(Point point) => Valid && InBounds(point) && point.Y % size == 0
             && (Flags(point.X / size, point.Y / size) & TileMap.T_TOP) != 0;
@@ -958,8 +987,10 @@ internal static class MapNavigation
             if (!CanOccupy(left, right, y, halfWidth, body)) return false;
             if (ray) return true;
             if (y >= exitY) return false;
+            // A character who spawned inside a waypoint may leave it, but cannot enter one.
             foreach (Waypoint exit in exits)
-                if (y >= exit.minY && y <= exit.maxY && left <= exit.maxX && right >= exit.minX) return false;
+                if (y >= exit.minY && y <= exit.maxY && left <= exit.maxX && right >= exit.minX
+                    && !InExit(from, exit)) return false;
 
             int row = y / size;
             for (int column = left / size; column <= right / size; column++)
@@ -984,8 +1015,7 @@ internal static class MapNavigation
                 if ((Flags(to.X / size, to.Y / size) & TileMap.T_DIE) != 0)
                     return false;
                 foreach (Waypoint exit in exits)
-                    if (to.X >= exit.minX && to.X <= exit.maxX && to.Y >= exit.minY && to.Y <= exit.maxY)
-                        return false;
+                    if (InExit(to, exit) && !InExit(from, exit)) return false;
             }
             if (to.Y == from.Y) return true;
 

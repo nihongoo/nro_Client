@@ -11,9 +11,7 @@ namespace Mod.CuongLe
             public int MapID;
             public int Npc;
             public int Index;
-            private bool isEntering;
-            private long enterDelayStart;
-            private Waypoint enterPendingWaypoint;
+            private long nextWaypointRequest;
             private bool isTeleNpc;
             private long teleNpcStartTime;
             public int Index2;
@@ -21,9 +19,6 @@ namespace Mod.CuongLe
             public bool walk;
             public int x;
             public int y;
-            private bool hasTeleported;
-            private long teleportTime;
-            private int teleportAttempts;
 
             public void GotoMap()
             {
@@ -90,7 +85,7 @@ namespace Mod.CuongLe
                 for (int i = 0; i < TileMap.vGo.size(); i++)
                 {
                     Waypoint waypoint = (Waypoint)TileMap.vGo.elementAt(i);
-                    if (GetMapName().Equals(GetMapName(waypoint.popup)))
+                    if (waypoint.popup != null && GetMapName().Equals(GetMapName(waypoint.popup)))
                     {
                         return waypoint;
                     }
@@ -105,111 +100,11 @@ namespace Mod.CuongLe
 
             public void Enter(Waypoint waypoint)
             {
-                if (!isEntering)
-                {
-                    isEntering = true;
-                    enterDelayStart = mSystem.currentTimeMillis();
-                    enterPendingWaypoint = waypoint;
-                    hasTeleported = false;
-                    teleportTime = 0;
-                    teleportAttempts = 0;
-                }
-                else
-                {
-                    if (mSystem.currentTimeMillis() - enterDelayStart < 200)
-                    {
-                        return;
-                    }
-
-                    // Special case: If current map is 166 and destination is 155, directly load map left
-                    if (TileMap.mapID == 166 && MapID == 155)
-                    {
-                        LoadMapLeft();
-                        isEntering = false;
-                        enterPendingWaypoint = null;
-                        hasTeleported = false;
-                        teleportTime = 0;
-                        teleportAttempts = 0;
-                        return;
-                    }
-
-                    int num = ((waypoint.maxX < 60) ? 15 : ((waypoint.minX <= TileMap.pxw - 60) ? ((waypoint.minX + waypoint.maxX) / 2) : (TileMap.pxw - 15)));
-                    int maxY = waypoint.maxY;
-
-                    if (num == -1 || maxY == -1)
-                    {
-                        isEntering = false;
-                        enterPendingWaypoint = null;
-                        hasTeleported = false;
-                        teleportTime = 0;
-                        teleportAttempts = 0;
-                        return;
-                    }
-
-                    int distanceX = Math.abs(Char.myCharz().cx - num);
-                    int distanceY = Math.abs(Char.myCharz().cy - maxY);
-                    int teleportThreshold = 30;
-                    int walkThreshold = 10;
-                    bool isCenterMap = waypoint.maxX >= 60 && waypoint.minX <= TileMap.pxw - 60;
-                    int targetX = num;
-                    int targetY = maxY;
-                    int teleportX = isCenterMap ? num : num + (Char.myCharz().cx < num ? -30 : 30);
-                    int teleportY = maxY;
-
-                    if (!hasTeleported && (distanceX > teleportThreshold || distanceY > teleportThreshold) && teleportAttempts < 3)
-                    {
-                        TeleportTo(teleportX, teleportY);
-                        hasTeleported = true;
-                        teleportTime = mSystem.currentTimeMillis();
-                        enterDelayStart = mSystem.currentTimeMillis();
-                        teleportAttempts++;
-                    }
-                    else if (hasTeleported && mSystem.currentTimeMillis() - teleportTime < 50)
-                    {
-                        return;
-                    }
-                    else if (!isCenterMap && (Math.abs(Char.myCharz().cx - targetX) > teleportThreshold || distanceY > teleportThreshold) && teleportAttempts < 3 && hasTeleported)
-                    {
-                        TeleportTo(teleportX, teleportY);
-                        teleportTime = mSystem.currentTimeMillis();
-                        enterDelayStart = mSystem.currentTimeMillis();
-                        teleportAttempts++;
-                    }
-                    else if (teleportAttempts >= 3)
-                    {
-                        isEntering = false;
-                        enterPendingWaypoint = null;
-                        hasTeleported = false;
-                        teleportTime = 0;
-                        teleportAttempts = 0;
-                        return;
-                    }
-                    else if (!isCenterMap && (distanceX > walkThreshold || distanceY > walkThreshold))
-                    {
-                        if (Char.myCharz().currentMovePoint == null)
-                        {
-                            Char.myCharz().currentMovePoint = new MovePoint(targetX, targetY);
-                            return;
-                        }
-                        return;
-                    }
-                    else
-                    {
-                        if (waypoint.isOffline)
-                        {
-                            Service.gI().getMapOffline();
-                        }
-                        else
-                        {
-                            Service.gI().requestChangeMap();
-                        }
-                        isEntering = false;
-                        enterPendingWaypoint = null;
-                        hasTeleported = false;
-                        teleportTime = 0;
-                        teleportAttempts = 0;
-                    }
-                }
+                long now = mSystem.currentTimeMillis();
+                if (now < nextWaypointRequest) return;
+                nextWaypointRequest = now + 500;
+                if (TileMap.mapID == 166 && MapID == 155) LoadMapLeft();
+                else RequestWaypoint(waypoint);
             }
 
             public string GetMapName(PopUp popup)
@@ -223,26 +118,6 @@ namespace Mod.CuongLe
                 return stringBuilder.ToString().Trim();
             }
 
-            public void TeleportTo(int x, int y)
-            {
-                if (GameScr.canAutoPlay)
-                {
-                    Char.myCharz().cx = x;
-                    Char.myCharz().cy = y;
-                    Service.gI().charMove();
-                    return;
-                }
-                Char.myCharz().cx = x;
-                Char.myCharz().cy = y;
-                Service.gI().charMove();
-                Char.myCharz().cx = x;
-                Char.myCharz().cy = y + 1;
-                Service.gI().charMove();
-                Char.myCharz().cx = x;
-                Char.myCharz().cy = y;
-                Service.gI().charMove();
-            }
-
             public NextMap(int mapID, int npcID, int index, int index2, int index3, bool walk, int x, int y)
             {
                 MapID = mapID;
@@ -253,9 +128,6 @@ namespace Mod.CuongLe
                 this.walk = walk;
                 this.x = x;
                 this.y = y;
-                hasTeleported = false;
-                teleportTime = 0;
-                teleportAttempts = 0;
             }
         }
 
@@ -269,11 +141,11 @@ namespace Mod.CuongLe
 
         public static int IdMapEnd;
 
-        private static int[] wayPointMapLeft;
+        private static Waypoint wayPointMapLeft;
 
-        private static int[] wayPointMapCenter;
+        private static Waypoint wayPointMapCenter;
 
-        private static int[] wayPointMapRight;
+        private static Waypoint wayPointMapRight;
 
         public static bool isEatChicken;
 
@@ -996,44 +868,32 @@ namespace Mod.CuongLe
                     Waypoint waypoint = (Waypoint)TileMap.vGo.elementAt(i);
                     if (waypoint.maxX < 60)
                     {
-                        wayPointMapLeft[0] = waypoint.minX + 15;
-                        wayPointMapLeft[1] = waypoint.maxY;
+                        wayPointMapLeft = waypoint;
                     }
                     else if (waypoint.maxX > TileMap.pxw - 60)
                     {
-                        wayPointMapRight[0] = waypoint.maxX - 15;
-                        wayPointMapRight[1] = waypoint.maxY;
+                        wayPointMapRight = waypoint;
                     }
                     else
                     {
-                        wayPointMapCenter[0] = waypoint.minX + 15;
-                        wayPointMapCenter[1] = waypoint.maxY;
+                        wayPointMapCenter = waypoint;
                     }
                 }
                 return;
             }
             Waypoint waypoint2 = (Waypoint)TileMap.vGo.elementAt(0);
             Waypoint waypoint3 = (Waypoint)TileMap.vGo.elementAt(1);
-            if ((waypoint2.maxX < 60 && waypoint3.maxX < 60) || (waypoint2.minX > TileMap.pxw - 60 && waypoint3.minX > TileMap.pxw - 60))
+            if ((waypoint2.maxX < 60 && waypoint3.maxX < 60)
+                || (waypoint2.minX > TileMap.pxw - 60 && waypoint3.minX > TileMap.pxw - 60)
+                || waypoint2.maxX < waypoint3.maxX)
             {
-                wayPointMapLeft[0] = waypoint2.minX + 15;
-                wayPointMapLeft[1] = waypoint2.maxY;
-                wayPointMapRight[0] = waypoint3.maxX - 15;
-                wayPointMapRight[1] = waypoint3.maxY;
-            }
-            else if (waypoint2.maxX < waypoint3.maxX)
-            {
-                wayPointMapLeft[0] = waypoint2.minX + 15;
-                wayPointMapLeft[1] = waypoint2.maxY;
-                wayPointMapRight[0] = waypoint3.maxX - 15;
-                wayPointMapRight[1] = waypoint3.maxY;
+                wayPointMapLeft = waypoint2;
+                wayPointMapRight = waypoint3;
             }
             else
             {
-                wayPointMapLeft[0] = waypoint3.minX + 15;
-                wayPointMapLeft[1] = waypoint3.maxY;
-                wayPointMapRight[0] = waypoint2.maxX - 15;
-                wayPointMapRight[1] = waypoint2.maxY;
+                wayPointMapLeft = waypoint3;
+                wayPointMapRight = waypoint2;
             }
         }
 
@@ -1079,9 +939,9 @@ namespace Mod.CuongLe
 
         private static void ResetSavedWaypoints()
         {
-            wayPointMapLeft = new int[2];
-            wayPointMapCenter = new int[2];
-            wayPointMapRight = new int[2];
+            wayPointMapLeft = null;
+            wayPointMapCenter = null;
+            wayPointMapRight = null;
         }
 
         private static bool isNRDMap(int mapID)
@@ -1116,53 +976,49 @@ namespace Mod.CuongLe
 
         private static void LoadMap(int position)
         {
+            if (Char.ischangingMap || Char.isLoadingMap || !TileMap.CollisionReady) return;
             if (isNRDMap(TileMap.mapID))
             {
                 TeleportInNRDMap(position);
                 return;
             }
             LoadWaypointsInMap();
-            switch (position)
-            {
-                case 0:
-                    if (wayPointMapLeft[0] != 0 && wayPointMapLeft[1] != 0)
-                    {
-                        TeleportTo(wayPointMapLeft[0], wayPointMapLeft[1]);
-                    }
-                    else
-                    {
-                        TeleportTo(60, GetYGround(60));
-                    }
-                    break;
-                case 1:
-                    if (wayPointMapRight[0] != 0 && wayPointMapRight[1] != 0)
-                    {
-                        TeleportTo(wayPointMapRight[0], wayPointMapRight[1]);
-                    }
-                    else
-                    {
-                        TeleportTo(TileMap.pxw - 60, GetYGround(TileMap.pxw - 60));
-                    }
-                    break;
-                case 2:
-                    if (wayPointMapCenter[0] != 0 && wayPointMapCenter[1] != 0)
-                    {
-                        TeleportTo(wayPointMapCenter[0], wayPointMapCenter[1]);
-                    }
-                    else
-                    {
-                        TeleportTo(TileMap.pxw / 2, GetYGround(TileMap.pxw / 2));
-                    }
-                    break;
+            Waypoint gate = position == 0 ? wayPointMapLeft : position == 1 ? wayPointMapRight : wayPointMapCenter;
+            RequestWaypoint(gate);
+        }
+
+        private static void RequestWaypoint(Waypoint gate)
+        {
+            Char player = Char.ExistingLocalPlayer;
+            if (player == null || player.cHP <= 0 || Char.ischangingMap || Char.isLoadingMap
+                || player.isTeleport || player.telePortSkill || Char.isLockKey || player.isLockMove
+                || Controller.isStopReadMessage) return;
+
+            if (gate == null || !gate.TryGetEntryPoint(out int x, out int y)) {
+                GameScr.info1?.addInfo("Không tìm được vị trí hợp lệ ở cổng.", 0);
+                return;
             }
-            if (TileMap.mapID != 7 && TileMap.mapID != 14 && TileMap.mapID != 0)
-            {
-                Service.gI().requestChangeMap();
+
+            MapNavigation.Cancel();
+            GameScr.instance?.ClearPendingMapClick();
+            GameScr.instance.auto = 0;
+            GameScr.instance.clickMoving = false;
+            player.cancelAttack();
+            player.currentMovePoint = null;
+            player.endMovePointCommand = null;
+            player.isFlyUp = false;
+            bool grounded = TileMap.IsMapEntryGround(x, y);
+            int previousX = player.cx, previousY = player.cy;
+            player.ApplyNavigationMotion(x, y, grounded ? 1 : 4);
+            player.EndNavigationMotion(grounded);
+            if (!Service.gI().SendWaypointPosition()) {
+                player.cx = previousX;
+                player.cy = previousY;
+                player.EndNavigationMotion(TileMap.IsMapEntryGround(previousX, previousY));
+                return;
             }
-            else
-            {
-                Service.gI().getMapOffline();
-            }
+            if (gate.isOffline) Service.gI().getMapOffline();
+            else Service.gI().requestChangeMap();
         }
 
         private static void TeleportInNRDMap(int position)

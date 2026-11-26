@@ -1514,6 +1514,7 @@ public class Char : IMapObject
 
     public virtual void update()
     {
+        if (me && !TileMap.CollisionReady) return;
         correctBossTerrainPosition();
         if (isMeInNRDMap() && bag >= 0 && ClanImage.idImages.containsKey(bag + string.Empty))
         {
@@ -2132,20 +2133,8 @@ public class Char : IMapObject
                                     if (!ischangingMap && isInWaypoint())
                                     {
                                         Service.gI().charMove();
-                                        if (TileMap.isTrainingMap())
-                                        {
-                                            Service.gI().getMapOffline();
-                                            ischangingMap = true;
-                                        }
-                                        else
-                                        {
-                                            Service.gI().requestChangeMap();
-                                        }
-                                        isLockKey = true;
-                                        ischangingMap = true;
-                                        GameCanvas.clearKeyHold();
-                                        GameCanvas.clearKeyPressed();
-                                        InfoDlg.showWait();
+                                        if (TileMap.isTrainingMap()) Service.gI().getMapOffline();
+                                        else Service.gI().requestChangeMap();
                                         return;
                                     }
                                     if (statusMe != 4 && Res.abs(cx - cxSend) + Res.abs(cy - cySend) >= 70 && cy - cySend <= 0 && me)
@@ -3926,20 +3915,8 @@ public class Char : IMapObject
         if (me && !ischangingMap && isInWaypoint())
         {
             Service.gI().charMove();
-            if (TileMap.isTrainingMap())
-            {
-                ischangingMap = true;
-                Service.gI().getMapOffline();
-            }
-            else
-            {
-                Service.gI().requestChangeMap();
-            }
-            isLockKey = true;
-            ischangingMap = true;
-            GameCanvas.clearKeyHold();
-            GameCanvas.clearKeyPressed();
-            InfoDlg.showWait();
+            if (TileMap.isTrainingMap()) Service.gI().getMapOffline();
+            else Service.gI().requestChangeMap();
             return;
         }
         if (statusMe != 16 && (TileMap.tileTypeAt(cx, cy - ch + 24, 8192) || cy < 0))
@@ -4161,6 +4138,20 @@ public class Char : IMapObject
         }
         else
         {
+            if (me && TileMap.CollisionReady && !TileMap.isInAirMap())
+            {
+                MovePoint floor = TileMap.ResolveMapEntry(cx, TileMap.pxh, chw, chh);
+                if (TileMap.IsMapEntryGround(floor.xEnd, floor.yEnd))
+                {
+                    currentMovePoint = null;
+                    endMovePointCommand = null;
+                    cp1 = cp2 = cp3 = 0;
+                    ApplyNavigationMotion(floor.xEnd, floor.yEnd, 1);
+                    EndNavigationMotion(true);
+                    Service.gI().SendWaypointPosition();
+                    return;
+                }
+            }
             statusMe = 1;
             if (me)
             {

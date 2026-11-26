@@ -1174,6 +1174,7 @@ public class GameScr : mScreen, IChatable
 
     public override void switchToMe()
     {
+        if (!TileMap.CollisionReady) return;
         ServerListScreen.isWait = false;
         if (BackgroudEffect.isHaveRain())
         {
@@ -3574,6 +3575,37 @@ public class GameScr : mScreen, IChatable
         return false;
     }
 
+    internal bool TryActivateNearbyWaypoint()
+    {
+        Char player = Char.ExistingLocalPlayer;
+        if (player == null || player.cHP <= 0 || Char.ischangingMap || Char.isLoadingMap || player.isTeleport
+            || Char.isLockKey || player.isLockMove || Controller.isStopReadMessage || InfoDlg.isLock
+            || GameCanvas.isLoading || GameCanvas.panel.isShow || GameCanvas.menu.showMenu
+            || ChatTextField.gI().isShow || ChatPopup.currChatPopup != null || ChatPopup.serverChatPopUp != null
+            || Notifications.NotificationCenter.IsOpen || Mod.CuongLe.DoHoa.isShowMenuVIP || isPaintPopup()) return false;
+
+        PopUp nearest = null;
+        int distance = int.MaxValue;
+        for (int i = 0; i < TileMap.vGo.size(); i++) {
+            var gate = (Waypoint)TileMap.vGo.elementAt(i);
+            PopUp popup = gate.popup;
+            if (popup == null || !popup.isPaint || popup.isHide || popup.command == null
+                || popup.cy <= 24 && TileMap.isInAirMap() && player.cTypePk != 0) continue;
+            int dx = System.Math.Max(gate.minX - player.cx, player.cx - gate.maxX);
+            int dy = System.Math.Max(gate.minY - player.cy, player.cy - gate.maxY);
+            dx = System.Math.Max(0, dx);
+            dy = System.Math.Max(0, dy);
+            if (dx > TileMap.size * 3 || dy > TileMap.size * 2 || dx + dy >= distance) continue;
+            nearest = popup;
+            distance = dx + dy;
+        }
+        if (nearest == null) return false;
+        MapNavigation.Cancel();
+        ClearPendingMapClick();
+        nearest.command.performAction();
+        return true;
+    }
+
     private bool checkClickToPopup(int xClick, int yClick)
     {
         for (int i = 0; i < PopUp.vPopups.size(); i++)
@@ -4307,6 +4339,8 @@ public class GameScr : mScreen, IChatable
 
     public override void update()
     {
+        Service.gI().UpdateWaypointRequest();
+        if (!TileMap.CollisionReady) return;
         Char.ExistingLocalPlayer?.ClearInvalidAttackFocus();
         AttackSync.Update();
         MainMod.Update();

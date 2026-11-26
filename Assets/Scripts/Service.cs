@@ -907,12 +907,49 @@ public class Service
 		}
 	}
 
-	public void requestChangeMap()
-	{
-		Message message = new Message((sbyte)(-23));
-		session.sendMessage(message);
-		message.cleanup();
-	}
+    private long waypointRequestUntil;
+
+    public void requestChangeMap() => SendWaypointRequest(-23);
+
+    private void SendWaypointRequest(sbyte command)
+    {
+        if (waypointRequestUntil != 0 || Char.ischangingMap || Char.isLoadingMap
+            || !TileMap.CollisionReady || !session.isConnected()) return;
+
+        waypointRequestUntil = mSystem.currentTimeMillis() + 8000;
+        Char.ischangingMap = true;
+        Char.isLockKey = true;
+        MapNavigation.Cancel();
+        GameCanvas.clearKeyHold();
+        GameCanvas.clearKeyPressed();
+        InfoDlg.showWait();
+        Message message = new Message(command);
+        try
+        {
+            session.sendMessage(message);
+        }
+        catch (Exception ex)
+        {
+            FinishWaypointRequest();
+            Char.ischangingMap = Char.isLockKey = false;
+            InfoDlg.hide();
+            Cout.println(ex.Message + ex.StackTrace);
+        }
+        finally
+        {
+            message.cleanup();
+        }
+    }
+
+    internal void FinishWaypointRequest() => waypointRequestUntil = 0;
+
+    internal void UpdateWaypointRequest()
+    {
+        if (waypointRequestUntil == 0 || mSystem.currentTimeMillis() < waypointRequestUntil) return;
+        FinishWaypointRequest();
+        Char.ischangingMap = Char.isLockKey = false;
+        InfoDlg.hide();
+    }
 
 	public void magicTree(sbyte type)
 	{
@@ -981,13 +1018,17 @@ public class Service
         finally { if (request != null) request.cleanup(); }
     }
 
-	public void charMove()
+	public void charMove() => SendCharMove(false);
+
+    internal bool SendWaypointPosition() => SendCharMove(true);
+
+	private bool SendCharMove(bool fullPosition)
 	{
 		int num = Char.myCharz().cx - Char.myCharz().cxSend;
 		int num2 = Char.myCharz().cy - Char.myCharz().cySend;
-		if (Char.ischangingMap || (num == 0 && num2 == 0) || Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().cy <= 0 || Char.myCharz().telePortSkill)
+		if (Char.ischangingMap || (!fullPosition && num == 0 && num2 == 0) || Controller.isStopReadMessage || Char.myCharz().isTeleport || Char.myCharz().cy <= 0 || Char.myCharz().telePortSkill)
 		{
-			return;
+			return false;
 		}
 		try
 		{
@@ -1018,17 +1059,19 @@ public class Service
 				message.writer().writeByte((sbyte)0);
 			}
 			message.writer().writeShort(Char.myCharz().cx);
-			if (num2 != 0)
+			if (fullPosition || num2 != 0)
 			{
 				message.writer().writeShort(Char.myCharz().cy);
 			}
 			session.sendMessage(message);
 			GameScr.tickMove++;
 			message.cleanup();
+            return true;
 		}
 		catch (Exception ex)
 		{
 			Cout.LogError("LOI CHAR MOVE " + ex.ToString());
+            return false;
 		}
 	}
 
@@ -2540,23 +2583,7 @@ public class Service
 		}
 	}
 
-	public void getMapOffline()
-	{
-		Message message = null;
-		try
-		{
-			message = new Message((sbyte)(-33));
-			session.sendMessage(message);
-		}
-		catch (Exception ex)
-		{
-			Cout.println(ex.Message + ex.StackTrace);
-		}
-		finally
-		{
-			message.cleanup();
-		}
-	}
+    public void getMapOffline() => SendWaypointRequest(-33);
 
 	public void finishUpdate()
 	{
