@@ -75,6 +75,7 @@ namespace Assets.src.f
 						int[] array3 = null;
 						short wimg = 0;
 						short himg = 0;
+						int groundFootInset = -1;
 						try
 						{
 							b13 = msg.reader().readByte();
@@ -88,6 +89,7 @@ namespace Assets.src.f
 								}
 								wimg = msg.reader().readShort();
 								himg = msg.reader().readShort();
+								if (msg.reader().available() > 0) groundFootInset = msg.reader().readByte();
 							}
 						}
 						catch (Exception)
@@ -100,6 +102,7 @@ namespace Assets.src.f
 						}
 						owner.petFollow = new PetFollow();
 						owner.petFollow.smallID = smallID;
+						owner.petFollow.GroundFootInset = groundFootInset;
 						if (b13 > 0) owner.petFollow.SetImg(b13, array3, wimg, himg);
 					}
 					else {
