@@ -111,13 +111,13 @@ namespace Assets.src.f
 					}
 					else if (num15 == Char.myCharz().charID)
 					{
-						Char.myCharz().petFollow.remove();
+						Char.myCharz().petFollow?.remove();
 						Char.myCharz().petFollow = null;
 					}
 					else
 					{
 						Char char4 = GameScr.findCharInMap(num15);
-						char4.petFollow.remove();
+						char4.petFollow?.remove();
 						char4.petFollow = null;
 					}
 					break;
