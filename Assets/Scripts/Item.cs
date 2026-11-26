@@ -178,7 +178,25 @@ public class Item
 
     public string info;
 
-    public string content;
+    private string itemContent;
+    private long petTimerDeadline, petTimerDuration, petTimerLocalDeadline;
+
+    public string content
+    {
+        get => itemContent;
+        set
+        {
+            itemContent = value;
+            petTimerDuration = 0;
+            if (value == null || !value.StartsWith(PetTimerPrefix, System.StringComparison.Ordinal)) return;
+            string[] parts = value.Split(':');
+            if (parts.Length != 4 || !long.TryParse(parts[1], out long deadline)
+                || !long.TryParse(parts[2], out long duration) || !long.TryParse(parts[3], out long serverNow)) return;
+            petTimerDeadline = deadline;
+            petTimerDuration = duration;
+            petTimerLocalDeadline = Hud.BuffIconStore.Now + System.Math.Max(0, deadline - serverNow);
+        }
+    }
 
     public string reason = string.Empty;
 
@@ -379,6 +397,24 @@ public class Item
         item.typeUI = typeUI;
         item.isExpires = isExpires;
         return item;
+    }
+
+    public const int TYPE_PET_ITEM = 76;
+    public const int PET_BODY_SLOT = 13;
+    private const string PetTimerPrefix = "pet-time:";
+
+    public bool IsPetItem => template != null && template.type == TYPE_PET_ITEM;
+
+    internal bool SamePetTimer(Item other)
+        => petTimerDeadline == other.petTimerDeadline && petTimerDuration == other.petTimerDuration;
+
+    public string PetTimerText()
+    {
+        if (!IsPetItem || petTimerDuration <= 0) return null;
+        long seconds = petTimerDeadline == 0 ? petTimerDuration
+            : System.Math.Max(0, (petTimerLocalDeadline - Hud.BuffIconStore.Now + 999) / 1000);
+        string remaining = (seconds / 60).ToString("00") + ":" + (seconds % 60).ToString("00");
+        return petTimerDeadline == 0 ? remaining + " - chưa kích hoạt" : remaining;
     }
 
     public bool isTypeBody()

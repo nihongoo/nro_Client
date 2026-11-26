@@ -66,6 +66,8 @@ namespace Assets.src.f
 				{
 					int num15 = msg.reader().readInt();
 					sbyte b12 = msg.reader().readByte();
+					Char owner = num15 == Char.myCharz().charID ? Char.myCharz() : GameScr.findCharInMap(num15);
+					if (owner == null) break;
 					if (b12 == 1)
 					{
 						short smallID = msg.reader().readShort();
@@ -91,34 +93,18 @@ namespace Assets.src.f
 						catch (Exception)
 						{
 						}
-						if (num15 == Char.myCharz().charID)
-						{
-							Char.myCharz().petFollow = new PetFollow();
-							Char.myCharz().petFollow.smallID = smallID;
-							if (b13 > 0)
-							{
-								Char.myCharz().petFollow.SetImg(b13, array3, wimg, himg);
-							}
+						if (smallID == 0) {
+							owner.petFollow?.remove();
+							owner.petFollow = null;
 							break;
 						}
-						Char char3 = GameScr.findCharInMap(num15);
-						char3.petFollow = new PetFollow();
-						char3.petFollow.smallID = smallID;
-						if (b13 > 0)
-						{
-							char3.petFollow.SetImg(b13, array3, wimg, himg);
-						}
+						owner.petFollow = new PetFollow();
+						owner.petFollow.smallID = smallID;
+						if (b13 > 0) owner.petFollow.SetImg(b13, array3, wimg, himg);
 					}
-					else if (num15 == Char.myCharz().charID)
-					{
-						Char.myCharz().petFollow?.remove();
-						Char.myCharz().petFollow = null;
-					}
-					else
-					{
-						Char char4 = GameScr.findCharInMap(num15);
-						char4.petFollow?.remove();
-						char4.petFollow = null;
+					else {
+						owner.petFollow?.remove();
+						owner.petFollow = null;
 					}
 					break;
 				}

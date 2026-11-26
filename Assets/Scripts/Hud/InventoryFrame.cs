@@ -241,7 +241,7 @@ public partial class Panel
     private static readonly int[] inventoryMainTabsWithoutDisciple = new[] { 0, 1, 2, 3, 6 };
     private static readonly int[] inventoryFourTabs = new[] { 0, 1, 2, 3 };
     private static readonly int[] inventoryFiveTabs = new[] { 0, 1, 2, 3, 4 };
-    private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, -1 };
+    private static readonly int[] inventoryBodySlots = { 0, 1, 2, 3, 4, 6, 5, 7, Item.PET_BODY_SLOT };
     private static readonly string[] inventorySlotLabels = { "Áo", "Quần", "Găng", "Giày", "Rada", "GLT", "Skin", "Tai", "Pet" };
     private readonly InventoryItemVisuals.FittedTextRow inventoryTabText = new InventoryItemVisuals.FittedTextRow();
     private readonly Rect[] inventoryTabTextBounds = new Rect[6];
